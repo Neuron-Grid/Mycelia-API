@@ -5,25 +5,31 @@ import { Request } from 'express'
 
 @Injectable({ scope: Scope.REQUEST })
 export class SupabaseRequestService {
-    private supabase: SupabaseClient
+    private supabaseAnon: SupabaseClient
+    private supabaseAdmin: SupabaseClient
 
     constructor(@Inject(REQUEST) private readonly req: Request) {
-        // 必須の環境変数をチェック
         const url = process.env.SUPABASE_URL
         const anonKey = process.env.SUPABASE_ANON_KEY
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
         if (!url || !anonKey) {
             throw new Error(
                 'Missing Supabase environment variables (SUPABASE_URL, SUPABASE_ANON_KEY).',
             )
         }
 
-        // Authorization ヘッダから JWT (アクセストークン) を抜き出す
+        if (!serviceRoleKey) {
+            throw new Error('Missing Supabase environment variable (SUPABASE_SERVICE_ROLE_KEY).')
+        }
+
+        // Authorization ヘッダから JWT (アクセストークン) を抽出
         const authHeader = this.req.headers.authorization ?? ''
         const token = authHeader.replace(/^Bearer\s+/, '')
 
-        // Supabase SDK v2 の createClient: global.headers に Bearerトークンを付与
-        // token が空の場合（未ログインユーザ等）はヘッダを付与しない
-        this.supabase = createClient(url, anonKey, {
+        // 通常ユーザー操作向けクライアント
+        // anonKey使用
+        this.supabaseAnon = createClient(url, anonKey, {
             auth: {
                 autoRefreshToken: false,
                 persistSession: false,
@@ -32,10 +38,24 @@ export class SupabaseRequestService {
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
             },
         })
+
+        // 管理操作向けクライアント
+        // Service Role Key使用
+        this.supabaseAdmin = createClient(url, serviceRoleKey, {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+            },
+        })
     }
 
-    //  このリクエストスコープに紐づく SupabaseClient を返す
-    getClient() {
-        return this.supabase
+    // 通常操作に使うクライアント（Anon Key使用）
+    getClient(): SupabaseClient {
+        return this.supabaseAnon
+    }
+
+    // 管理権限操作に使うクライアント（Service Role Key使用）
+    getAdminClient(): SupabaseClient {
+        return this.supabaseAdmin
     }
 }
