@@ -1,11 +1,24 @@
-import { Body, Controller, Delete, HttpException, HttpStatus, Patch, Post } from '@nestjs/common'
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpException,
+    HttpStatus,
+    Patch,
+    Post,
+    UseGuards,
+} from '@nestjs/common'
+import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
+import { SupabaseAuthGuard } from './supabase-auth.guard'
+import { SupabaseUser } from './supabase-user.decorator'
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
-    // 新規アカウント登録
+    // 認証不要のルート
     @Post('signup')
     async signUp(@Body() body: { email: string; password: string; username: string }) {
         try {
@@ -20,7 +33,6 @@ export class AuthController {
         }
     }
 
-    // ログイン
     @Post('login')
     async signIn(@Body() body: { email: string; password: string }) {
         try {
@@ -35,86 +47,6 @@ export class AuthController {
         }
     }
 
-    // ログアウト
-    @Post('logout')
-    async signOut() {
-        try {
-            const result = await this.authService.signOut()
-            return {
-                message: 'Logout successful',
-                data: result,
-            }
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    // アカウント削除
-    @Delete('delete')
-    async deleteAccount(@Body() body: { userId: string }) {
-        try {
-            const { userId } = body
-            const result = await this.authService.deleteAccount(userId)
-            return {
-                message: 'Account deleted',
-                data: result,
-            }
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    // ===========================
-    //  以下が新たに追加するAPI
-    // ===========================
-
-    // [A] メールアドレス変更
-    @Patch('update-email')
-    async updateEmail(@Body() body: { newEmail: string }) {
-        try {
-            const { newEmail } = body
-            const result = await this.authService.updateEmail(newEmail)
-            return {
-                message: 'Email updated successfully',
-                data: result,
-            }
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    // [B] ユーザー名変更
-    @Patch('update-username')
-    async updateUsername(@Body() body: { newUsername: string }) {
-        try {
-            const { newUsername } = body
-            const result = await this.authService.updateUsername(newUsername)
-            return {
-                message: 'Username updated successfully',
-                data: result,
-            }
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    // [C] パスワード変更
-    @Patch('update-password')
-    async updatePassword(@Body() body: { oldPassword: string; newPassword: string }) {
-        try {
-            const { oldPassword, newPassword } = body
-            const result = await this.authService.updatePassword(oldPassword, newPassword)
-            return {
-                message: 'Password updated successfully',
-                data: result,
-            }
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
-    }
-
-    // [D] パスワードリセット要求（「パスワードを忘れた」時のフロー）
-    //     Supabaseが送信するパスワード再設定用のメールをトリガーする
     @Post('forgot-password')
     async forgotPassword(@Body() body: { email: string }) {
         try {
@@ -129,9 +61,6 @@ export class AuthController {
         }
     }
 
-    // リセットリンクから遷移したあとに、新しいパスワードを入力してもらう想定のAPI例
-    // ※ 実際にはフロント(クライアント)サイドで supabase.auth.updateUser() を行いがちですが、
-    //   サーバーサイドで行う場合の例として示しています
     @Post('reset-password')
     async resetPassword(@Body() body: { accessToken: string; newPassword: string }) {
         try {
@@ -143,6 +72,116 @@ export class AuthController {
             }
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @Post('verify-email')
+    async verifyEmail(@Body() body: { email: string; token: string }) {
+        try {
+            const { email, token } = body
+            const result = await this.authService.verifyEmail(email, token)
+            return {
+                message: 'Email verified successfully',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    // 認証必須のルート
+    @UseGuards(SupabaseAuthGuard)
+    @Post('logout')
+    async signOut() {
+        try {
+            const result = await this.authService.signOut()
+            return {
+                message: 'Logout successful',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @UseGuards(SupabaseAuthGuard)
+    @Delete('delete')
+    async deleteAccount(@SupabaseUser() user: User) {
+        try {
+            if (!user?.id) {
+                throw new HttpException('User ID not found', HttpStatus.UNAUTHORIZED)
+            }
+            const result = await this.authService.deleteAccount(user.id)
+            return {
+                message: 'Account deleted',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @UseGuards(SupabaseAuthGuard)
+    @Patch('update-email')
+    async updateEmail(@SupabaseUser() user: User, @Body() body: { newEmail: string }) {
+        try {
+            if (!user) {
+                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
+            }
+            const result = await this.authService.updateEmail(user, body.newEmail)
+            return {
+                message: 'Email updated successfully',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @UseGuards(SupabaseAuthGuard)
+    @Patch('update-username')
+    async updateUsername(@SupabaseUser() user: User, @Body() body: { newUsername: string }) {
+        try {
+            if (!user) {
+                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
+            }
+            const result = await this.authService.updateUsername(user, body.newUsername)
+            return {
+                message: 'Username updated successfully',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @UseGuards(SupabaseAuthGuard)
+    @Patch('update-password')
+    async updatePassword(
+        @SupabaseUser() user: User,
+        @Body() body: { oldPassword: string; newPassword: string },
+    ) {
+        try {
+            if (!user) {
+                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
+            }
+            const { oldPassword, newPassword } = body
+            const result = await this.authService.updatePassword(user, oldPassword, newPassword)
+            return {
+                message: 'Password updated successfully',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+    }
+
+    @UseGuards(SupabaseAuthGuard)
+    @Get('profile')
+    getProfile(@SupabaseUser() user: User) {
+        return {
+            message: 'User profile fetched successfully',
+            data: user,
         }
     }
 }
