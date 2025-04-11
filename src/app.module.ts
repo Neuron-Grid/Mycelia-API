@@ -5,6 +5,7 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AuthModule } from './auth/auth.module'
 import { FeedModule } from './feed/feed.module'
+import { HealthModule } from './health/health.module'
 import { SupabaseRequestModule } from './supabase-request.module'
 
 @Module({
@@ -16,6 +17,7 @@ import { SupabaseRequestModule } from './supabase-request.module'
         // AuthModule (認証周り)
         AuthModule,
         ScheduleModule.forRoot(),
+        HealthModule,
     ],
     controllers: [AppController],
     providers: [AppService],
