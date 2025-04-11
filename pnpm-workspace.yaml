@@ -3,4 +3,5 @@ ignoredBuiltDependencies:
   - '@prisma/engines'
   - '@swc/core'
   - esbuild
+  - msgpackr-extract
   - prisma

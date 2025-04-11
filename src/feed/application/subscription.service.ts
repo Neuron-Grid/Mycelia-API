@@ -22,4 +22,9 @@ export class SubscriptionService {
     async updateFetchTimestamps(subscriptionId: number, userId: string, last: Date, next: Date) {
         return await this.subscriptionRepo.updateFetchTimestamps(subscriptionId, userId, last, next)
     }
+
+    // refresh_interval 別に購読を取得
+    async findByInterval(interval: string) {
+        return await this.subscriptionRepo.findByRefreshInterval(interval)
+    }
 }

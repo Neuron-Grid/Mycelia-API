@@ -76,4 +76,19 @@ export class SubscriptionRepository {
             throw error
         }
     }
+
+    // refresh_interval = interval のレコードを全て取得
+    async findByRefreshInterval(interval: string) {
+        const supabase = this.supabaseRequestService.getClient()
+        const { data, error } = await supabase
+            .from('user_subscriptions')
+            .select('*')
+            .eq('refresh_interval', interval)
+
+        if (error) {
+            this.logger.error(`findByRefreshInterval failed: ${error.message}`, error)
+            throw error
+        }
+        return data
+    }
 }
