@@ -8,13 +8,17 @@ import {
     Patch,
     Post,
     UseGuards,
+    Version,
 } from '@nestjs/common'
 import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
 
-@Controller('auth')
+@Controller({
+    path: 'auth',
+    version: '1',
+})
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
