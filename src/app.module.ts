@@ -5,6 +5,7 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AuthModule } from './auth/auth.module'
 import { FeedModule } from './feed/feed.module'
+import { FeedQueueModule } from './feed/queue/feed-queue.module'
 import { HealthModule } from './health/health.module'
 import { SupabaseRequestModule } from './supabase-request.module'
 
@@ -18,6 +19,7 @@ import { SupabaseRequestModule } from './supabase-request.module'
         AuthModule,
         ScheduleModule.forRoot(),
         HealthModule,
+        FeedQueueModule,
     ],
     controllers: [AppController],
     providers: [AppService],

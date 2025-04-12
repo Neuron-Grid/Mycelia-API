@@ -22,15 +22,12 @@ import { FeedQueueService } from './feed-queue.service'
                 redis: {
                     host: configService.get<string>('REDIS_HOST', '127.0.0.1'),
                     port: configService.get<number>('REDIS_PORT', 6379),
-                    // password など必要に応じて設定
                 },
             }),
             inject: [ConfigService],
         }),
     ],
     providers: [
-        // Bull
-        // Processor
         FeedQueueProcessor,
         // キュー操作用サービス
         FeedQueueService,
@@ -42,6 +39,7 @@ import { FeedQueueService } from './feed-queue.service'
         SubscriptionRepository,
         FeedItemRepository,
     ],
-    exports: [FeedQueueService],
+    exports: [FeedQueueService, BullModule],
 })
+
 export class FeedQueueModule {}
