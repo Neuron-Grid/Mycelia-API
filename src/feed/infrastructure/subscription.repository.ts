@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { SupabaseRequestService } from 'src/supabase-request.service'
+import { Database } from 'src/types/schema'
 
 @Injectable()
 export class SubscriptionRepository {
@@ -18,7 +19,7 @@ export class SubscriptionRepository {
             this.logger.error(`findByUserId failed: ${error.message}`, error)
             throw error
         }
-        return data
+        return data ?? []
     }
 
     async insertSubscription(userId: string, feedUrl: string, feedTitle: string) {
@@ -32,6 +33,7 @@ export class SubscriptionRepository {
             })
             .select()
             .single()
+
         if (error) {
             this.logger.error(`insertSubscription failed: ${error.message}`, error)
             throw error
@@ -48,9 +50,12 @@ export class SubscriptionRepository {
             .eq('user_id', userId)
             .single()
 
-        if (error) {
+        if (error && error.code !== 'PGRST116') {
             this.logger.error(`findOne failed: ${error.message}`, error)
             throw error
+        }
+        if (error && error.code === 'PGRST116') {
+            return null
         }
         return data
     }
@@ -77,18 +82,18 @@ export class SubscriptionRepository {
         }
     }
 
-    // refresh_interval = interval のレコードを全て取得
-    async findByRefreshInterval(interval: string) {
+    async findByRefreshInterval(interval: Database['public']['Enums']['refresh_interval_enum']) {
         const supabase = this.supabaseRequestService.getClient()
         const { data, error } = await supabase
             .from('user_subscriptions')
             .select('*')
+            // eq() に文字列ではなく enum型の値を渡す
             .eq('refresh_interval', interval)
 
         if (error) {
             this.logger.error(`findByRefreshInterval failed: ${error.message}`, error)
             throw error
         }
-        return data
+        return data ?? []
     }
 }

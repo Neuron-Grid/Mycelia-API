@@ -20,9 +20,10 @@ export class FeedItemRepository {
             this.logger.error(`Failed to get feed_items: ${error.message}`, error)
             throw error
         }
-        return data
+        return data ?? []
     }
 
+    // アイテムを追加
     async insertFeedItem(item: {
         user_subscription_id: number
         user_id: string
@@ -32,8 +33,11 @@ export class FeedItemRepository {
         published_at: Date | null
     }) {
         const supabase = this.supabaseRequestService.getClient()
-        const { error } = await supabase.from('feed_items').insert(item)
-        // 重複エラーは上位サービスでハンドリング
+        const { error } = await supabase.from('feed_items').insert({
+            ...item,
+            published_at: item.published_at ? item.published_at.toISOString() : null,
+        })
+
         return error
     }
 }

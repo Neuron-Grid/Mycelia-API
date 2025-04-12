@@ -12,12 +12,10 @@ import { SubscriptionRepository } from './infrastructure/subscription.repository
     imports: [SupabaseRequestModule],
     controllers: [FeedController],
     providers: [
-        // Application 層
         FeedFetchService,
         FeedItemService,
         FeedUseCaseService,
         SubscriptionService,
-        // Infrastructure 層
         FeedItemRepository,
         SubscriptionRepository,
     ],

@@ -14,14 +14,13 @@ export class AuthService {
     async signUp(email: string, password: string, username: string) {
         const supabase = this.supabaseRequestService.getClient()
 
-        // public.users上で既に同じemailがないか確認
+        // public.users を指定し、型引数は使わない
         const { data: existingEmailUser, error: emailCheckError } = await supabase
             .from('users')
             .select('id')
             .eq('email', email)
             .single()
 
-        // PGRST116 は「No rows found」
         if (emailCheckError && emailCheckError.code !== 'PGRST116') {
             throw new HttpException(emailCheckError.message, HttpStatus.INTERNAL_SERVER_ERROR)
         }
@@ -81,7 +80,6 @@ export class AuthService {
     }
 
     // アカウント削除
-    // Service Keyでadmin操作
     async deleteAccount(userId: string) {
         const supabaseAdmin = this.supabaseRequestService.getAdminClient()
         const { data, error } = await supabaseAdmin.auth.admin.deleteUser(userId)
@@ -91,17 +89,15 @@ export class AuthService {
         return data
     }
 
-    // メールアドレスを更新
-    // (User, string)の2引数シグネチャに変更
+    // メールアドレス更新
     async updateEmail(user: User, newEmail: string) {
         const supabase = this.supabaseRequestService.getClient()
 
-        // 変更前と同じなら何もしない
         if (user.email === newEmail) {
             return { message: 'Email is already set to the provided address' }
         }
 
-        // public.users側で既に同じメールが使われていないか確認
+        // 同じメールがないか
         const { data: existingUser, error: emailCheckError } = await supabase
             .from('users')
             .select('id')
@@ -115,17 +111,18 @@ export class AuthService {
             throw new HttpException('This email is already in use.', HttpStatus.CONFLICT)
         }
 
-        // Supabase Auth側のメールアドレスを更新
+        // Supabase Auth側
         const { data, error } = await supabase.auth.updateUser({ email: newEmail })
         if (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
 
-        // public.users側のメールアドレスを更新
+        // public.users側
         const { error: updateUserError } = await supabase
             .from('users')
             .update({ email: newEmail })
             .eq('id', user.id)
+
         if (updateUserError) {
             throw new HttpException(updateUserError.message, HttpStatus.BAD_REQUEST)
         }
@@ -133,7 +130,7 @@ export class AuthService {
         return data
     }
 
-    // 6) ユーザー名を更新
+    // ユーザー名更新
     async updateUsername(user: User, newUsername: string) {
         const supabase = this.supabaseRequestService.getClient()
 
@@ -143,6 +140,7 @@ export class AuthService {
             .select('username')
             .eq('id', user.id)
             .single()
+
         if (publicUser && publicUser.username === newUsername) {
             return { message: 'Username is already set to the provided name' }
         }
@@ -153,6 +151,7 @@ export class AuthService {
             .select('id')
             .eq('username', newUsername)
             .single()
+
         if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
             throw new HttpException(usernameCheckError.message, HttpStatus.INTERNAL_SERVER_ERROR)
         }
@@ -160,7 +159,7 @@ export class AuthService {
             throw new HttpException('This username is already in use.', HttpStatus.CONFLICT)
         }
 
-        // Supabase Auth側 (metadata) を更新
+        // Auth metadata
         const { data, error } = await supabase.auth.updateUser({
             data: { username: newUsername },
         })
@@ -168,11 +167,12 @@ export class AuthService {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
 
-        // public.users側のusernameを更新
+        // public.users 側
         const { error: updateUserError } = await supabase
             .from('users')
             .update({ username: newUsername })
             .eq('id', user.id)
+
         if (updateUserError) {
             throw new HttpException(updateUserError.message, HttpStatus.BAD_REQUEST)
         }
@@ -180,12 +180,11 @@ export class AuthService {
         return data
     }
 
-    // パスワードを更新
-    // oldPassword → newPassword
+    // パスワード更新
     async updatePassword(user: User, oldPassword: string, newPassword: string) {
         const supabase = this.supabaseRequestService.getClient()
 
-        // まず旧パスワードで再ログインして検証
+        // 旧パスワードでログインして検証
         const { error: signInError } = await supabase.auth.signInWithPassword({
             email: user.email ?? '',
             password: oldPassword,
@@ -199,12 +198,10 @@ export class AuthService {
         if (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
-
         return data
     }
 
     // パスワードリセット要求
-    // メール送信
     async forgotPassword(email: string) {
         const supabase = this.supabaseRequestService.getClient()
         const domain = this.configService.get<string>('PRODUCTION_DOMAIN') ?? 'example.com'
@@ -219,17 +216,15 @@ export class AuthService {
         return data
     }
 
-    // リセットリンク経由で新パスワードを適用
+    // リセットリンク経由で新パスワード適用
     async resetPassword(accessToken: string, newPassword: string) {
         const supabase = this.supabaseRequestService.getClient()
 
-        // リセット用リンクから渡された accessToken をセッションに設定
         await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: '',
         })
 
-        // パスワード更新
         const { data, error } = await supabase.auth.updateUser({ password: newPassword })
         if (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
@@ -237,7 +232,7 @@ export class AuthService {
         return data
     }
 
-    // メール確認用トークンで認証完了処理
+    // メール確認
     async verifyEmail(email: string, token: string) {
         const supabase = this.supabaseRequestService.getClient()
         const { data, error } = await supabase.auth.verifyOtp({

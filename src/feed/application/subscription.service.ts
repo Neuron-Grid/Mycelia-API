@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { Database } from 'src/types/schema'
 import { SubscriptionRepository } from '../infrastructure/subscription.repository'
 
 @Injectable()
@@ -24,7 +25,7 @@ export class SubscriptionService {
     }
 
     // refresh_interval 別に購読を取得
-    async findByInterval(interval: string) {
+    async findByInterval(interval: Database['public']['Enums']['refresh_interval_enum']) {
         return await this.subscriptionRepo.findByRefreshInterval(interval)
     }
 }

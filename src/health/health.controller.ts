@@ -13,27 +13,22 @@ export class HealthController {
     @Get()
     async checkHealth() {
         try {
-            // DB接続をチェック
             const supabase = this.supabaseRequestService.getClient()
+
             const { error: dbError } = await supabase.from('users').select('id').limit(1).single()
 
             if (dbError) {
                 throw new Error(`Database check failed: ${dbError.message}`)
             }
 
-            // Bull Queue / Redis接続をチェック
             let bullStatus: string
             let jobCounts: JobCounts | null = null
 
             try {
-                // Queueの初期化状況
                 await this.feedQueue.isReady()
                 bullStatus = 'OK'
-
-                // getJobCounts() を引数なしで呼び出す
                 jobCounts = await this.feedQueue.getJobCounts()
             } catch (bullError) {
-                // Redis接続エラー等
                 bullStatus = `NG: ${bullError instanceof Error ? bullError.message : bullError}`
             }
 
@@ -41,7 +36,6 @@ export class HealthController {
                 throw new Error(`Bull Queue check failed: ${bullStatus}`)
             }
 
-            // 正常時のレスポンス
             return {
                 status: 'OK',
                 db: 'OK',
