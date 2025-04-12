@@ -184,6 +184,10 @@
           }
         }
       }
+    },
+    {
+      "include": ["*.css", "*.scss", "*.json", "*.yml", "*.yaml", "*.md"],
+      "formatter": { "indentWidth": 2 }
     }
   ]
 }

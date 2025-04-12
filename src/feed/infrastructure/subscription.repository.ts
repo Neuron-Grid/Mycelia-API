@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common'
 import { SupabaseRequestService } from 'src/supabase-request.service'
 import { Database } from 'src/types/schema'
 
+type UserSubscriptionsTable = Database['public']['Tables']['user_subscriptions']
+type UserSubscriptionsRow = UserSubscriptionsTable['Row']
+type UserSubscriptionsUpdate = UserSubscriptionsTable['Update']
+
 @Injectable()
 export class SubscriptionRepository {
     private readonly logger = new Logger(SubscriptionRepository.name)
@@ -95,5 +99,54 @@ export class SubscriptionRepository {
             throw error
         }
         return data ?? []
+    }
+
+    // 購読情報の部分更新
+    async updateSubscription(
+        subscriptionId: number,
+        userId: string,
+        fields: Partial<Pick<UserSubscriptionsRow, 'refresh_interval' | 'feed_title'>>,
+    ): Promise<UserSubscriptionsRow> {
+        const supabase = this.supabaseRequestService.getClient()
+
+        // 更新データを型安全に整形
+        const updateData: UserSubscriptionsUpdate = {}
+        if (fields.refresh_interval !== undefined) {
+            // refresh_interval は enum
+            updateData.refresh_interval = fields.refresh_interval
+        }
+        if (fields.feed_title !== undefined) {
+            updateData.feed_title = fields.feed_title
+        }
+
+        const { data, error } = await supabase
+            .from('user_subscriptions')
+            .update(updateData)
+            .eq('id', subscriptionId)
+            .eq('user_id', userId)
+            .select() // 更新後のレコードを取得
+            .single()
+
+        if (error) {
+            this.logger.error(`updateSubscription failed: ${error.message}`, error)
+            throw error
+        }
+        return data
+    }
+
+    // 購読を削除
+    async deleteSubscription(subscriptionId: number, userId: string): Promise<void> {
+        const supabase = this.supabaseRequestService.getClient()
+
+        const { error } = await supabase
+            .from('user_subscriptions')
+            .delete()
+            .eq('id', subscriptionId)
+            .eq('user_id', userId)
+
+        if (error) {
+            this.logger.error(`deleteSubscription failed: ${error.message}`, error)
+            throw error
+        }
     }
 }
