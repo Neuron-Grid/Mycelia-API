@@ -4,10 +4,12 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AuthModule } from './auth/auth.module'
+import { FavoriteModule } from './favorite/favorite.module'
 import { FeedModule } from './feed/feed.module'
 import { FeedQueueModule } from './feed/queue/feed-queue.module'
 import { HealthModule } from './health/health.module'
 import { SupabaseRequestModule } from './supabase-request.module'
+import { TagModule } from './tag/tag.module'
 
 @Module({
     imports: [
@@ -20,6 +22,8 @@ import { SupabaseRequestModule } from './supabase-request.module'
         ScheduleModule.forRoot(),
         HealthModule,
         FeedQueueModule,
+        TagModule,
+        FavoriteModule,
     ],
     controllers: [AppController],
     providers: [AppService],

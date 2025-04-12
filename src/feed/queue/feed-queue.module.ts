@@ -41,5 +41,4 @@ import { FeedQueueService } from './feed-queue.service'
     ],
     exports: [FeedQueueService, BullModule],
 })
-
 export class FeedQueueModule {}
