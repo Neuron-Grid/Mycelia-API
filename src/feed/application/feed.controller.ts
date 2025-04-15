@@ -11,6 +11,7 @@ import {
     Post,
     UseGuards,
 } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
@@ -20,6 +21,8 @@ import { FeedItemService } from './feed-item.service'
 import { FeedUseCaseService } from './feed-usecase.service'
 import { SubscriptionService } from './subscription.service'
 
+@ApiTags('Feed')
+@ApiBearerAuth()
 @Controller({
     path: 'feed',
     version: '1',
@@ -33,6 +36,9 @@ export class FeedController {
     ) {}
 
     // ユーザーの購読一覧を取得
+    @ApiOperation({ summary: 'Get all subscriptions for current user' })
+    @ApiResponse({ status: 200, description: 'Returns all subscriptions for the user' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Get('subscriptions')
     async getSubscriptions(@SupabaseUser() user: User) {
         if (!user?.id) {
@@ -46,6 +52,10 @@ export class FeedController {
     }
 
     // 新規購読追加
+    @ApiOperation({ summary: 'Add a new feed subscription' })
+    @ApiResponse({ status: 201, description: 'Subscription added successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post('subscriptions')
     async addSubscription(@SupabaseUser() user: User, @Body() dto: AddSubscriptionDto) {
         if (!user?.id) {
@@ -79,6 +89,11 @@ export class FeedController {
     }
 
     // 指定の購読を手動Fetch
+    @ApiOperation({ summary: 'Manually fetch feed items for a subscription' })
+    @ApiParam({ name: 'id', description: 'ID of the subscription to fetch' })
+    @ApiResponse({ status: 200, description: 'Feed fetched successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post('subscriptions/:id/fetch')
     async fetchSubscription(
         @SupabaseUser() user: User,
@@ -99,6 +114,11 @@ export class FeedController {
     }
 
     // 指定の購読に紐づくフィードアイテムを取得
+    @ApiOperation({ summary: 'Get feed items for a subscription' })
+    @ApiParam({ name: 'id', description: 'ID of the subscription' })
+    @ApiResponse({ status: 200, description: 'Feed items fetched successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Get('subscriptions/:id/items')
     async getSubscriptionItems(
         @SupabaseUser() user: User,
@@ -119,6 +139,11 @@ export class FeedController {
     }
 
     // 購読情報を更新
+    @ApiOperation({ summary: 'Update a subscription' })
+    @ApiParam({ name: 'id', description: 'ID of the subscription to update' })
+    @ApiResponse({ status: 200, description: 'Subscription updated successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Patch('subscriptions/:id')
     async updateSubscription(
         @SupabaseUser() user: User,
@@ -145,6 +170,11 @@ export class FeedController {
     }
 
     // 購読を削除
+    @ApiOperation({ summary: 'Delete a subscription' })
+    @ApiParam({ name: 'id', description: 'ID of the subscription to delete' })
+    @ApiResponse({ status: 200, description: 'Subscription deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Delete('subscriptions/:id')
     async deleteSubscription(
         @SupabaseUser() user: User,

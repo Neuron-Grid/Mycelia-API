@@ -12,6 +12,14 @@ import {
     Query,
     UseGuards,
 } from '@nestjs/common'
+import {
+    ApiBearerAuth,
+    ApiOperation,
+    ApiParam,
+    ApiQuery,
+    ApiResponse,
+    ApiTags,
+} from '@nestjs/swagger'
 import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
@@ -19,6 +27,8 @@ import { CreateTagDto } from './dto/create-tag.dto'
 import { UpdateTagDto } from './dto/update-tag.dto'
 import { TagService } from './tag.service'
 
+@ApiTags('Tags')
+@ApiBearerAuth()
 @Controller({
     path: 'tags',
     version: '1',
@@ -27,6 +37,9 @@ import { TagService } from './tag.service'
 export class TagController {
     constructor(private readonly tagService: TagService) {}
 
+    @ApiOperation({ summary: 'Get all tags for current user' })
+    @ApiResponse({ status: 200, description: 'Returns all tags for the user' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Get()
     async getAllTags(@SupabaseUser() user: User) {
         if (!user?.id) {
@@ -40,6 +53,10 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Create a new tag' })
+    @ApiResponse({ status: 201, description: 'Tag created successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post()
     async createTag(@SupabaseUser() user: User, @Body() dto: CreateTagDto) {
         if (!user?.id) {
@@ -60,6 +77,11 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Update a tag' })
+    @ApiParam({ name: 'tagId', description: 'ID of the tag to update' })
+    @ApiResponse({ status: 200, description: 'Tag updated successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Patch(':tagId')
     async updateTag(
         @SupabaseUser() user: User,
@@ -82,6 +104,11 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Delete a tag' })
+    @ApiParam({ name: 'tagId', description: 'ID of the tag to delete' })
+    @ApiResponse({ status: 200, description: 'Tag deleted successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Delete(':tagId')
     async deleteTag(@SupabaseUser() user: User, @Param('tagId', ParseIntPipe) tagId: number) {
         if (!user?.id) {
@@ -96,6 +123,10 @@ export class TagController {
     }
 
     // FeedItemとの紐付け
+    @ApiOperation({ summary: 'Get tags for a feed item' })
+    @ApiParam({ name: 'feedItemId', description: 'ID of the feed item' })
+    @ApiResponse({ status: 200, description: 'Returns tags associated with the feed item' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Get('feed-items/:feedItemId')
     async getFeedItemTags(
         @SupabaseUser() user: User,
@@ -112,6 +143,11 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Attach a tag to a feed item' })
+    @ApiParam({ name: 'feedItemId', description: 'ID of the feed item' })
+    @ApiResponse({ status: 200, description: 'Tag attached to feed item' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post('feed-items/:feedItemId')
     async attachTagToFeedItem(
         @SupabaseUser() user: User,
@@ -132,6 +168,12 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Detach a tag from a feed item' })
+    @ApiParam({ name: 'feedItemId', description: 'ID of the feed item' })
+    @ApiQuery({ name: 'tagId', description: 'ID of the tag to detach' })
+    @ApiResponse({ status: 200, description: 'Tag detached from feed item' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Delete('feed-items/:feedItemId')
     async detachTagFromFeedItem(
         @SupabaseUser() user: User,
@@ -154,6 +196,10 @@ export class TagController {
     }
 
     // UserSubscriptionとの紐付け
+    @ApiOperation({ summary: 'Get tags for a subscription' })
+    @ApiParam({ name: 'subscriptionId', description: 'ID of the subscription' })
+    @ApiResponse({ status: 200, description: 'Returns tags associated with the subscription' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Get('subscriptions/:subscriptionId')
     async getSubscriptionTags(
         @SupabaseUser() user: User,
@@ -170,6 +216,11 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Attach a tag to a subscription' })
+    @ApiParam({ name: 'subscriptionId', description: 'ID of the subscription' })
+    @ApiResponse({ status: 200, description: 'Tag attached to subscription' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post('subscriptions/:subscriptionId')
     async attachTagToSubscription(
         @SupabaseUser() user: User,
@@ -190,6 +241,12 @@ export class TagController {
         }
     }
 
+    @ApiOperation({ summary: 'Detach a tag from a subscription' })
+    @ApiParam({ name: 'subscriptionId', description: 'ID of the subscription' })
+    @ApiQuery({ name: 'tagId', description: 'ID of the tag to detach' })
+    @ApiResponse({ status: 200, description: 'Tag detached from subscription' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Delete('subscriptions/:subscriptionId')
     async detachTagFromSubscription(
         @SupabaseUser() user: User,

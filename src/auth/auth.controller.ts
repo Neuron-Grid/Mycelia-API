@@ -9,6 +9,7 @@ import {
     Post,
     UseGuards,
 } from '@nestjs/common'
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
@@ -23,6 +24,7 @@ import { VerifyTotpDto } from './dto/verify-totp.dto'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
 
+@ApiTags('Authentication')
 @Controller({
     path: 'auth',
     version: '1',
@@ -31,6 +33,9 @@ export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
     // 認証不要のルート
+    @ApiOperation({ summary: 'Register a new user' })
+    @ApiResponse({ status: 201, description: 'User successfully registered' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     @Post('signup')
     async signUp(@Body() signUpDto: SignUpDto) {
         try {
@@ -45,6 +50,9 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Login with email and password' })
+    @ApiResponse({ status: 200, description: 'Login successful' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
     @Post('login')
     async signIn(@Body() signInDto: SignInDto) {
         try {
@@ -59,6 +67,9 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Request password reset email' })
+    @ApiResponse({ status: 200, description: 'Password reset email sent' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     @Post('forgot-password')
     async forgotPassword(@Body() dto: ForgotPasswordDto) {
         try {
@@ -73,6 +84,9 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Reset password with token' })
+    @ApiResponse({ status: 200, description: 'Password has been reset' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     @Post('reset-password')
     async resetPassword(@Body() dto: ResetPasswordDto) {
         try {
@@ -87,6 +101,9 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Verify email with token' })
+    @ApiResponse({ status: 200, description: 'Email verified successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     @Post('verify-email')
     async verifyEmail(@Body() dto: VerifyEmailDto) {
         try {
@@ -102,6 +119,10 @@ export class AuthController {
     }
 
     // 認証必須のルート
+    @ApiOperation({ summary: 'Logout current user' })
+    @ApiResponse({ status: 200, description: 'Logout successful' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Post('logout')
     async signOut() {
@@ -116,6 +137,10 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Delete user account' })
+    @ApiResponse({ status: 200, description: 'Account deleted' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Delete('delete')
     async deleteAccount(@SupabaseUser() user: User) {
@@ -133,6 +158,10 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Update user email' })
+    @ApiResponse({ status: 200, description: 'Email updated successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-email')
     async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
@@ -150,6 +179,10 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Update username' })
+    @ApiResponse({ status: 200, description: 'Username updated successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-username')
     async updateUsername(@SupabaseUser() user: User, @Body() dto: UpdateUsernameDto) {
@@ -167,6 +200,10 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Update password' })
+    @ApiResponse({ status: 200, description: 'Password updated successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-password')
     async updatePassword(@SupabaseUser() user: User, @Body() dto: UpdatePasswordDto) {
@@ -185,6 +222,10 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Get user profile' })
+    @ApiResponse({ status: 200, description: 'User profile fetched successfully' })
+    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @Get('profile')
     getProfile(@SupabaseUser() user: User) {
@@ -194,6 +235,9 @@ export class AuthController {
         }
     }
 
+    @ApiOperation({ summary: 'Verify TOTP code' })
+    @ApiResponse({ status: 200, description: 'TOTP verified successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request' })
     @Post('verify-totp')
     async verifyTotp(@Body() dto: VerifyTotpDto) {
         try {

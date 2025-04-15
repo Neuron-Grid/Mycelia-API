@@ -1,0 +1,846 @@
+openapi: 3.0.0
+paths:
+  /api/v1:
+    get:
+      operationId: AppController_getHello_v1
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - App
+  /api/v1/feed/subscriptions:
+    get:
+      operationId: FeedController_getSubscriptions_v1
+      parameters: []
+      responses:
+        '200':
+          description: Returns all subscriptions for the user
+        '401':
+          description: Unauthorized
+      security: &ref_0
+        - bearer: []
+      summary: Get all subscriptions for current user
+      tags: &ref_1
+        - Feed
+    post:
+      operationId: FeedController_addSubscription_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddSubscriptionDto'
+      responses:
+        '201':
+          description: Subscription added successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_0
+      summary: Add a new feed subscription
+      tags: *ref_1
+  /api/v1/feed/subscriptions/{id}/fetch:
+    post:
+      operationId: FeedController_fetchSubscription_v1
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID of the subscription to fetch
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Feed fetched successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_0
+      summary: Manually fetch feed items for a subscription
+      tags: *ref_1
+  /api/v1/feed/subscriptions/{id}/items:
+    get:
+      operationId: FeedController_getSubscriptionItems_v1
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID of the subscription
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Feed items fetched successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_0
+      summary: Get feed items for a subscription
+      tags: *ref_1
+  /api/v1/feed/subscriptions/{id}:
+    patch:
+      operationId: FeedController_updateSubscription_v1
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID of the subscription to update
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionDto'
+      responses:
+        '200':
+          description: Subscription updated successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_0
+      summary: Update a subscription
+      tags: *ref_1
+    delete:
+      operationId: FeedController_deleteSubscription_v1
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID of the subscription to delete
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Subscription deleted successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_0
+      summary: Delete a subscription
+      tags: *ref_1
+  /api/v1/auth/signup:
+    post:
+      operationId: AuthController_signUp_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpDto'
+      responses:
+        '201':
+          description: User successfully registered
+        '400':
+          description: Bad request
+      summary: Register a new user
+      tags: &ref_2
+        - Authentication
+  /api/v1/auth/login:
+    post:
+      operationId: AuthController_signIn_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInDto'
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Unauthorized
+      summary: Login with email and password
+      tags: *ref_2
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: AuthController_forgotPassword_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordDto'
+      responses:
+        '200':
+          description: Password reset email sent
+        '400':
+          description: Bad request
+      summary: Request password reset email
+      tags: *ref_2
+  /api/v1/auth/reset-password:
+    post:
+      operationId: AuthController_resetPassword_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDto'
+      responses:
+        '200':
+          description: Password has been reset
+        '400':
+          description: Bad request
+      summary: Reset password with token
+      tags: *ref_2
+  /api/v1/auth/verify-email:
+    post:
+      operationId: AuthController_verifyEmail_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailDto'
+      responses:
+        '200':
+          description: Email verified successfully
+        '400':
+          description: Bad request
+      summary: Verify email with token
+      tags: *ref_2
+  /api/v1/auth/logout:
+    post:
+      operationId: AuthController_signOut_v1
+      parameters: []
+      responses:
+        '200':
+          description: Logout successful
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Logout current user
+      tags: *ref_2
+  /api/v1/auth/delete:
+    delete:
+      operationId: AuthController_deleteAccount_v1
+      parameters: []
+      responses:
+        '200':
+          description: Account deleted
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Delete user account
+      tags: *ref_2
+  /api/v1/auth/update-email:
+    patch:
+      operationId: AuthController_updateEmail_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmailDto'
+      responses:
+        '200':
+          description: Email updated successfully
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Update user email
+      tags: *ref_2
+  /api/v1/auth/update-username:
+    patch:
+      operationId: AuthController_updateUsername_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUsernameDto'
+      responses:
+        '200':
+          description: Username updated successfully
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Update username
+      tags: *ref_2
+  /api/v1/auth/update-password:
+    patch:
+      operationId: AuthController_updatePassword_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordDto'
+      responses:
+        '200':
+          description: Password updated successfully
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Update password
+      tags: *ref_2
+  /api/v1/auth/profile:
+    get:
+      operationId: AuthController_getProfile_v1
+      parameters: []
+      responses:
+        '200':
+          description: User profile fetched successfully
+        '401':
+          description: Unauthorized
+      security:
+        - bearer: []
+      summary: Get user profile
+      tags: *ref_2
+  /api/v1/auth/verify-totp:
+    post:
+      operationId: AuthController_verifyTotp_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTotpDto'
+      responses:
+        '200':
+          description: TOTP verified successfully
+        '400':
+          description: Bad request
+      summary: Verify TOTP code
+      tags: *ref_2
+  /api/v1/health:
+    get:
+      operationId: HealthController_checkHealth_v1
+      parameters: []
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponseDto'
+        '503':
+          description: Service unavailable
+      summary: Check system health
+      tags:
+        - Health
+  /api/v1/tags:
+    get:
+      operationId: TagController_getAllTags_v1
+      parameters: []
+      responses:
+        '200':
+          description: Returns all tags for the user
+        '401':
+          description: Unauthorized
+      security: &ref_3
+        - bearer: []
+      summary: Get all tags for current user
+      tags: &ref_4
+        - Tags
+    post:
+      operationId: TagController_createTag_v1
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTagDto'
+      responses:
+        '201':
+          description: Tag created successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Create a new tag
+      tags: *ref_4
+  /api/v1/tags/{tagId}:
+    patch:
+      operationId: TagController_updateTag_v1
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag to update
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTagDto'
+      responses:
+        '200':
+          description: Tag updated successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Update a tag
+      tags: *ref_4
+    delete:
+      operationId: TagController_deleteTag_v1
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag to delete
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Tag deleted successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Delete a tag
+      tags: *ref_4
+  /api/v1/tags/feed-items/{feedItemId}:
+    get:
+      operationId: TagController_getFeedItemTags_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Returns tags associated with the feed item
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Get tags for a feed item
+      tags: *ref_4
+    post:
+      operationId: TagController_attachTagToFeedItem_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Tag attached to feed item
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Attach a tag to a feed item
+      tags: *ref_4
+    delete:
+      operationId: TagController_detachTagFromFeedItem_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item
+          schema:
+            type: number
+        - name: tagId
+          required: true
+          in: query
+          description: ID of the tag to detach
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag detached from feed item
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Detach a tag from a feed item
+      tags: *ref_4
+  /api/v1/tags/subscriptions/{subscriptionId}:
+    get:
+      operationId: TagController_getSubscriptionTags_v1
+      parameters:
+        - name: subscriptionId
+          required: true
+          in: path
+          description: ID of the subscription
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Returns tags associated with the subscription
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Get tags for a subscription
+      tags: *ref_4
+    post:
+      operationId: TagController_attachTagToSubscription_v1
+      parameters:
+        - name: subscriptionId
+          required: true
+          in: path
+          description: ID of the subscription
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Tag attached to subscription
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Attach a tag to a subscription
+      tags: *ref_4
+    delete:
+      operationId: TagController_detachTagFromSubscription_v1
+      parameters:
+        - name: subscriptionId
+          required: true
+          in: path
+          description: ID of the subscription
+          schema:
+            type: number
+        - name: tagId
+          required: true
+          in: query
+          description: ID of the tag to detach
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tag detached from subscription
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_3
+      summary: Detach a tag from a subscription
+      tags: *ref_4
+  /api/v1/favorites:
+    get:
+      operationId: FavoriteController_getUserFavorites_v1
+      parameters: []
+      responses:
+        '200':
+          description: Returns all favorited feed items for the user
+        '401':
+          description: Unauthorized
+      security: &ref_5
+        - bearer: []
+      summary: Get all favorites for current user
+      tags: &ref_6
+        - Favorites
+  /api/v1/favorites/{feedItemId}/is-favorited:
+    get:
+      operationId: FavoriteController_checkFavorite_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item to check
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Returns whether the feed item is favorited
+        '401':
+          description: Unauthorized
+      security: *ref_5
+      summary: Check if a feed item is favorited
+      tags: *ref_6
+  /api/v1/favorites/{feedItemId}:
+    post:
+      operationId: FavoriteController_favoriteItem_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item to favorite
+          schema:
+            type: number
+      responses:
+        '201':
+          description: Feed item favorited successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_5
+      summary: Add a feed item to favorites
+      tags: *ref_6
+    delete:
+      operationId: FavoriteController_unfavoriteItem_v1
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          description: ID of the feed item to unfavorite
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Feed item unfavorited successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_5
+      summary: Remove a feed item from favorites
+      tags: *ref_6
+info:
+  title: Sample NestJS API
+  description: An example NestJS project with Supabase integration
+  version: 1.0.0
+  contact: {}
+tags: []
+servers: []
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    AddSubscriptionDto:
+      type: object
+      properties:
+        feedUrl:
+          type: string
+          example: https://example.com/rss.xml
+          description: URL of the RSS feed to subscribe to
+      required:
+        - feedUrl
+    UpdateSubscriptionDto:
+      type: object
+      properties:
+        refresh_interval:
+          type: string
+          example: 1hour
+          description: How often to refresh the feed
+          enum:
+            - 5minute
+            - 10minute
+            - 30minute
+            - 1hour
+            - 2hour
+            - 4hour
+            - 6hour
+            - 12hour
+        feed_title:
+          type: string
+          example: My Custom Feed Title
+          description: Custom title for the feed (max 100 chars)
+    SignUpDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+          description: User email address
+        password:
+          type: string
+          example: password123
+          description: User password (min length = 8)
+        username:
+          type: string
+          example: myusername
+          description: Display name for the user
+      required:
+        - email
+        - password
+        - username
+    SignInDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+          description: User email address
+        password:
+          type: string
+          example: password123
+          description: User password (min length = 8)
+      required:
+        - email
+        - password
+    ForgotPasswordDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+          description: Email address for password reset
+      required:
+        - email
+    ResetPasswordDto:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: Access token from password reset email
+        newPassword:
+          type: string
+          example: newPassword123
+          description: New password (min length = 8)
+      required:
+        - accessToken
+        - newPassword
+    VerifyEmailDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+          description: Email address to verify
+        token:
+          type: string
+          example: verification_token_123
+          description: Email verification token
+      required:
+        - email
+        - token
+    UpdateEmailDto:
+      type: object
+      properties:
+        newEmail:
+          type: string
+          example: newemail@example.com
+          description: New email address
+      required:
+        - newEmail
+    UpdateUsernameDto:
+      type: object
+      properties:
+        newUsername:
+          type: string
+          example: newUsername
+          description: New username
+      required:
+        - newUsername
+    UpdatePasswordDto:
+      type: object
+      properties:
+        oldPassword:
+          type: string
+          example: currentPassword123
+          description: Current password
+        newPassword:
+          type: string
+          example: newPassword456
+          description: New password (min length = 8)
+      required:
+        - oldPassword
+        - newPassword
+    VerifyTotpDto:
+      type: object
+      properties:
+        factorId:
+          type: string
+          example: totp_factor_id
+          description: TOTP factor ID
+        code:
+          type: string
+          example: '123456'
+          description: TOTP verification code
+      required:
+        - factorId
+        - code
+    JobCountsDto:
+      type: object
+      properties:
+        waiting:
+          type: number
+          example: 0
+        active:
+          type: number
+          example: 0
+        completed:
+          type: number
+          example: 10
+        failed:
+          type: number
+          example: 0
+      required:
+        - waiting
+        - active
+        - completed
+        - failed
+    BullQueueDto:
+      type: object
+      properties:
+        status:
+          type: string
+          example: OK
+        jobCounts:
+          $ref: '#/components/schemas/JobCountsDto'
+      required:
+        - status
+        - jobCounts
+    HealthCheckResponseDto:
+      type: object
+      properties:
+        status:
+          type: string
+          example: OK
+        db:
+          type: string
+          example: OK
+        bullQueue:
+          $ref: '#/components/schemas/BullQueueDto'
+      required:
+        - status
+        - db
+        - bullQueue
+    CreateTagDto:
+      type: object
+      properties:
+        tagName:
+          type: string
+          example: Technology
+          description: Name of the tag
+        parentTagId:
+          type: number
+          example: 1
+          description: ID of the parent tag (if this is a subtag)
+      required:
+        - tagName
+    UpdateTagDto:
+      type: object
+      properties:
+        newName:
+          type: string
+          example: Updated Tag Name
+          description: New name for the tag
+        newParentTagId:
+          type: object
+          example: 2
+          description: New parent tag ID, or null to remove parent
