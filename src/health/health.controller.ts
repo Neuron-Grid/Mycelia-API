@@ -1,8 +1,8 @@
 import { InjectQueue } from '@nestjs/bull'
-import { Controller, Get, HttpException, HttpStatus, Inject } from '@nestjs/common'
+import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common'
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { JobCounts, Queue } from 'bull'
-import Redis from 'ioredis'
+import { RedisService } from 'src/shared/redis/redis.service'
 import { SupabaseRequestService } from 'src/supabase-request.service'
 import { HealthCheckResponseDto } from './dto/health-check-response.dto'
 
@@ -15,7 +15,7 @@ export class HealthController {
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
         @InjectQueue('feedQueue') private readonly feedQueue: Queue,
-        @Inject('REDIS_CLIENT') private readonly redisClient: Redis,
+        private readonly redisService: RedisService, // ← RedisServiceを注入
     ) {}
 
     @ApiOperation({ summary: 'Check system health' })
@@ -30,10 +30,8 @@ export class HealthController {
         try {
             // DBチェック
             await this.checkDatabaseWithTimeout()
-
             // Redisチェック
             await this.checkRedisWithTimeout()
-
             // Bull Queueチェック
             const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout()
             // 全てOKならレスポンスを返す
@@ -57,18 +55,15 @@ export class HealthController {
     // タイムアウト付きでDB接続をチェック
     private async checkDatabaseWithTimeout(): Promise<void> {
         const supabase = this.supabaseRequestService.getClient()
-
         await this.withTimeout(
             (async () => {
                 const { error } = await supabase.from('users').select('id').limit(1)
-
                 if (error) {
                     throw new Error(`Database check failed: ${error.message}`)
                 }
             })(),
             this.TIMEOUT_MS,
         ).catch((err) => {
-            // タイムアウトやクエリ失敗時のエラーを一括捕捉
             throw new Error(`Database check failed: ${err instanceof Error ? err.message : err}`)
         })
     }
@@ -77,7 +72,9 @@ export class HealthController {
     private async checkRedisWithTimeout(): Promise<void> {
         await this.withTimeout(
             (async () => {
-                const pingResult = await this.redisClient.ping()
+                // RedisServiceからioredisインスタンスを取得
+                const redisClient = this.redisService.createMainClient()
+                const pingResult = await redisClient.ping()
                 if (pingResult !== 'PONG') {
                     throw new Error(`Unexpected PING result: ${pingResult}`)
                 }

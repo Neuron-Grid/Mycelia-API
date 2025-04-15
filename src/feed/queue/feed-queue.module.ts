@@ -1,7 +1,8 @@
 import { BullModule } from '@nestjs/bull'
 import { Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
 import { SupabaseRequestModule } from 'src/supabase-request.module'
+import { RedisModule } from '../../shared/redis/redis.module'
+import { RedisService } from '../../shared/redis/redis.service'
 import { FeedFetchService } from '../application/feed-fetch.service'
 import { FeedItemService } from '../application/feed-item.service'
 import { FeedUseCaseService } from '../application/feed-usecase.service'
@@ -13,25 +14,22 @@ import { FeedQueueService } from './feed-queue.service'
 
 @Module({
     imports: [
-        ConfigModule,
         SupabaseRequestModule,
+        RedisModule,
         BullModule.registerQueueAsync({
             name: 'feedQueue',
-            imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
-                redis: {
-                    host: configService.get<string>('REDIS_HOST', '127.0.0.1'),
-                    port: configService.get<number>('REDIS_PORT', 6379),
+            imports: [RedisModule],
+            useFactory: (redisService: RedisService) => ({
+                createClient: (type) => {
+                    return redisService.createBullClient(type)
                 },
             }),
-            inject: [ConfigService],
+            inject: [RedisService],
         }),
     ],
     providers: [
         FeedQueueProcessor,
-        // キュー操作用サービス
         FeedQueueService,
-        // 既存のFeedモジュール関連
         FeedUseCaseService,
         SubscriptionService,
         FeedItemService,

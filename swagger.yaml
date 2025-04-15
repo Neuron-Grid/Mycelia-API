@@ -789,11 +789,15 @@ components:
         failed:
           type: number
           example: 0
+        delayed:
+          type: number
+          example: 0
       required:
         - waiting
         - active
         - completed
         - failed
+        - delayed
     BullQueueDto:
       type: object
       properties:
@@ -811,15 +815,22 @@ components:
         status:
           type: string
           example: OK
+          description: Overall system status
         db:
           type: string
           example: OK
+          description: DB connection status
         bullQueue:
           $ref: '#/components/schemas/BullQueueDto'
+        redis:
+          type: string
+          example: OK
+          description: 'Status of Redis connectivity (OK or NG: <error-message>)'
       required:
         - status
         - db
         - bullQueue
+        - redis
     CreateTagDto:
       type: object
       properties:

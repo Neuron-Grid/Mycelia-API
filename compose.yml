@@ -1,20 +1,20 @@
 services:
 
   # NestJSアプリ
-  rss-news-api:
-    build: ./
-    container_name: rss-news-api
-    ports:
-      - "3000:3000"
-    environment:
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      PRODUCTION_DOMAIN: ${PRODUCTION_DOMAIN}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-    depends_on:
-      - redis
+  # rss-news-api:
+  #   build: ./
+  #   container_name: rss-news-api
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     SUPABASE_URL: ${SUPABASE_URL}
+  #     SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+  #     SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+  #     PRODUCTION_DOMAIN: ${PRODUCTION_DOMAIN}
+  #     REDIS_HOST: ${REDIS_HOST}
+  #     REDIS_PORT: ${REDIS_PORT}
+  #   depends_on:
+  #     - redis
 
   redis:
     image: redis:latest
