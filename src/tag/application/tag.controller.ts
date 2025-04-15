@@ -15,6 +15,8 @@ import {
 import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
+import { CreateTagDto } from './dto/create-tag.dto'
+import { UpdateTagDto } from './dto/update-tag.dto'
 import { TagService } from './tag.service'
 
 @Controller({
@@ -39,22 +41,15 @@ export class TagController {
     }
 
     @Post()
-    async createTag(
-        @SupabaseUser() user: User,
-        @Body() body: { tagName: string; parentTagId?: number },
-    ) {
+    async createTag(@SupabaseUser() user: User, @Body() dto: CreateTagDto) {
         if (!user?.id) {
             throw new HttpException('User ID not found', HttpStatus.UNAUTHORIZED)
         }
-        if (!body.tagName) {
+        if (!dto.tagName) {
             throw new HttpException('tagName is required', HttpStatus.BAD_REQUEST)
         }
         try {
-            const result = await this.tagService.createTagForUser(
-                user.id,
-                body.tagName,
-                body.parentTagId ?? null,
-            )
+            const result = await this.tagService.createTagForUser(user.id, dto.tagName, dto.parentTagId ?? null)
             return { message: 'Tag created', data: result }
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
@@ -65,7 +60,7 @@ export class TagController {
     async updateTag(
         @SupabaseUser() user: User,
         @Param('tagId', ParseIntPipe) tagId: number,
-        @Body() body: { newName?: string; newParentTagId?: number | null },
+        @Body() dto: UpdateTagDto,
     ) {
         if (!user?.id) {
             throw new HttpException('User ID not found', HttpStatus.UNAUTHORIZED)
@@ -74,8 +69,8 @@ export class TagController {
             const updated = await this.tagService.updateTagForUser(
                 user.id,
                 tagId,
-                body.newName,
-                body.newParentTagId,
+                dto.newName,
+                dto.newParentTagId,
             )
             return { message: 'Tag updated', data: updated }
         } catch (err) {

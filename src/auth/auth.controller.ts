@@ -8,12 +8,20 @@ import {
     Patch,
     Post,
     UseGuards,
-    Version,
 } from '@nestjs/common'
 import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
+import { ForgotPasswordDto } from './dto/forgot-password.dto'
+import { ResetPasswordDto } from './dto/reset-password.dto'
+import { SignInDto } from './dto/sign-in.dto'
+import { SignUpDto } from './dto/sign-up.dto'
+import { UpdateEmailDto } from './dto/update-email.dto'
+import { UpdatePasswordDto } from './dto/update-password.dto'
+import { UpdateUsernameDto } from './dto/update-username.dto'
+import { VerifyEmailDto } from './dto/verify-email.dto'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
+
 
 @Controller({
     path: 'auth',
@@ -24,9 +32,9 @@ export class AuthController {
 
     // 認証不要のルート
     @Post('signup')
-    async signUp(@Body() body: { email: string; password: string; username: string }) {
+    async signUp(@Body() signUpDto: SignUpDto) {
         try {
-            const { email, password, username } = body
+            const { email, password, username } = signUpDto
             const result = await this.authService.signUp(email, password, username)
             return {
                 message: 'Signup successful',
@@ -38,9 +46,9 @@ export class AuthController {
     }
 
     @Post('login')
-    async signIn(@Body() body: { email: string; password: string }) {
+    async signIn(@Body() signInDto: SignInDto) {
         try {
-            const { email, password } = body
+            const { email, password } = signInDto
             const result = await this.authService.signIn(email, password)
             return {
                 message: 'Login successful',
@@ -52,9 +60,9 @@ export class AuthController {
     }
 
     @Post('forgot-password')
-    async forgotPassword(@Body() body: { email: string }) {
+    async forgotPassword(@Body() dto: ForgotPasswordDto)  {
         try {
-            const { email } = body
+            const { email } = dto
             const result = await this.authService.forgotPassword(email)
             return {
                 message: 'Password reset email sent',
@@ -66,9 +74,9 @@ export class AuthController {
     }
 
     @Post('reset-password')
-    async resetPassword(@Body() body: { accessToken: string; newPassword: string }) {
+    async resetPassword(@Body() dto: ResetPasswordDto) {
         try {
-            const { accessToken, newPassword } = body
+            const { accessToken, newPassword } = dto
             const result = await this.authService.resetPassword(accessToken, newPassword)
             return {
                 message: 'Password has been reset',
@@ -80,9 +88,9 @@ export class AuthController {
     }
 
     @Post('verify-email')
-    async verifyEmail(@Body() body: { email: string; token: string }) {
+    async verifyEmail(@Body() dto: VerifyEmailDto) {
         try {
-            const { email, token } = body
+            const { email, token } = dto
             const result = await this.authService.verifyEmail(email, token)
             return {
                 message: 'Email verified successfully',
@@ -127,12 +135,12 @@ export class AuthController {
 
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-email')
-    async updateEmail(@SupabaseUser() user: User, @Body() body: { newEmail: string }) {
+    async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
             }
-            const result = await this.authService.updateEmail(user, body.newEmail)
+            const result = await this.authService.updateEmail(user, dto.newEmail)
             return {
                 message: 'Email updated successfully',
                 data: result,
@@ -144,12 +152,12 @@ export class AuthController {
 
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-username')
-    async updateUsername(@SupabaseUser() user: User, @Body() body: { newUsername: string }) {
+    async updateUsername(@SupabaseUser() user: User, @Body() dto: UpdateUsernameDto) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
             }
-            const result = await this.authService.updateUsername(user, body.newUsername)
+            const result = await this.authService.updateUsername(user, dto.newUsername)
             return {
                 message: 'Username updated successfully',
                 data: result,
@@ -163,13 +171,13 @@ export class AuthController {
     @Patch('update-password')
     async updatePassword(
         @SupabaseUser() user: User,
-        @Body() body: { oldPassword: string; newPassword: string },
+        @Body() dto: UpdatePasswordDto,
     ) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
             }
-            const { oldPassword, newPassword } = body
+            const { oldPassword, newPassword } = dto
             const result = await this.authService.updatePassword(user, oldPassword, newPassword)
             return {
                 message: 'Password updated successfully',

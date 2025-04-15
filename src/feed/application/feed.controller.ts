@@ -14,6 +14,7 @@ import {
 import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
+import { AddSubscriptionDto } from './dto/add-subscription.dto'
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
 import { FeedItemService } from './feed-item.service'
 import { FeedUseCaseService } from './feed-usecase.service'
@@ -46,11 +47,11 @@ export class FeedController {
 
     // 新規購読追加
     @Post('subscriptions')
-    async addSubscription(@SupabaseUser() user: User, @Body() body: { feedUrl: string }) {
+    async addSubscription(@SupabaseUser() user: User, @Body() dto: AddSubscriptionDto) {
         if (!user?.id) {
             throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
         }
-        const { feedUrl } = body
+        const { feedUrl } = dto
         if (!feedUrl) {
             throw new HttpException('feedUrl is required', HttpStatus.BAD_REQUEST)
         }
@@ -66,11 +67,7 @@ export class FeedController {
         }
 
         try {
-            const result = await this.subscriptionService.addSubscription(
-                user.id,
-                feedUrl,
-                feedTitle,
-            )
+            const result = await this.subscriptionService.addSubscription(user.id, feedUrl, feedTitle)
             return { message: 'Subscription added', data: result }
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
@@ -117,24 +114,19 @@ export class FeedController {
         }
     }
 
-    // PATCH /feed/subscriptions/:id
-    // 購読の refresh_interval や feed_title を変更
+    // 購読情報を更新
     @Patch('subscriptions/:id')
     async updateSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
-        @Body() body: UpdateSubscriptionDto,
+        @Body() dto: UpdateSubscriptionDto,
     ) {
         if (!user?.id) {
             throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
         }
 
         try {
-            const updated = await this.subscriptionService.updateSubscription(
-                user.id,
-                subscriptionId,
-                body,
-            )
+            const updated = await this.subscriptionService.updateSubscription(user.id, subscriptionId, dto)
             return {
                 message: 'Subscription updated',
                 data: updated,
@@ -144,7 +136,6 @@ export class FeedController {
         }
     }
 
-    // DELETE /feed/subscriptions/:id
     // 購読を削除
     @Delete('subscriptions/:id')
     async deleteSubscription(
