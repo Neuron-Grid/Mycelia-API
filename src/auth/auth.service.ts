@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { User } from '@supabase/supabase-js'
 import { SupabaseRequestService } from 'src/supabase-request.service'
+import { VerifyTotpDto } from './dto/verify-totp.dto'
 
 @Injectable()
 export class AuthService {
@@ -240,6 +241,31 @@ export class AuthService {
             token,
             type: 'email',
         })
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
+        }
+        return data
+    }
+
+    async verifyTotp(factorId: string, code: string) {
+        const supabase = this.supabaseRequestService.getClient()
+        // challengeを発行
+        const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
+            factorId,
+        })
+        if (challengeError || !challengeData) {
+            throw new HttpException(
+                challengeError?.message ?? 'Challenge failed',
+                HttpStatus.BAD_REQUEST,
+            )
+        }
+        // verifyでchallengeIdを利用
+        const { data, error } = await supabase.auth.mfa.verify({
+            factorId,
+            challengeId: challengeData.id,
+            code,
+        })
+
         if (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }

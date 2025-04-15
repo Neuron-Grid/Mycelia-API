@@ -49,7 +49,11 @@ export class TagController {
             throw new HttpException('tagName is required', HttpStatus.BAD_REQUEST)
         }
         try {
-            const result = await this.tagService.createTagForUser(user.id, dto.tagName, dto.parentTagId ?? null)
+            const result = await this.tagService.createTagForUser(
+                user.id,
+                dto.tagName,
+                dto.parentTagId ?? null,
+            )
             return { message: 'Tag created', data: result }
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)

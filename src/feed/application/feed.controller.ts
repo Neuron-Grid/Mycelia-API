@@ -67,7 +67,11 @@ export class FeedController {
         }
 
         try {
-            const result = await this.subscriptionService.addSubscription(user.id, feedUrl, feedTitle)
+            const result = await this.subscriptionService.addSubscription(
+                user.id,
+                feedUrl,
+                feedTitle,
+            )
             return { message: 'Subscription added', data: result }
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
@@ -126,7 +130,11 @@ export class FeedController {
         }
 
         try {
-            const updated = await this.subscriptionService.updateSubscription(user.id, subscriptionId, dto)
+            const updated = await this.subscriptionService.updateSubscription(
+                user.id,
+                subscriptionId,
+                dto,
+            )
             return {
                 message: 'Subscription updated',
                 data: updated,

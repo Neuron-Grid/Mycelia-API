@@ -19,9 +19,9 @@ import { UpdateEmailDto } from './dto/update-email.dto'
 import { UpdatePasswordDto } from './dto/update-password.dto'
 import { UpdateUsernameDto } from './dto/update-username.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
+import { VerifyTotpDto } from './dto/verify-totp.dto'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
-
 
 @Controller({
     path: 'auth',
@@ -60,7 +60,7 @@ export class AuthController {
     }
 
     @Post('forgot-password')
-    async forgotPassword(@Body() dto: ForgotPasswordDto)  {
+    async forgotPassword(@Body() dto: ForgotPasswordDto) {
         try {
             const { email } = dto
             const result = await this.authService.forgotPassword(email)
@@ -169,10 +169,7 @@ export class AuthController {
 
     @UseGuards(SupabaseAuthGuard)
     @Patch('update-password')
-    async updatePassword(
-        @SupabaseUser() user: User,
-        @Body() dto: UpdatePasswordDto,
-    ) {
+    async updatePassword(@SupabaseUser() user: User, @Body() dto: UpdatePasswordDto) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
@@ -194,6 +191,21 @@ export class AuthController {
         return {
             message: 'User profile fetched successfully',
             data: user,
+        }
+    }
+
+    @Post('verify-totp')
+    async verifyTotp(@Body() dto: VerifyTotpDto) {
+        try {
+            // dto内に factorId, code がある想定
+            const { factorId, code } = dto
+            const result = await this.authService.verifyTotp(factorId, code)
+            return {
+                message: 'TOTP verified successfully',
+                data: result,
+            }
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 }
