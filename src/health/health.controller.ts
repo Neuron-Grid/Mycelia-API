@@ -9,6 +9,9 @@ import { HealthCheckResponseDto } from './dto/health-check-response.dto'
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
+    // タイムアウト値 (ms)
+    private readonly TIMEOUT_MS = 5000
+
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
         @InjectQueue('feedQueue') private readonly feedQueue: Queue,
@@ -25,54 +28,14 @@ export class HealthController {
     @Get()
     async checkHealth(): Promise<HealthCheckResponseDto> {
         try {
-            // DB接続チェック
-            const supabase = this.supabaseRequestService.getClient()
-            const { error: dbError } = await supabase
-                .from('users')
-                .select('id')
-                .limit(1)
-            if (dbError) {
-                throw new Error(`Database check failed: ${dbError.message}`)
-            }
+            // DBチェック
+            await this.checkDatabaseWithTimeout()
 
-            // Redis接続チェック
-            let redisStatus = 'OK'
-            try {
-                const pingResult = await this.redisClient.ping()
-                if (pingResult !== 'PONG') {
-                    throw new Error(`Unexpected PING result: ${pingResult}`)
-                }
-            } catch (redisError) {
-                redisStatus = `NG: ${
-                    redisError instanceof Error ? redisError.message : redisError
-                }`
-            }
-            if (redisStatus !== 'OK') {
-                throw new Error(`Redis check failed: ${redisStatus}`)
-            }
+            // Redisチェック
+            await this.checkRedisWithTimeout()
 
-            // Bull Queue接続チェック
-            let bullStatus: string
-            let jobCounts: JobCounts = {
-                waiting: 0,
-                active: 0,
-                completed: 0,
-                failed: 0,
-                delayed: 0,
-            }
-            try {
-                await this.feedQueue.isReady()
-                jobCounts = await this.feedQueue.getJobCounts()
-                bullStatus = 'OK'
-            } catch (bullError) {
-                bullStatus = `NG: ${
-                    bullError instanceof Error ? bullError.message : bullError
-                }`
-            }
-            if (bullStatus !== 'OK') {
-                throw new Error(`Bull Queue check failed: ${bullStatus}`)
-            }
-
+            // Bull Queueチェック
+            const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout()
             // 全てOKならレスポンスを返す
             return {
                 status: 'OK',
@@ -81,7 +44,7 @@ export class HealthController {
                     status: bullStatus,
                     jobCounts,
                 },
-                redis: redisStatus,
+                redis: 'OK',
             }
         } catch (err) {
             throw new HttpException(
@@ -89,5 +52,87 @@ export class HealthController {
                 HttpStatus.SERVICE_UNAVAILABLE,
             )
         }
+    }
+
+    // タイムアウト付きでDB接続をチェック
+    private async checkDatabaseWithTimeout(): Promise<void> {
+        const supabase = this.supabaseRequestService.getClient()
+
+        await this.withTimeout(
+            (async () => {
+                const { error } = await supabase.from('users').select('id').limit(1)
+
+                if (error) {
+                    throw new Error(`Database check failed: ${error.message}`)
+                }
+            })(),
+            this.TIMEOUT_MS,
+        ).catch((err) => {
+            // タイムアウトやクエリ失敗時のエラーを一括捕捉
+            throw new Error(`Database check failed: ${err instanceof Error ? err.message : err}`)
+        })
+    }
+
+    // タイムアウト付きでRedisにPINGを送信
+    private async checkRedisWithTimeout(): Promise<void> {
+        await this.withTimeout(
+            (async () => {
+                const pingResult = await this.redisClient.ping()
+                if (pingResult !== 'PONG') {
+                    throw new Error(`Unexpected PING result: ${pingResult}`)
+                }
+            })(),
+            this.TIMEOUT_MS,
+        ).catch((err) => {
+            throw new Error(`Redis check failed: ${err instanceof Error ? err.message : err}`)
+        })
+    }
+
+    // タイムアウト付きでBull Queueをチェック
+    private async checkBullQueueWithTimeout(): Promise<{
+        bullStatus: string
+        jobCounts: JobCounts
+    }> {
+        let jobCounts: JobCounts = {
+            waiting: 0,
+            active: 0,
+            completed: 0,
+            failed: 0,
+            delayed: 0,
+        }
+
+        await this.withTimeout(
+            (async () => {
+                await this.feedQueue.isReady()
+                jobCounts = await this.feedQueue.getJobCounts()
+            })(),
+            this.TIMEOUT_MS,
+        ).catch((err) => {
+            throw new Error(`Bull Queue check failed: ${err instanceof Error ? err.message : err}`)
+        })
+
+        return {
+            bullStatus: 'OK',
+            jobCounts,
+        }
+    }
+
+    // 任意のPromiseに対して、指定msを超えた場合にタイムアウトErrorを投げるユーティリティ
+    private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error(`Timeout after ${ms}ms`))
+            }, ms)
+
+            promise
+                .then((res) => {
+                    clearTimeout(timer)
+                    resolve(res)
+                })
+                .catch((err) => {
+                    clearTimeout(timer)
+                    reject(err)
+                })
+        })
     }
 }
