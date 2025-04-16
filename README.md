@@ -33,7 +33,7 @@
 ### ローカル開発環境のセットアップ
 1. リポジトリをクローン
 ```bash
-git clone [リポジトリURL]
+git clone https://github.com/Neuron-Grid/rss-news-api.git
 cd rss-news-api
 ```
 
