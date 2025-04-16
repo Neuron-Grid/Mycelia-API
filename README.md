@@ -1,98 +1,210 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# RSS News API
+## プロジェクト概要
+`RSS News API`は、RSSフィードを購読・管理・閲覧するための高機能なバックエンドAPIサービスです。NestJSフレームワークを活用し、長期的な利用を前提とした設計を採用しているため、スマートフォンなどのデバイスを買い替えた際にも煩雑な移行作業を最小限に抑え、ベンダーロックインを回避しながら自由度の高いRSSリーダー体験を提供します。さらに、オープンな技術を採用することで多くのユーザーや開発者が参加しやすく、コミュニティ主導での機能強化やカスタマイズが期待される人気プロジェクトを目指しています。
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+### 主な機能
+- ユーザー認証（Supabaseと連携）
+- RSSフィードの購読管理
+- フィードの自動・手動更新
+- お気に入り機能
+- タグ付け機能
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 技術スタック
+- **バックエンド**: [NestJS](https://nestjs.com/) (v11)
+- **認証**: [Supabase](https://supabase.io/)
+- **データベース**: PostgreSQL（Supabase経由）
+- **キャッシュ/キュー**: Redis, Bull
+- **コンテナ化**: Docker
+- **API文書**: Swagger
+- **パッケージマネージャ**: pnpm
 
-## Description
+## セットアップ方法
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### 前提条件
+- Node.js v20以上
+- pnpm v10以上
+- Docker
+- Supabaseプロジェクト
 
-## Project setup
+オプション
+- Docker Compose
+  - プロジェクトをコンテナ上で実行する場合は必要です
 
+### ローカル開発環境のセットアップ
+1. リポジトリをクローン
 ```bash
-$ pnpm install
+git clone [リポジトリURL]
+cd rss-news-api
 ```
 
-## Compile and run the project
-
+2. 依存関係のインストール
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+pnpm install
 ```
 
-## Run tests
-
-```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+3. 環境変数の設定
+`.env`ファイルをプロジェクトルートに作成し、以下の環境変数を設定します。
+```
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+PRODUCTION_DOMAIN=localhost:3000
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+4. Redisの起動（Docker Composeを使用）
 ```bash
-$ pnpm install -g mau
-$ mau deploy
+docker-compose up redis -d
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+5. アプリケーションの起動
+```bash
+# 開発モード
+pnpm start:dev
 
-## Resources
+# プロダクションモード
+pnpm build
+pnpm start:prod
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+### APIドキュメントへのアクセス
+アプリケーションを起動した後、以下のURLでSwagger UIにアクセスできます。
+```
+http://localhost:3000/api-docs
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## プロジェクト構造
+プロジェクトは以下のような構造になっています。
+```
+rss-news-api/
+├── src/                          # ソースコード
+│   ├── app.module.ts             # メインモジュール
+│   ├── main.ts                   # アプリケーションのエントリーポイント
+│   ├── auth/                     # 認証関連
+│   ├── feed/                     # フィード関連機能
+│   │   ├── application/          # ユースケース・コントローラー
+│   │   ├── domain/               # ドメインモデル
+│   │   ├── infrastructure/       # リポジトリ
+│   │   └── queue/                # キュー処理
+│   ├── favorite/                 # お気に入り機能
+│   ├── tag/                      # タグ機能
+│   └── shared/                   # 共通コンポーネント
+├── test/                         # テストファイル
+├── Dockerfile                    # Dockerビルド設定
+├── compose.yml                   # Docker Compose設定
+├── package.json                  # パッケージ設定
+└── nest-cli.json                 # NestJSの設定
+```
 
-## Support
+## 主なモジュールと役割
+### Auth モジュール
+Supabaseを利用したユーザー認証機能を提供します。
+- サインアップ/サインイン
+- パスワード変更
+- メール確認
+- TOTP（二要素認証）
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Feed モジュール
+RSSフィードの購読管理とフィードアイテムの取得・表示機能を提供します。
+- 購読管理（追加・更新・削除）
+- フィード手動更新
+- フィードアイテム表示
 
-## Stay in touch
+### Tag モジュール
+購読に対してタグ付けする機能を提供します。
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Favorite モジュール
+フィードアイテムをお気に入りに登録する機能を提供します。
 
-## License
+## API エンドポイント
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 認証関連
+- `POST /api/v1/auth/signup` - 新規ユーザー登録
+- `POST /api/v1/auth/signin` - ログイン
+- `POST /api/v1/auth/verify-email` - メール確認
+- `POST /api/v1/auth/forgot-password` - パスワードリセットメール送信
+- `POST /api/v1/auth/reset-password` - パスワードリセット
+
+### フィード関連
+- `GET /api/v1/feed/subscriptions` - 購読一覧取得
+- `POST /api/v1/feed/subscriptions` - 新規購読追加
+- `PATCH /api/v1/feed/subscriptions/:id` - 購読更新
+- `DELETE /api/v1/feed/subscriptions/:id` - 購読削除
+- `POST /api/v1/feed/subscriptions/:id/fetch` - 購読を手動更新
+- `GET /api/v1/feed/subscriptions/:id/items` - 購読のフィードアイテム取得
+
+### お気に入り関連
+- `GET /api/v1/favorites` - お気に入り一覧取得
+- `POST /api/v1/favorites` - お気に入り追加
+- `DELETE /api/v1/favorites/:id` - お気に入り削除
+
+### タグ関連
+- `GET /api/v1/tags` - タグ一覧取得
+- `POST /api/v1/tags` - タグ作成
+- `PATCH /api/v1/tags/:id` - タグ更新
+- `DELETE /api/v1/tags/:id` - タグ削除
+
+## 開発ガイド
+### コード規約
+このプロジェクトでは、以下のコード規約に従っています。
+- [Biome](https://biomejs.dev/)を使用したコード整形
+- NestJSの推奨するディレクトリ構造
+- クリーンアーキテクチャ（Application, Domain, Infrastructure）
+### テスト実行
+```bash
+# ユニットテスト
+pnpm test
+
+# E2Eテスト
+pnpm test:e2e
+
+# カバレッジレポート
+pnpm test:cov
+```
+
+## Dockerを使用したデプロイ
+### コンテナビルド
+```bash
+docker build -t rss-news-api .
+```
+
+### Docker Composeでの起動
+`compose.yml`を編集して、コメントアウトされている`rss-news-api`サービスの設定を有効にします。
+その後、以下のコマンドで起動できます。
+```bash
+docker-compose up -d
+```
+
+## 運用上の注意点
+### バックグラウンドジョブ
+このアプリケーションでは、Redisとともに`Bull`を使用して、フィードの定期的な更新を行います。
+以下の点に注意してください。
+- Redisが稼働している必要があります
+- 本番環境ではRedisの永続性と高可用性について検討してください
+
+### 環境変数
+機密情報やデプロイ環境に依存する設定は環境変数で管理しています。本番環境では適切に設定してください。
+
+## トラブルシューティング
+
+### よくある問題
+1. **Redisに接続できない**
+  - Redisが起動しているか確認
+  - 環境変数`REDIS_HOST`と`REDIS_PORT`が正しく設定されているか確認
+
+2. **Supabase認証エラー**
+  - Supabaseの認証キーが正しいか確認
+  - Supabaseプロジェクトの設定を確認
+
+3. **RSSフィードが取得できない**
+  - URLが正しいか確認
+  - ターゲットサイトがRSSを提供しているか確認
+  - ネットワーク接続を確認
+
+## 貢献について
+バグ報告や機能リクエストは、GitHubのIssueを通じて行ってください。
+
+---
+
+このプロジェクトは[Apache License 2.0](./LICENSE)の下で提供されています。
