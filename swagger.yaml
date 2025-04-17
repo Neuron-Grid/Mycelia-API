@@ -641,22 +641,9 @@ components:
     UpdateSubscriptionDto:
       type: object
       properties:
-        refresh_interval:
-          type: string
-          example: 1hour
-          description: How often to refresh the feed
-          enum:
-            - 5minute
-            - 10minute
-            - 30minute
-            - 1hour
-            - 2hour
-            - 4hour
-            - 6hour
-            - 12hour
         feed_title:
           type: string
-          example: My Custom Feed Title
+          example: My custom feed title
           description: Custom title for the feed (max 100 chars)
     SignUpDto:
       type: object
