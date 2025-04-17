@@ -7,6 +7,9 @@ CREATE TABLE public.tags (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+    CONSTRAINT uq_tags_id_user
+        UNIQUE (id, user_id),
+
     UNIQUE (user_id, tag_name),
 
     CONSTRAINT fk_tags_user
