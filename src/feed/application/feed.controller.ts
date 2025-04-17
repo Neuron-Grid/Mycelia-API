@@ -147,23 +147,15 @@ export class FeedController {
     @Patch('subscriptions/:id')
     async updateSubscription(
         @SupabaseUser() user: User,
-        @Param('id', ParseIntPipe) subscriptionId: number,
+        @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateSubscriptionDto,
     ) {
         if (!user?.id) {
             throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
         }
-
         try {
-            const updated = await this.subscriptionService.updateSubscription(
-                user.id,
-                subscriptionId,
-                dto,
-            )
-            return {
-                message: 'Subscription updated',
-                data: updated,
-            }
+            const updated = await this.subscriptionService.updateSubscription(user.id, id, dto)
+            return { message: 'Subscription updated', data: updated }
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }

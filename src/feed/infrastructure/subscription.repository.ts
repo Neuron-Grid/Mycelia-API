@@ -2,33 +2,70 @@ import { Injectable, Logger } from '@nestjs/common'
 import { SupabaseRequestService } from 'src/supabase-request.service'
 import { Database } from 'src/types/schema'
 
-type UserSubscriptionsTable = Database['public']['Tables']['user_subscriptions']
-type UserSubscriptionsRow = UserSubscriptionsTable['Row']
-type UserSubscriptionsUpdate = UserSubscriptionsTable['Update']
+type Row    = Database['public']['Tables']['user_subscriptions']['Row']
+type Update = Database['public']['Tables']['user_subscriptions']['Update']
 
 @Injectable()
 export class SubscriptionRepository {
     private readonly logger = new Logger(SubscriptionRepository.name)
+    constructor(private readonly sbReq: SupabaseRequestService) {}
 
-    constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
-
-    async findByUserId(userId: string) {
-        const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase
+    // 指定ユーザーが登録している購読をすべて取得
+    async findByUserId(userId: string): Promise<Row[]> {
+        const sb = this.sbReq.getClient()
+        const { data, error } = await sb
             .from('user_subscriptions')
             .select('*')
             .eq('user_id', userId)
 
         if (error) {
-            this.logger.error(`findByUserId failed: ${error.message}`, error)
+            this.logger.error(`findByUserId: ${error.message}`, error)
             throw error
         }
         return data ?? []
     }
 
-    async insertSubscription(userId: string, feedUrl: string, feedTitle: string) {
-        const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase
+    // 複合PK(id, user_id)で1件取得。
+    // 存在しなければnull
+    async findOne(subId: number, userId: string): Promise<Row | null> {
+        const sb = this.sbReq.getClient()
+        const { data, error } = await sb
+            .from('user_subscriptions')
+            .select('*')
+            .eq('id', subId)
+            .eq('user_id', userId)
+            .single()
+
+        if (error && error.code !== 'PGRST116') {
+            this.logger.error(`findOne: ${error.message}`, error)
+            throw error
+        }
+        if (error && error.code === 'PGRST116') return null
+        return data
+    }
+
+    // next_fetch_at が期日以内のレコードを取得
+    // 昇順ソート
+    async findDueSubscriptions(cutoff: Date): Promise<Row[]> {
+        const sb = this.sbReq.getClient()
+        const { data, error } = await sb
+            .from('user_subscriptions')
+            .select('*')
+            .lte('next_fetch_at', cutoff.toISOString())
+            .order('next_fetch_at', { ascending: true })
+
+        if (error) {
+            this.logger.error(`findDueSubscriptions: ${error.message}`, error)
+            throw error
+        }
+        return data ?? []
+    }
+
+    // 新しい購読を追加
+    // next_fetch_atはDBトリガで自動計算
+    async insertSubscription(userId: string, feedUrl: string, feedTitle: string): Promise<Row> {
+        const sb = this.sbReq.getClient()
+        const { data, error } = await sb
             .from('user_subscriptions')
             .insert({
                 user_id: userId,
@@ -39,113 +76,70 @@ export class SubscriptionRepository {
             .single()
 
         if (error) {
-            this.logger.error(`insertSubscription failed: ${error.message}`, error)
+            this.logger.error(`insertSubscription: ${error.message}`, error)
             throw error
         }
         return data
     }
 
-    async findOne(subscriptionId: number, userId: string) {
-        const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase
-            .from('user_subscriptions')
-            .select('*')
-            .eq('id', subscriptionId)
-            .eq('user_id', userId)
-            .single()
-
-        if (error && error.code !== 'PGRST116') {
-            this.logger.error(`findOne failed: ${error.message}`, error)
-            throw error
-        }
-        if (error && error.code === 'PGRST116') {
-            return null
-        }
-        return data
-    }
-
-    async updateFetchTimestamps(
-        subscriptionId: number,
+    // last_fetched_atのみ更新
+    // next_fetch_at は trigger で再計算
+    async updateLastFetched(
+        subId: number,
         userId: string,
         lastFetchedAt: Date,
-        nextFetchAt: Date,
-    ) {
-        const supabase = this.supabaseRequestService.getClient()
-        const { error } = await supabase
+    ): Promise<void> {
+        const sb = this.sbReq.getClient()
+        const patch: Update = { last_fetched_at: lastFetchedAt.toISOString() }
+
+        const { error } = await sb
             .from('user_subscriptions')
-            .update({
-                last_fetched_at: lastFetchedAt.toISOString(),
-                next_fetch_at: nextFetchAt.toISOString(),
-            })
-            .eq('id', subscriptionId)
+            .update(patch)
+            .eq('id', subId)
             .eq('user_id', userId)
 
         if (error) {
-            this.logger.error(`updateFetchTimestamps failed: ${error.message}`, error)
+            this.logger.error(`updateLastFetched: ${error.message}`, error)
             throw error
         }
     }
 
-    async findByRefreshInterval(interval: Database['public']['Enums']['refresh_interval_enum']) {
-        const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase
-            .from('user_subscriptions')
-            .select('*')
-            // eq() に文字列ではなく enum型の値を渡す
-            .eq('refresh_interval', interval)
-
-        if (error) {
-            this.logger.error(`findByRefreshInterval failed: ${error.message}`, error)
-            throw error
-        }
-        return data ?? []
-    }
-
-    // 購読情報の部分更新
-    async updateSubscription(
-        subscriptionId: number,
+    // feed_titleを部分更新
+    async updateSubscriptionTitle(
+        subId: number,
         userId: string,
-        fields: Partial<Pick<UserSubscriptionsRow, 'refresh_interval' | 'feed_title'>>,
-    ): Promise<UserSubscriptionsRow> {
-        const supabase = this.supabaseRequestService.getClient()
+        newTitle?: string,
+    ): Promise<Row> {
+        const sb = this.sbReq.getClient()
+        const updateData: Update = {}
+        if (typeof newTitle !== 'undefined') updateData.feed_title = newTitle
 
-        // 更新データを型安全に整形
-        const updateData: UserSubscriptionsUpdate = {}
-        if (fields.refresh_interval !== undefined) {
-            // refresh_interval は enum
-            updateData.refresh_interval = fields.refresh_interval
-        }
-        if (fields.feed_title !== undefined) {
-            updateData.feed_title = fields.feed_title
-        }
-
-        const { data, error } = await supabase
+        const { data, error } = await sb
             .from('user_subscriptions')
             .update(updateData)
-            .eq('id', subscriptionId)
+            .eq('id', subId)
             .eq('user_id', userId)
-            .select() // 更新後のレコードを取得
+            .select()
             .single()
 
         if (error) {
-            this.logger.error(`updateSubscription failed: ${error.message}`, error)
+            this.logger.error(`updateSubscriptionTitle: ${error.message}`, error)
             throw error
         }
         return data
     }
 
     // 購読を削除
-    async deleteSubscription(subscriptionId: number, userId: string): Promise<void> {
-        const supabase = this.supabaseRequestService.getClient()
-
-        const { error } = await supabase
+    async deleteSubscription(subId: number, userId: string): Promise<void> {
+        const sb = this.sbReq.getClient()
+        const { error } = await sb
             .from('user_subscriptions')
             .delete()
-            .eq('id', subscriptionId)
+            .eq('id', subId)
             .eq('user_id', userId)
 
         if (error) {
-            this.logger.error(`deleteSubscription failed: ${error.message}`, error)
+            this.logger.error(`deleteSubscription: ${error.message}`, error)
             throw error
         }
     }
