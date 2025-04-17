@@ -1,0 +1,40 @@
+/* =======================================================================
+   RLS 有効化とオーナー限定ポリシー
+   ======================================================================= */
+
+-- ── Row‑Level Security を有効化 ───────────────────────────
+ALTER TABLE public.user_subscriptions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feed_items              ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feed_item_favorites     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tags                    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_subscription_tags  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feed_item_tags          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_settings           ENABLE ROW LEVEL SECURITY;
+
+-- ── 共通ポリシー：ログインユーザー自身の行のみ操作可 ─────────
+DO $$
+DECLARE
+    tbl TEXT;
+BEGIN
+    FOR tbl IN
+        SELECT unnest(ARRAY[
+            'public.user_subscriptions',
+            'public.feed_items',
+            'public.feed_item_favorites',
+            'public.tags',
+            'public.user_subscription_tags',
+            'public.feed_item_tags',
+            'public.user_settings'
+        ])
+    LOOP
+        EXECUTE format(
+            $$CREATE POLICY "owner_only_%I" ON %s
+                FOR ALL
+                USING  (user_id = auth.uid())
+                WITH CHECK (user_id = auth.uid());$$,
+            tbl,
+            tbl
+        );
+    END LOOP;
+END;
+$$;
