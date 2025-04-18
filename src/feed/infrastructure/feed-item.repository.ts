@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
 import { SupabaseRequestService } from 'src/supabase-request.service'
+import { Database } from 'src/types/schema'
+
+type Row = Database['public']['Tables']['feed_items']['Row']
 
 @Injectable()
 export class FeedItemRepository {
@@ -7,20 +11,39 @@ export class FeedItemRepository {
 
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
-    async findBySubscriptionId(subscriptionId: number, userId: string) {
+    // ページネーション付き取得
+    async findBySubscriptionIdPaginated(
+        subscriptionId: number,
+        userId: string,
+        page: number,
+        limit: number,
+    ): Promise<PaginatedResult<Row>> {
         const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase
+        const offset = (page - 1) * limit
+
+        const { data, error, count } = await supabase
             .from('feed_items')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('user_subscription_id', subscriptionId)
             .eq('user_id', userId)
             .order('published_at', { ascending: false })
+            .range(offset, offset + limit - 1)
 
         if (error) {
-            this.logger.error(`Failed to get feed_items: ${error.message}`, error)
+            this.logger.error(`findBySubscriptionIdPaginated: ${error.message}`, error)
             throw error
         }
-        return data ?? []
+
+        const retrieved = data ?? []
+        const total = count ?? 0
+
+        return {
+            data: retrieved,
+            total,
+            page,
+            limit,
+            hasNext: total > offset + retrieved.length,
+        }
     }
 
     // アイテムを追加

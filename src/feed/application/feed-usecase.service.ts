@@ -18,7 +18,6 @@ export class FeedUseCaseService {
         return await this.fetchSvc.parseFeed(feedUrl)
     }
 
-
     // RSSをfetch→DB反映→last_fetched_at更新
     async fetchFeedItems(subscriptionId: number, userId: string) {
         const sub = await this.subSvc.getSubscriptionById(userId, subscriptionId)

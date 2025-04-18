@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
 import { IsOptional, IsString, MaxLength } from 'class-validator'
 
-
 export class UpdateSubscriptionDto {
     @ApiPropertyOptional({
         example: 'My custom feed title',

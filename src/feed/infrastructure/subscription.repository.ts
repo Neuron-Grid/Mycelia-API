@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
 import { SupabaseRequestService } from 'src/supabase-request.service'
 import { Database } from 'src/types/schema'
 
-type Row    = Database['public']['Tables']['user_subscriptions']['Row']
+type Row = Database['public']['Tables']['user_subscriptions']['Row']
 type Update = Database['public']['Tables']['user_subscriptions']['Update']
 
 @Injectable()
@@ -10,19 +11,37 @@ export class SubscriptionRepository {
     private readonly logger = new Logger(SubscriptionRepository.name)
     constructor(private readonly sbReq: SupabaseRequestService) {}
 
-    // 指定ユーザーが登録している購読をすべて取得
-    async findByUserId(userId: string): Promise<Row[]> {
+    // ページネーション付き取得
+    async findByUserIdPaginated(
+        userId: string,
+        page: number,
+        limit: number,
+    ): Promise<PaginatedResult<Row>> {
         const sb = this.sbReq.getClient()
-        const { data, error } = await sb
+        const offset = (page - 1) * limit
+
+        const { data, error, count } = await sb
             .from('user_subscriptions')
-            .select('*')
+            .select('*', { count: 'exact' })
             .eq('user_id', userId)
+            .order('id', { ascending: true })
+            .range(offset, offset + limit - 1)
 
         if (error) {
-            this.logger.error(`findByUserId: ${error.message}`, error)
+            this.logger.error(`findByUserIdPaginated: ${error.message}`, error)
             throw error
         }
-        return data ?? []
+
+        const retrieved = data ?? []
+        const total = count ?? 0
+
+        return {
+            data: retrieved,
+            total,
+            page,
+            limit,
+            hasNext: total > offset + retrieved.length,
+        }
     }
 
     // 複合PK(id, user_id)で1件取得。
@@ -44,7 +63,7 @@ export class SubscriptionRepository {
         return data
     }
 
-    // next_fetch_at が期日以内のレコードを取得
+    // next_fetch_atが期日以内のレコードを取得
     // 昇順ソート
     async findDueSubscriptions(cutoff: Date): Promise<Row[]> {
         const sb = this.sbReq.getClient()
@@ -84,11 +103,7 @@ export class SubscriptionRepository {
 
     // last_fetched_atのみ更新
     // next_fetch_at は trigger で再計算
-    async updateLastFetched(
-        subId: number,
-        userId: string,
-        lastFetchedAt: Date,
-    ): Promise<void> {
+    async updateLastFetched(subId: number, userId: string, lastFetchedAt: Date): Promise<void> {
         const sb = this.sbReq.getClient()
         const patch: Update = { last_fetched_at: lastFetchedAt.toISOString() }
 
@@ -105,11 +120,7 @@ export class SubscriptionRepository {
     }
 
     // feed_titleを部分更新
-    async updateSubscriptionTitle(
-        subId: number,
-        userId: string,
-        newTitle?: string,
-    ): Promise<Row> {
+    async updateSubscriptionTitle(subId: number, userId: string, newTitle?: string): Promise<Row> {
         const sb = this.sbReq.getClient()
         const updateData: Update = {}
         if (typeof newTitle !== 'undefined') updateData.feed_title = newTitle

@@ -11,121 +11,179 @@ paths:
         - App
   /api/v1/feed/subscriptions:
     get:
+      description: ログインユーザーが登録している購読を、クエリ `page` と `limit` でページネーションして取得します。
       operationId: FeedController_getSubscriptions_v1
-      parameters: []
+      parameters:
+        - name: limit
+          required: false
+          in: query
+          description: 1ページあたりの件数 (最大 100)
+          schema:
+            example: 100
+            type: number
+        - name: page
+          required: false
+          in: query
+          description: ページ番号 (1 から始まる)
+          schema:
+            example: 1
+            type: number
       responses:
         '200':
-          description: Returns all subscriptions for the user
+          description: PaginatedResult<UserSubscription> 形式で返却します。
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
-          description: Unauthorized
+          description: 認証エラー (Bearer トークン未設定など)
       security: &ref_0
         - bearer: []
-      summary: Get all subscriptions for current user
+      summary: 購読一覧を取得 (ページネーション対応)
       tags: &ref_1
         - Feed
     post:
+      description: >-
+        送信された feedUrl を解析し、自動で feed_title を設定して購読を作成します。同じ URL が既に登録されている場合は 400
+        を返します。
       operationId: FeedController_addSubscription_v1
       parameters: []
       requestBody:
         required: true
+        description: 購読追加リクエスト
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AddSubscriptionDto'
+            examples:
+              default:
+                value:
+                  feedUrl: https://example.com/rss.xml
       responses:
         '201':
-          description: Subscription added successfully
+          description: 購読が作成されました
         '400':
-          description: Bad request
+          description: 無効な URL または重複購読
         '401':
-          description: Unauthorized
+          description: 認証エラー
       security: *ref_0
-      summary: Add a new feed subscription
+      summary: 新しい RSS を購読
       tags: *ref_1
   /api/v1/feed/subscriptions/{id}/fetch:
     post:
+      description: 指定した購読 ID の RSS を即時取得し、DB に反映します。バックグラウンドで重い処理が走るため、完了まで数秒かかる場合があります。
       operationId: FeedController_fetchSubscription_v1
       parameters:
         - name: id
           required: true
           in: path
-          description: ID of the subscription to fetch
+          description: 購読 ID
           schema:
+            example: 123
             type: number
       responses:
-        '200':
-          description: Feed fetched successfully
+        '202':
+          description: ジョブを受け付けました (同期実行の場合は 200 で返す実装でも可)
         '400':
-          description: Bad request
+          description: 不正な ID または処理中の例外
         '401':
-          description: Unauthorized
+          description: 認証エラー
       security: *ref_0
-      summary: Manually fetch feed items for a subscription
+      summary: 購読を手動でフェッチ
       tags: *ref_1
   /api/v1/feed/subscriptions/{id}/items:
     get:
+      description: 指定した購読 ID に紐づくフィードアイテムを、`page` と `limit` でページネーションして取得します。
       operationId: FeedController_getSubscriptionItems_v1
       parameters:
         - name: id
           required: true
           in: path
-          description: ID of the subscription
+          description: 購読 ID
           schema:
+            example: 123
+            type: number
+        - name: limit
+          required: false
+          in: query
+          description: 1ページあたりの件数 (最大 100)
+          schema:
+            example: 100
+            type: number
+        - name: page
+          required: false
+          in: query
+          description: ページ番号 (1 から始まる)
+          schema:
+            example: 1
             type: number
       responses:
         '200':
-          description: Feed items fetched successfully
-        '400':
-          description: Bad request
+          description: PaginatedResult<FeedItem> 形式で返却します。
+          content:
+            application/json:
+              schema:
+                type: object
         '401':
-          description: Unauthorized
+          description: 認証エラー
+        '404':
+          description: 購読が見つからない場合
       security: *ref_0
-      summary: Get feed items for a subscription
+      summary: 購読のフィードアイテムを取得 (ページネーション対応)
       tags: *ref_1
   /api/v1/feed/subscriptions/{id}:
     patch:
+      description: feed_title などのフィールドを部分更新します。
       operationId: FeedController_updateSubscription_v1
       parameters:
         - name: id
           required: true
           in: path
-          description: ID of the subscription to update
+          description: 購読 ID
           schema:
+            example: 123
             type: number
       requestBody:
         required: true
+        description: 更新するフィールド
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateSubscriptionDto'
       responses:
         '200':
-          description: Subscription updated successfully
+          description: 購読が更新されました
         '400':
-          description: Bad request
+          description: バリデーションエラーなど
         '401':
-          description: Unauthorized
+          description: 認証エラー
+        '404':
+          description: 購読が見つからない場合
       security: *ref_0
-      summary: Update a subscription
+      summary: 購読情報を更新
       tags: *ref_1
     delete:
+      description: 指定した購読を削除します。関連するフィードアイテムは ON DELETE CASCADE で自動削除されます。
       operationId: FeedController_deleteSubscription_v1
       parameters:
         - name: id
           required: true
           in: path
-          description: ID of the subscription to delete
+          description: 購読 ID
           schema:
+            example: 123
             type: number
       responses:
         '200':
-          description: Subscription deleted successfully
+          description: 購読が削除されました
         '400':
-          description: Bad request
+          description: 削除時の例外
         '401':
-          description: Unauthorized
+          description: 認証エラー
+        '404':
+          description: 購読が見つからない場合
       security: *ref_0
-      summary: Delete a subscription
+      summary: 購読を削除
       tags: *ref_1
   /api/v1/auth/signup:
     post:
