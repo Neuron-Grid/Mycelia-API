@@ -1,0 +1,54 @@
+site_name: RSS News API
+site_url: https://rss-news-api.neuron-grid.net/docs
+
+theme:
+  name: material
+  language: ja
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - header.autohide
+    - content.code.annotate
+
+docs_dir: docs/src/docs
+site_dir: docs/site
+
+nav:
+  - はじめに: index.md
+  - API:
+      # 動的 Swagger UI
+      - Swagger UI: api/reference.md
+      # OAD で生成される Markdown
+      - 静的リファレンス: api/openapi.md
+  - ガイド:
+      - はじめ方: guides/getting-started.md
+      - 認証ガイド: guides/authentication.md
+      - フィード管理: guides/feed-management.md
+      - タグとお気に入り: guides/tags-favorites.md
+
+plugins:
+  - search
+  # OpenAPI → Markdown変換プラグイン
+  - neoteroi.mkdocsoad:
+      # PyMdown拡張を自動有効化
+      use_pymdownx: true
+  # ブラウザ内 Swagger UI
+  - swagger-ui-tag
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - footnotes
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  # OAD用の追加スタイル
+  - css/mkdocsoad.css
+
+# 追加のファイルをコピー
+extra_files:
+  - swagger.yaml
