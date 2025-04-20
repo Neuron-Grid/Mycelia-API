@@ -24,8 +24,8 @@
     "noFallthroughCasesInSwitch": false
   },
   "include": [
-    // テストコードを含めたいパスを指定
     "src/**/*.ts",
-    "test/**/*.ts"
+    "test/**/*.ts",
+    "src/**/*.d.ts",
   ]
 }

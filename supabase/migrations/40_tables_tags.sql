@@ -1,4 +1,4 @@
--- タグテーブル
+-- タグ
 CREATE TABLE public.tags (
     id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id       UUID  NOT NULL,
@@ -19,6 +19,9 @@ CREATE TABLE public.tags (
         REFERENCES public.tags(id, user_id) ON DELETE SET NULL,
     CONSTRAINT chk_tag_name_len CHECK (char_length(tag_name) <= 100)
 );
+
+-- parent_tag_idで木構造をたどる際に必要
+CREATE INDEX idx_tags_parent ON public.tags (parent_tag_id);
 
 CREATE TRIGGER trg_tags_updated
 BEFORE UPDATE ON public.tags

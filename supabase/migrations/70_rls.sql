@@ -1,6 +1,4 @@
--- RLS 有効化とオーナー限定ポリシー
-
--- Row Level Security を有効化
+-- Row Level Security
 ALTER TABLE public.user_subscriptions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feed_items              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feed_item_favorites     ENABLE ROW LEVEL SECURITY;
@@ -9,8 +7,6 @@ ALTER TABLE public.user_subscription_tags  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feed_item_tags          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_settings           ENABLE ROW LEVEL SECURITY;
 
--- 共通ポリシー
--- ログインユーザー自身の行のみ操作可
 DO $$
 DECLARE
     tbl TEXT;
@@ -31,8 +27,8 @@ BEGIN
                 FOR ALL
                 USING      (user_id = auth.uid())
                 WITH CHECK (user_id = auth.uid())',
-            'owner_only_' || tbl,   -- %I
-            tbl                     -- %s
+            'owner_only_' || tbl,
+            tbl
         );
     END LOOP;
 END;

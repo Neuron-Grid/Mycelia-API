@@ -6,58 +6,40 @@ import { Database } from './types/schema'
 
 @Injectable({ scope: Scope.REQUEST })
 export class SupabaseRequestService {
-    private supabaseAnon: SupabaseClient<Database>
-    private supabaseAdmin: SupabaseClient<Database>
+    private readonly sbAnon: SupabaseClient<Database>
+    private readonly sbAdmin: SupabaseClient<Database>
 
     constructor(@Inject(REQUEST) private readonly req: Request) {
         const url = process.env.SUPABASE_URL
         const anonKey = process.env.SUPABASE_ANON_KEY
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!url || !anonKey) throw new Error('SUPABASE_URL / ANON_KEY missing')
+        if (!serviceRole) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing')
 
-        if (!url || !anonKey) {
-            throw new Error(
-                'Missing Supabase environment variables (SUPABASE_URL, SUPABASE_ANON_KEY).',
-            )
-        }
-        if (!serviceRoleKey) {
-            throw new Error('Missing Supabase environment variable (SUPABASE_SERVICE_ROLE_KEY).')
-        }
-
-        // Authorization ヘッダから JWT (アクセストークン) を抽出
-        const authHeader = this.req.headers.authorization ?? ''
-        const token = authHeader.replace(/^Bearer\s+/, '')
-
-        // 通常ユーザー操作向けクライアント
-        // anonKey使用 + スキーマ型付
-        this.supabaseAnon = createClient<Database>(url, anonKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-            },
-            global: {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-            },
+        // 通常クライアント
+        // RLS 適用
+        const token = (this.req.headers.authorization ?? '').replace(/^Bearer\s+/i, '')
+        this.sbAnon = createClient<Database>(url, anonKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+            global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },
         })
 
-        // 管理操作向けクライアント
-        // Service Role Key使用 + スキーマ型付
-        this.supabaseAdmin = createClient<Database>(url, serviceRoleKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false,
-            },
+        // Service-Roleクライアント
+        // RLSバイパス
+        this.sbAdmin = createClient<Database>(url, serviceRole, {
+            auth: { autoRefreshToken: false, persistSession: false },
         })
     }
 
-    // 通常操作に使うクライアント
-    // Anon Key使用
+    // RLS適用クライアントを返す
     getClient(): SupabaseClient<Database> {
-        return this.supabaseAnon
+        return this.sbAnon
     }
 
-    // 管理権限操作に使うクライアント
-    // Service Role Key使用
-    getAdminClient(): SupabaseClient<Database> {
-        return this.supabaseAdmin
+    // アカウント削除だけを実行するラッパー
+    async deleteUserAccount(userId: string) {
+        const { error, data } = await this.sbAdmin.auth.admin.deleteUser(userId)
+        if (error) throw error
+        return data
     }
 }

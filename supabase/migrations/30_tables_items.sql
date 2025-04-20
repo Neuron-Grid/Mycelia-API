@@ -1,4 +1,4 @@
---  フィードアイテム + お気に入り
+-- フィードアイテム
 CREATE TABLE public.feed_items (
     id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_subscription_id BIGINT NOT NULL,
@@ -20,7 +20,6 @@ CREATE TABLE public.feed_items (
         UNIQUE (user_subscription_id, link_hash)
 );
 
--- インデックス
 CREATE INDEX idx_feed_items_subscription_id ON public.feed_items (user_subscription_id);
 CREATE INDEX idx_feed_items_user_id_id      ON public.feed_items (user_id, id);
 

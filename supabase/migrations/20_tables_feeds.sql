@@ -1,4 +1,4 @@
--- ユーザーの購読フィード情報を管理するテーブル
+-- ユーザー購読フィード
 CREATE TABLE public.user_subscriptions (
     id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id         UUID   NOT NULL,
@@ -11,6 +11,7 @@ CREATE TABLE public.user_subscriptions (
 
     CONSTRAINT fk_user_subscriptions_user
         FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE,
+    -- FK 参照用に(id,user_id)をUNIQUEとして維持
     CONSTRAINT uq_user_subscriptions_id_user_id
         UNIQUE (id, user_id),
     CONSTRAINT uq_user_subscriptions_user_feedurl
@@ -18,10 +19,10 @@ CREATE TABLE public.user_subscriptions (
     CONSTRAINT chk_feed_title_len CHECK (char_length(feed_title) <= 100)
 );
 
--- 単列＋複合インデックス
-CREATE INDEX idx_user_subscriptions_user_id      ON public.user_subscriptions (user_id);
-CREATE INDEX idx_user_subscriptions_next_fetch   ON public.user_subscriptions (next_fetch_at);
-CREATE INDEX idx_user_subscriptions_user_next    ON public.user_subscriptions (user_id, next_fetch_at);
+-- インデックス
+CREATE INDEX idx_user_subscriptions_user_id    ON public.user_subscriptions (user_id);
+-- ここでnext_fetch_at単列インデックスは作成しない
+CREATE INDEX idx_user_subscriptions_user_next  ON public.user_subscriptions (user_id, next_fetch_at);
 
 CREATE TRIGGER trg_user_subscriptions_updated
 BEFORE UPDATE ON public.user_subscriptions

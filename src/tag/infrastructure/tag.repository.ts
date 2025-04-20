@@ -63,12 +63,27 @@ export class TagRepository {
     }
 
     // タグを更新
-    async updateTag(
-        userId: string,
-        tagId: number,
-        fields: Partial<Pick<TagsUpdate, 'tag_name' | 'parent_tag_id'>>,
-    ): Promise<TagsRow> {
+    async updateTag(userId: string, tagId: number, fields: Partial<TagsUpdate>): Promise<TagsRow> {
         const supabase = this.supabaseService.getClient()
+
+        // parent_tag_idの所有者確認
+        if (fields.parent_tag_id !== undefined) {
+            if (fields.parent_tag_id !== null) {
+                // ここに来る時点で型はnumber
+                const parentTagId = fields.parent_tag_id
+                const { data: parent, error: pe } = await supabase
+                    .from('tags')
+                    .select('id')
+                    .eq('id', parentTagId)
+                    .eq('user_id', userId)
+                    .single()
+                if (pe || !parent) {
+                    throw new Error('Parent tag does not belong to the user')
+                }
+            }
+        }
+
+        // 実更新
         const { data, error } = await supabase
             .from('tags')
             .update(fields)
@@ -77,10 +92,7 @@ export class TagRepository {
             .select()
             .single()
 
-        if (error) {
-            this.logger.error(`updateTag failed: ${error.message}`, error)
-            throw error
-        }
+        if (error) throw error
         return data
     }
 

@@ -1,7 +1,4 @@
 -- タグリンク
--- 購読 / アイテム
-
--- user_subscription_tags
 CREATE TABLE public.user_subscription_tags (
     id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id              UUID   NOT NULL,
@@ -46,6 +43,8 @@ CREATE TABLE public.feed_item_tags (
 );
 
 CREATE INDEX idx_feed_item_tags_user_item ON public.feed_item_tags (user_id, feed_item_id);
+-- タグ別検索用
+CREATE INDEX idx_feed_item_tags_tag_id    ON public.feed_item_tags (tag_id);
 
 CREATE TRIGGER trg_feed_item_tags_updated
 BEFORE UPDATE ON public.feed_item_tags

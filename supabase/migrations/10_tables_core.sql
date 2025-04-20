@@ -1,5 +1,4 @@
 -- 基本テーブル
--- users
 CREATE TABLE public.users (
     id         UUID  PRIMARY KEY
                      REFERENCES auth.users(id) ON DELETE CASCADE,

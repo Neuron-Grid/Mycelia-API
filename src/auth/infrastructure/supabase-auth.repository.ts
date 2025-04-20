@@ -6,6 +6,7 @@ import { AuthRepositoryPort } from '../domain/auth.repository'
 export class SupabaseAuthRepository implements AuthRepositoryPort {
     constructor(private readonly supabaseReq: SupabaseRequestService) {}
 
+    // 認証
     async signUp(email: string, password: string, username: string) {
         const sb = this.supabaseReq.getClient()
         const { data, error } = await sb.auth.signUp({
@@ -24,21 +25,29 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         return data
     }
 
-    async signOut() {
+    async signOut(): Promise<void> {
         const sb = this.supabaseReq.getClient()
         const { error } = await sb.auth.signOut()
         if (error) throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
     }
 
+    // アカウント削除
+    // RLSバイパス
     async deleteAccount(userId: string) {
-        const sb = this.supabaseReq.getAdminClient()
-        const { data, error } = await sb.auth.admin.deleteUser(userId)
-        if (error) throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        return data
+        try {
+            return await this.supabaseReq.deleteUserAccount(userId)
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
+            }
+            throw new HttpException('Unknown error', HttpStatus.BAD_REQUEST)
+        }
     }
 
+    // プロフィール更新
     async updateEmail(userId: string, newEmail: string) {
         const sb = this.supabaseReq.getClient()
+
         const { data, error } = await sb.auth.updateUser({ email: newEmail })
         if (error) throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
 
@@ -49,6 +58,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
 
     async updateUsername(userId: string, newUsername: string) {
         const sb = this.supabaseReq.getClient()
+
         const { data, error } = await sb.auth.updateUser({ data: { username: newUsername } })
         if (error) throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
 
@@ -62,6 +72,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
 
     async updatePassword(userEmail: string, oldPw: string, newPw: string) {
         const sb = this.supabaseReq.getClient()
+
         const { error: signErr } = await sb.auth.signInWithPassword({
             email: userEmail,
             password: oldPw,
@@ -73,6 +84,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         return data
     }
 
+    // パスワードリセット
     async forgotPassword(email: string, redirectUrl: string) {
         const sb = this.supabaseReq.getClient()
         const { data, error } = await sb.auth.resetPasswordForEmail(email, {
@@ -90,6 +102,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         return data
     }
 
+    // メールアドレス確認
     async verifyEmail(email: string, token: string) {
         const sb = this.supabaseReq.getClient()
         const { data, error } = await sb.auth.verifyOtp({ email, token, type: 'email' })
@@ -97,15 +110,17 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         return data
     }
 
+    // TOTP
     async verifyTotp(factorId: string, code: string) {
         const sb = this.supabaseReq.getClient()
-        const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId })
-        if (chErr || !ch)
+
+        const { data: challenge, error: chErr } = await sb.auth.mfa.challenge({ factorId })
+        if (chErr || !challenge)
             throw new HttpException(chErr?.message ?? 'Challenge failed', HttpStatus.BAD_REQUEST)
 
         const { data, error } = await sb.auth.mfa.verify({
             factorId,
-            challengeId: ch.id,
+            challengeId: challenge.id,
             code,
         })
         if (error) throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
