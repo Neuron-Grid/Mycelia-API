@@ -9,7 +9,7 @@ services:
       - "3000:3000"
     env_file: .env
     volumes:
-      - ./container/rss-news-api:/app
+      - ./container/rss-news-api:/data
     depends_on:
       - redis
 
@@ -31,6 +31,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    depends_on:
+      - rss-news-api
+      - redis
     volumes:
       - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
       - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
