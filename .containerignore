@@ -1,0 +1,15 @@
+/docs/
+/test/
+/swagger.yaml
+/LICENSE.txt
+/README.md
+/.git/
+/dist/
+/build/
+/node_modules/
+/logs/
+/*.log
+pnpm-debug.log*
+/.vscode/
+/.temp/
+/.tmp/

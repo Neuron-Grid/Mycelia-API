@@ -1,26 +1,16 @@
-# ベースイメージ
-FROM node:22-alpine
-
-# コンテナ内の作業ディレクトリ
+FROM node:22-alpine AS builder
 WORKDIR /app
-
-# pnpm をグローバルインストール
 RUN npm install -g pnpm
-
-# package.json と pnpm-lock.yaml を先にコピーし依存をインストール
 COPY package.json pnpm-lock.yaml ./
-
-# --frozen-lockfile を指定し、pnpm-lock.yaml に厳密に従ったインストール
 RUN pnpm install --frozen-lockfile
-
-# ソースコードをコピー
 COPY ./ ./
-
-# 本番ビルド
 RUN pnpm build
 
-# ポート公開
+FROM node:22-alpine AS production
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=builder /app/dist         ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY package.json                     ./
 EXPOSE 3000
-
-# 起動コマンド
-CMD ["pnpm", "start:prod"]
+CMD ["pnpm","run","start:prod"]

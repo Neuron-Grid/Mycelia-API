@@ -8,7 +8,20 @@ export class DomainConfigService {
     // ドメインを環境変数から取得。
     // なければデフォルト値を返す。
     getDomain(): string {
-        return this.configService.get<string>('PRODUCTION_DOMAIN') ?? 'example.com'
+        // ① FRONT_ORIGIN を取得（無ければ従来の PRODUCTION_DOMAIN）
+        const origin =
+            this.configService.get<string>('FRONT_ORIGIN') ??
+            this.configService.get<string>('PRODUCTION_DOMAIN') ??
+            'example.com'
+
+        // originがスキーム付きならホスト名に変換
+        try {
+            // 'https://app.example.net' → 'app.example.net'
+            return new URL(origin).hostname
+        } catch {
+            // 保険：古い Node でも動く
+            return origin.replace(/^https?:\/\//, '')
+        }
     }
 
     // パスワードリセット用のURLなどを、ドメイン + パスを合成して返す
