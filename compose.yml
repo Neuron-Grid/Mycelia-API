@@ -21,3 +21,17 @@ services:
       - "6379:6379"
     volumes:
       - ./container/redis-data:/data
+
+  nginx:
+    image: nginx:1.26-alpine
+    container_name: nginx
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?err}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+      - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+      - ./nginx/rss-news-api.conf.template:/etc/nginx/templates/rss-news-api.conf.template:ro

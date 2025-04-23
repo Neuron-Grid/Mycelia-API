@@ -674,8 +674,8 @@ paths:
       summary: Remove a feed item from favorites
       tags: *ref_6
 info:
-  title: Sample NestJS API
-  description: An example NestJS project with Supabase integration
+  title: RSS News API
+  description: NestJS + Supabase implementation
   version: 1.0.0
   contact: {}
 tags: []
