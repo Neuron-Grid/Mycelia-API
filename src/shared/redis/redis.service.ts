@@ -1,57 +1,46 @@
 import { Inject, Injectable } from '@nestjs/common'
-import Redis from 'ioredis'
+import Redis, { RedisOptions } from 'ioredis'
+
+type ConnOpts = {
+    host: string
+    port: number
+    password?: string
+    db?: number
+    tls?: RedisOptions['tls']
+}
 
 @Injectable()
 export class RedisService {
     constructor(
         @Inject('REDIS_CONNECTION_OPTIONS')
-        private readonly redisOptions: {
-            host: string
-            port: number
-            password?: string
-        },
+        private readonly opts: ConnOpts,
     ) {}
 
-    // HealthController等が使うメイン接続
-    public createMainClient(): Redis {
-        return new Redis({
-            host: this.redisOptions.host,
-            port: this.redisOptions.port,
-            password: this.redisOptions.password,
-        })
+    /** 共通オプションを 1 箇所で合成 */
+    private base(): RedisOptions {
+        return {
+            host: this.opts.host,
+            port: this.opts.port,
+            password: this.opts.password,
+            db: this.opts.db,
+            tls: this.opts.tls,
+        }
     }
 
-    // BullのQueue用クライアントを生成
-    // typeに応じてenableReadyCheck, maxRetriesPerRequestなどを調整
-    public createBullClient(type: 'client' | 'subscriber' | 'bclient'): Redis {
-        const baseOptions = {
-            host: this.redisOptions.host,
-            port: this.redisOptions.port,
-            password: this.redisOptions.password,
-        }
+    /** HealthController などが使うメイン接続 */
+    createMainClient(): Redis {
+        return new Redis(this.base())
+    }
 
-        // type別にオプションを切り替える
+    /** Bull 用クライアント (type 毎に細かな違いを吸収) */
+    createBullClient(type: 'client' | 'subscriber' | 'bclient'): Redis {
         switch (type) {
             case 'client':
-                // client用はデフォルトでも問題ないことが多い
-                return new Redis({
-                    ...baseOptions,
-                    // 必要ならここにクライアント専用オプションを追加
-                })
-
-            case 'subscriber':
-            case 'bclient':
-                // subscriberやbclient用はBullの制限でenableReadyCheck=false / maxRetriesPerRequest=null
-                return new Redis({
-                    ...baseOptions,
-                    enableReadyCheck: false,
-                    maxRetriesPerRequest: null,
-                })
+                return new Redis(this.base())
 
             default:
-                // 念のためdefaultでも同様に対処しておく
                 return new Redis({
-                    ...baseOptions,
+                    ...this.base(),
                     enableReadyCheck: false,
                     maxRetriesPerRequest: null,
                 })
