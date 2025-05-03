@@ -16,7 +16,7 @@ export class RedisService {
         private readonly opts: ConnOpts,
     ) {}
 
-    /** 共通オプションを 1 箇所で合成 */
+    // 共通オプションを1箇所で合成
     private base(): RedisOptions {
         return {
             host: this.opts.host,
@@ -24,16 +24,21 @@ export class RedisService {
             password: this.opts.password,
             db: this.opts.db,
             tls: this.opts.tls,
+            // BullMQ推奨設定を追加
+            maxRetriesPerRequest: null,
+            enableReadyCheck: false,
         }
     }
 
-    /** HealthController などが使うメイン接続 */
+    // HealthControllerなどが使うメイン接続
     createMainClient(): Redis {
         return new Redis(this.base())
     }
 
-    /** Bull 用クライアント (type 毎に細かな違いを吸収) */
-    createBullClient(type: 'client' | 'subscriber' | 'bclient'): Redis {
+
+    // Bull用クライアント
+    // type毎に細かな違いを吸収
+    createBullClient(type: 'client' | 'subscriber' | 'bclient' = 'client'): Redis {
         switch (type) {
             case 'client':
                 return new Redis(this.base())

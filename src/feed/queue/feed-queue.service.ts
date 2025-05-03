@@ -1,6 +1,6 @@
-import { InjectQueue } from '@nestjs/bull'
+import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable } from '@nestjs/common'
-import { Queue } from 'bull'
+import { Queue } from 'bullmq'
 
 @Injectable()
 export class FeedQueueService {
@@ -10,20 +10,19 @@ export class FeedQueueService {
     // @param subscriptionId ユーザ購読ID
     // @param userId ユーザID
     async addFeedJob(subscriptionId: number, userId: string) {
-        // 第2引数: jobデータ
-        // 第3引数: オプション
         await this.feedQueue.add(
-            {
-                subscriptionId,
-                userId,
-            },
+            // job name
+            // required by BullMQ
+            'default', 
+            // job data
+            { subscriptionId, userId },
             {
                 removeOnComplete: true,
                 removeOnFail: false,
-                // 最大5回リトライ
+                // retry up to 5 times
                 attempts: 5,
-                // 失敗時1分後に再試行
-                backoff: 60_000,
+                // retry after 60s
+                backoff: { type: 'fixed', delay: 60_000 },
             },
         )
     }

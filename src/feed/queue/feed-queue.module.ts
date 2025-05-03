@@ -1,4 +1,4 @@
-import { BullModule } from '@nestjs/bull'
+import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { SupabaseRequestModule } from 'src/supabase-request.module'
 import { RedisModule } from '../../shared/redis/redis.module'
@@ -19,10 +19,9 @@ import { FeedQueueService } from './feed-queue.service'
         BullModule.registerQueueAsync({
             name: 'feedQueue',
             imports: [RedisModule],
+            // RedisService側で用意した共通ioredisインスタンスを共有する。
             useFactory: (redisService: RedisService) => ({
-                createClient: (type) => {
-                    return redisService.createBullClient(type)
-                },
+                connection: redisService.createBullClient(),
             }),
             inject: [RedisService],
         }),
