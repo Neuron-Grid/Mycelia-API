@@ -27,7 +27,7 @@ import { RedisService } from './redis.service'
                 const tls =
                     u.protocol === 'rediss:'
                         ? {
-                                rejectUnauthorized: false,
+                              rejectUnauthorized: false,
                           }
                         : undefined
 

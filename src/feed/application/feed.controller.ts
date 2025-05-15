@@ -1,3 +1,4 @@
+// @file フィード購読・フィードアイテム管理のREST APIコントローラ
 import {
     Body,
     Controller,
@@ -12,6 +13,7 @@ import {
     Query,
     UseGuards,
 } from '@nestjs/common'
+// @see https://docs.nestjs.com/openapi/introduction
 import {
     ApiAcceptedResponse,
     ApiBadRequestResponse,
@@ -26,6 +28,7 @@ import {
     ApiTags,
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
+// @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
@@ -36,9 +39,12 @@ import { AddSubscriptionDto } from './dto/add-subscription.dto'
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
 import { FeedItemService } from './feed-item.service'
 import { FeedUseCaseService } from './feed-usecase.service'
+import { buildResponse } from './response.util'
 import { SubscriptionService } from './subscription.service'
 
+// @typedef {Database['public']['Tables']['feed_items']['Row']} FeedItemRow - フィードアイテムの型
 type FeedItemRow = Database['public']['Tables']['feed_items']['Row']
+// @typedef {Database['public']['Tables']['user_subscriptions']['Row']} SubscriptionRow - 購読の型
 type SubscriptionRow = Database['public']['Tables']['user_subscriptions']['Row']
 
 @ApiTags('Feed')
@@ -48,39 +54,30 @@ type SubscriptionRow = Database['public']['Tables']['user_subscriptions']['Row']
     version: '1',
 })
 @UseGuards(SupabaseAuthGuard)
+// @public
+// @since 1.0.0
 export class FeedController {
+    // @param {FeedUseCaseService} feedUseCase - フィードユースケースサービス
+    // @param {SubscriptionService} subscriptionService - 購読サービス
+    // @param {FeedItemService} feedItemService - フィードアイテムサービス
+    // @since 1.0.0
+    // @public
     constructor(
         private readonly feedUseCase: FeedUseCaseService,
         private readonly subscriptionService: SubscriptionService,
         private readonly feedItemService: FeedItemService,
     ) {}
 
-    // ユーザーの購読一覧を取得
-    @ApiOperation({
-        summary: '購読一覧を取得 (ページネーション対応)',
-        description:
-            'ログインユーザーが登録している購読を、クエリ `page` と `limit` でページネーションして取得します。',
-    })
-    @ApiQuery({
-        name: 'page',
-        required: false,
-        type: Number,
-        example: 1,
-        description: 'ページ番号 (1 から始まる)',
-    })
-    @ApiQuery({
-        name: 'limit',
-        required: false,
-        type: Number,
-        example: 100,
-        description: '1ページあたりの件数 (最大 100)',
-    })
-    @ApiOkResponse({
-        description: 'PaginatedResult<UserSubscription> 形式で返却します。',
-        type: Object,
-    })
-    @ApiUnauthorizedResponse({ description: '認証エラー (Bearer トークン未設定など)' })
-    @Get('subscriptions')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {PaginationQueryDto} query - ページネーション用クエリ
+    // @returns {Promise<PaginatedResult<SubscriptionRow>>} - 購読一覧（ページネーション対応）
+    // @throws {HttpException} - 認証エラーや取得失敗時
+    // @example
+    // const result = await feedController.getSubscriptions(user, { page: 1, limit: 10 })
+    // @see SubscriptionService.getSubscriptionsPaginated
     async getSubscriptions(
         @SupabaseUser() user: User,
         @Query() query: PaginationQueryDto,
@@ -99,24 +96,16 @@ export class FeedController {
         }
     }
 
-    // 新規購読追加
-    @ApiOperation({
-        summary: '新しい RSS を購読',
-        description:
-            '送信された feedUrl を解析し、自動で feed_title を設定して購読を作成します。' +
-            '同じ URL が既に登録されている場合は 400 を返します。',
-    })
-    @ApiBody({
-        type: AddSubscriptionDto,
-        description: '購読追加リクエスト',
-        examples: {
-            default: { value: { feedUrl: 'https://example.com/rss.xml' } },
-        },
-    })
-    @ApiCreatedResponse({ description: '購読が作成されました' })
-    @ApiBadRequestResponse({ description: '無効な URL または重複購読' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @Post('subscriptions')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {AddSubscriptionDto} dto - 購読追加リクエストDTO
+    // @returns {Promise<any>} - 追加結果
+    // @throws {HttpException} - 認証エラーや追加失敗時
+    // @example
+    // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
+    // @see SubscriptionService.addSubscription
     async addSubscription(@SupabaseUser() user: User, @Body() dto: AddSubscriptionDto) {
         if (!user?.id) {
             throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
@@ -142,26 +131,22 @@ export class FeedController {
                 feedUrl,
                 feedTitle,
             )
-            return { message: 'Subscription added', data: result }
+            return buildResponse('Subscription added', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    // 指定の購読を手動Fetch
-    @ApiOperation({
-        summary: '購読を手動でフェッチ',
-        description:
-            '指定した購読 ID の RSS を即時取得し、DB に反映します。' +
-            'バックグラウンドで重い処理が走るため、完了まで数秒かかる場合があります。',
-    })
-    @ApiParam({ name: 'id', description: '購読 ID', example: 123 })
-    @ApiAcceptedResponse({
-        description: 'ジョブを受け付けました (同期実行の場合は 200 で返す実装でも可)',
-    })
-    @ApiBadRequestResponse({ description: '不正な ID または処理中の例外' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @Post('subscriptions/:id/fetch')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {number} subscriptionId - 購読ID
+    // @returns {Promise<any>} - フィード取得結果
+    // @throws {HttpException} - 認証エラーや取得失敗時
+    // @example
+    // await feedController.fetchSubscription(user, 123)
+    // @see FeedUseCaseService.fetchFeedItems
     async fetchSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
@@ -171,43 +156,23 @@ export class FeedController {
         }
         try {
             const result = await this.feedUseCase.fetchFeedItems(subscriptionId, user.id)
-            return {
-                message: 'Feed fetched successfully',
-                data: result,
-            }
+            return buildResponse('Feed fetched successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    // 指定の購読に紐づくフィードアイテムを取得
-    @ApiOperation({
-        summary: '購読のフィードアイテムを取得 (ページネーション対応)',
-        description:
-            '指定した購読 ID に紐づくフィードアイテムを、`page` と `limit` でページネーションして取得します。',
-    })
-    @ApiParam({ name: 'id', description: '購読 ID', example: 123 })
-    @ApiQuery({
-        name: 'page',
-        required: false,
-        type: Number,
-        example: 1,
-        description: 'ページ番号 (1 から始まる)',
-    })
-    @ApiQuery({
-        name: 'limit',
-        required: false,
-        type: Number,
-        example: 100,
-        description: '1ページあたりの件数 (最大 100)',
-    })
-    @ApiOkResponse({
-        description: 'PaginatedResult<FeedItem> 形式で返却します。',
-        type: Object,
-    })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiNotFoundResponse({ description: '購読が見つからない場合' })
-    @Get('subscriptions/:id/items')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {number} subscriptionId - 購読ID
+    // @param {PaginationQueryDto} query - ページネーション用クエリ
+    // @returns {Promise<PaginatedResult<FeedItemRow>>} - フィードアイテム一覧（ページネーション対応）
+    // @throws {HttpException} - 認証エラーや取得失敗時
+    // @example
+    // const items = await feedController.getSubscriptionItems(user, 123, { page: 1, limit: 10 })
+    // @see FeedItemService.getFeedItemsPaginated
     async getSubscriptionItems(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
@@ -228,18 +193,17 @@ export class FeedController {
         }
     }
 
-    // 購読情報を更新
-    @ApiOperation({
-        summary: '購読情報を更新',
-        description: 'feed_title などのフィールドを部分更新します。',
-    })
-    @ApiParam({ name: 'id', description: '購読 ID', example: 123 })
-    @ApiBody({ type: UpdateSubscriptionDto, description: '更新するフィールド' })
-    @ApiOkResponse({ description: '購読が更新されました' })
-    @ApiBadRequestResponse({ description: 'バリデーションエラーなど' })
-    @ApiNotFoundResponse({ description: '購読が見つからない場合' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @Patch('subscriptions/:id')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {number} id - 購読ID
+    // @param {UpdateSubscriptionDto} dto - 更新内容DTO
+    // @returns {Promise<any>} - 更新結果
+    // @throws {HttpException} - 認証エラーや更新失敗時
+    // @example
+    // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
+    // @see SubscriptionService.updateSubscription
     async updateSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) id: number,
@@ -250,24 +214,22 @@ export class FeedController {
         }
         try {
             const updated = await this.subscriptionService.updateSubscription(user.id, id, dto)
-            return { message: 'Subscription updated', data: updated }
+            return buildResponse('Subscription updated', updated)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    // 購読を削除
-    @ApiOperation({
-        summary: '購読を削除',
-        description:
-            '指定した購読を削除します。関連するフィードアイテムは ON DELETE CASCADE で自動削除されます。',
-    })
-    @ApiParam({ name: 'id', description: '購読 ID', example: 123 })
-    @ApiOkResponse({ description: '購読が削除されました' })
-    @ApiBadRequestResponse({ description: '削除時の例外' })
-    @ApiNotFoundResponse({ description: '購読が見つからない場合' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @Delete('subscriptions/:id')
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - Supabase認証ユーザー
+    // @param {number} subscriptionId - 購読ID
+    // @returns {Promise<any>} - 削除結果
+    // @throws {HttpException} - 認証エラーや削除失敗時
+    // @example
+    // await feedController.deleteSubscription(user, 123)
+    // @see SubscriptionService.deleteSubscription
     async deleteSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
@@ -278,9 +240,7 @@ export class FeedController {
 
         try {
             await this.subscriptionService.deleteSubscription(user.id, subscriptionId)
-            return {
-                message: 'Subscription deleted',
-            }
+            return buildResponse('Subscription deleted')
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }

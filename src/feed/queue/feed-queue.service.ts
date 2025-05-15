@@ -13,7 +13,7 @@ export class FeedQueueService {
         await this.feedQueue.add(
             // job name
             // required by BullMQ
-            'default', 
+            'default',
             // job data
             { subscriptionId, userId },
             {

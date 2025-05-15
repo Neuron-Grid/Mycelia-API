@@ -1,13 +1,31 @@
+// @file RSSフィードの取得とパースを行うサービス
 import { Injectable, Logger } from '@nestjs/common'
+// @see https://www.npmjs.com/package/feedparser
 import * as FeedParser from 'feedparser'
+// @see https://www.npmjs.com/package/feedparser
 import { Item as FeedparserItem, Meta } from 'feedparser'
+// @see https://www.npmjs.com/package/node-fetch
 import fetch, { Response } from 'node-fetch'
 
 @Injectable()
+// @public
+// @since 1.0.0
 export class FeedFetchService {
+    // @type {Logger}
+    // @readonly
+    // @private
+    // @default new Logger(FeedFetchService.name)
     private readonly logger = new Logger(FeedFetchService.name)
 
-    // RSSをfetchしてFeedParserでパースし、メタ情報とアイテム配列を返す
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {string} feedUrl - RSSフィードのURL
+    // @returns {Promise<{ meta: Meta; items: FeedparserItem[] }>} - パース結果（メタ情報とアイテム配列）
+    // @throws {Error} - フィード取得やパースに失敗した場合
+    // @example
+    // const { meta, items } = await feedFetchService.parseFeed('https://example.com/rss')
+    // @see FeedParser
     async parseFeed(feedUrl: string): Promise<{ meta: Meta; items: FeedparserItem[] }> {
         const feedparser = new FeedParser({ normalize: true })
         const items: FeedparserItem[] = []

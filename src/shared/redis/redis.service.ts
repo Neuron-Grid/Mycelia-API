@@ -35,7 +35,6 @@ export class RedisService {
         return new Redis(this.base())
     }
 
-
     // Bull用クライアント
     // type毎に細かな違いを吸収
     createBullClient(type: 'client' | 'subscriber' | 'bclient' = 'client'): Redis {

@@ -1,3 +1,4 @@
+// @file 認証・ユーザー管理APIのコントローラ
 import {
     Body,
     Controller,
@@ -9,7 +10,9 @@ import {
     Post,
     UseGuards,
 } from '@nestjs/common'
+// @see https://docs.nestjs.com/openapi/introduction
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+// @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
 import { ForgotPasswordDto } from './dto/forgot-password.dto'
@@ -21,6 +24,7 @@ import { UpdatePasswordDto } from './dto/update-password.dto'
 import { UpdateUsernameDto } from './dto/update-username.dto'
 import { VerifyEmailDto } from './dto/verify-email.dto'
 import { VerifyTotpDto } from './dto/verify-totp.dto'
+import { buildResponse } from './response.util'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
 
@@ -29,183 +33,221 @@ import { SupabaseUser } from './supabase-user.decorator'
     path: 'auth',
     version: '1',
 })
+// @public
+// @since 1.0.0
 export class AuthController {
+    // @param {AuthService} authService - 認証サービス
+    // @since 1.0.0
+    // @public
     constructor(private readonly authService: AuthService) {}
 
-    // 認証不要のルート
-    @ApiOperation({ summary: 'Register a new user' })
-    @ApiResponse({ status: 201, description: 'User successfully registered' })
-    @ApiResponse({ status: 400, description: 'Bad request' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {SignUpDto} signUpDto - ユーザー登録情報
+    // @returns {Promise<any>} - 登録結果のレスポンス
+    // @throws {HttpException} - 登録失敗時
+    // @example
+    // await authController.signUp({ email, password, username })
+    // @see AuthService.signUp
     @Post('signup')
     async signUp(@Body() signUpDto: SignUpDto) {
         try {
             const { email, password, username } = signUpDto
             const result = await this.authService.signUp(email, password, username)
-            return {
-                message: 'Signup successful',
-                data: result,
-            }
+            return buildResponse('Signup successful', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Login with email and password' })
-    @ApiResponse({ status: 200, description: 'Login successful' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {SignInDto} signInDto - ログイン情報
+    // @returns {Promise<any>} - ログイン結果のレスポンス
+    // @throws {HttpException} - 認証失敗時
+    // @example
+    // await authController.signIn({ email, password })
+    // @see AuthService.signIn
     @Post('login')
     async signIn(@Body() signInDto: SignInDto) {
         try {
             const { email, password } = signInDto
             const result = await this.authService.signIn(email, password)
-            return {
-                message: 'Login successful',
-                data: result,
-            }
+            return buildResponse('Login successful', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.UNAUTHORIZED)
         }
     }
 
-    @ApiOperation({ summary: 'Request password reset email' })
-    @ApiResponse({ status: 200, description: 'Password reset email sent' })
-    @ApiResponse({ status: 400, description: 'Bad request' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {ForgotPasswordDto} dto - パスワードリセットリクエスト情報
+    // @returns {Promise<any>} - リセットメール送信結果のレスポンス
+    // @throws {HttpException} - 送信失敗時
+    // @example
+    // await authController.forgotPassword({ email })
+    // @see AuthService.forgotPassword
     @Post('forgot-password')
     async forgotPassword(@Body() dto: ForgotPasswordDto) {
         try {
             const { email } = dto
             const result = await this.authService.forgotPassword(email)
-            return {
-                message: 'Password reset email sent',
-                data: result,
-            }
+            return buildResponse('Password reset email sent', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Reset password with token' })
-    @ApiResponse({ status: 200, description: 'Password has been reset' })
-    @ApiResponse({ status: 400, description: 'Bad request' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {ResetPasswordDto} dto - リセット情報
+    // @returns {Promise<any>} - リセット処理結果のレスポンス
+    // @throws {HttpException} - リセット失敗時
+    // @example
+    // await authController.resetPassword({ accessToken, newPassword })
+    // @see AuthService.resetPassword
     @Post('reset-password')
     async resetPassword(@Body() dto: ResetPasswordDto) {
         try {
             const { accessToken, newPassword } = dto
             const result = await this.authService.resetPassword(accessToken, newPassword)
-            return {
-                message: 'Password has been reset',
-                data: result,
-            }
+            return buildResponse('Password has been reset', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Verify email with token' })
-    @ApiResponse({ status: 200, description: 'Email verified successfully' })
-    @ApiResponse({ status: 400, description: 'Bad request' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {VerifyEmailDto} dto - メール認証情報
+    // @returns {Promise<any>} - 認証処理結果のレスポンス
+    // @throws {HttpException} - 認証失敗時
+    // @example
+    // await authController.verifyEmail({ email, token })
+    // @see AuthService.verifyEmail
     @Post('verify-email')
     async verifyEmail(@Body() dto: VerifyEmailDto) {
         try {
             const { email, token } = dto
             const result = await this.authService.verifyEmail(email, token)
-            return {
-                message: 'Email verified successfully',
-                data: result,
-            }
+            return buildResponse('Email verified successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    // 認証必須のルート
-    @ApiOperation({ summary: 'Logout current user' })
-    @ApiResponse({ status: 200, description: 'Logout successful' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @returns {Promise<any>} - ログアウト処理結果のレスポンス
+    // @throws {HttpException} - ログアウト失敗時
+    // @example
+    // await authController.signOut()
+    // @see AuthService.signOut
+    @Post('logout')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @Post('logout')
     async signOut() {
         try {
             const result = await this.authService.signOut()
-            return {
-                message: 'Logout successful',
-                data: result,
-            }
+            return buildResponse('Logout successful', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Delete user account' })
-    @ApiResponse({ status: 200, description: 'Account deleted' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - 認証済みユーザー
+    // @returns {Promise<any>} - アカウント削除処理結果のレスポンス
+    // @throws {HttpException} - 削除失敗時
+    // @example
+    // await authController.deleteAccount(user)
+    // @see AuthService.deleteAccount
+    @Delete('delete')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @Delete('delete')
     async deleteAccount(@SupabaseUser() user: User) {
         try {
             if (!user?.id) {
                 throw new HttpException('User ID not found', HttpStatus.UNAUTHORIZED)
             }
             const result = await this.authService.deleteAccount(user.id)
-            return {
-                message: 'Account deleted',
-                data: result,
-            }
+            return buildResponse('Account deleted', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Update user email' })
-    @ApiResponse({ status: 200, description: 'Email updated successfully' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - 認証済みユーザー
+    // @param {UpdateEmailDto} dto - 新しいメールアドレス情報
+    // @returns {Promise<any>} - メールアドレス更新処理結果のレスポンス
+    // @throws {HttpException} - 更新失敗時
+    // @example
+    // await authController.updateEmail(user, { newEmail: 'new@example.com' })
+    // @see AuthService.updateEmail
+    @Patch('update-email')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @Patch('update-email')
     async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
             }
             const result = await this.authService.updateEmail(user, dto.newEmail)
-            return {
-                message: 'Email updated successfully',
-                data: result,
-            }
+            return buildResponse('Email updated successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Update username' })
-    @ApiResponse({ status: 200, description: 'Username updated successfully' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - 認証済みユーザー
+    // @param {UpdateUsernameDto} dto - 新しいユーザー名情報
+    // @returns {Promise<any>} - ユーザー名更新処理結果のレスポンス
+    // @throws {HttpException} - 更新失敗時
+    // @example
+    // await authController.updateUsername(user, { newUsername: 'newname' })
+    // @see AuthService.updateUsername
+    @Patch('update-username')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @Patch('update-username')
     async updateUsername(@SupabaseUser() user: User, @Body() dto: UpdateUsernameDto) {
         try {
             if (!user) {
                 throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
             }
             const result = await this.authService.updateUsername(user, dto.newUsername)
-            return {
-                message: 'Username updated successfully',
-                data: result,
-            }
+            return buildResponse('Username updated successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Update password' })
-    @ApiResponse({ status: 200, description: 'Password updated successfully' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {User} user - 認証済みユーザー
+    // @param {UpdatePasswordDto} dto - パスワード更新情報
+    // @returns {Promise<any>} - パスワード更新処理結果のレスポンス
+    // @throws {HttpException} - 更新失敗時
+    // @example
+    // await authController.updatePassword(user, { oldPassword: 'old', newPassword: 'new' })
+    // @see AuthService.updatePassword
+    @Patch('update-password')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @Patch('update-password')
     async updatePassword(@SupabaseUser() user: User, @Body() dto: UpdatePasswordDto) {
         try {
             if (!user) {
@@ -213,41 +255,38 @@ export class AuthController {
             }
             const { oldPassword, newPassword } = dto
             const result = await this.authService.updatePassword(user, oldPassword, newPassword)
-            return {
-                message: 'Password updated successfully',
-                data: result,
-            }
+            return buildResponse('Password updated successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }
     }
 
-    @ApiOperation({ summary: 'Get user profile' })
-    @ApiResponse({ status: 200, description: 'User profile fetched successfully' })
-    @ApiResponse({ status: 401, description: 'Unauthorized' })
-    @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
-    @Get('profile')
+    // @public
+    // @since 1.0.0
+    // @param {User} user - 認証済みユーザー
+    // @returns {any} - ユーザープロフィールのレスポンス
+    // @example
+    // authController.getProfile(user)
     getProfile(@SupabaseUser() user: User) {
-        return {
-            message: 'User profile fetched successfully',
-            data: user,
-        }
+        return buildResponse('User profile fetched successfully', user)
     }
 
-    @ApiOperation({ summary: 'Verify TOTP code' })
-    @ApiResponse({ status: 200, description: 'TOTP verified successfully' })
-    @ApiResponse({ status: 400, description: 'Bad request' })
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {VerifyTotpDto} dto - TOTP認証情報
+    // @returns {Promise<any>} - TOTP認証処理結果のレスポンス
+    // @throws {HttpException} - 認証失敗時
+    // @example
+    // await authController.verifyTotp({ factorId, code })
+    // @see AuthService.verifyTotp
     @Post('verify-totp')
     async verifyTotp(@Body() dto: VerifyTotpDto) {
         try {
             // dto内に factorId, code がある想定
             const { factorId, code } = dto
             const result = await this.authService.verifyTotp(factorId, code)
-            return {
-                message: 'TOTP verified successfully',
-                data: result,
-            }
+            return buildResponse('TOTP verified successfully', result)
         } catch (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
         }

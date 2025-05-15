@@ -14,7 +14,7 @@ import { SupabaseAuthGuard } from './supabase-auth.guard'
     providers: [
         AuthService,
         SupabaseAuthGuard,
-        /* DI バインディング */
+        // DI バインディング
         { provide: AuthRepositoryPort, useClass: SupabaseAuthRepository },
     ],
 })

@@ -1,9 +1,21 @@
+// @file NestJSアプリケーションのエントリポイント
 import { ValidationPipe } from '@nestjs/common'
+// @see https://docs.nestjs.com/techniques/configuration
 import { ConfigService } from '@nestjs/config'
+// @see https://docs.nestjs.com/
 import { NestFactory } from '@nestjs/core'
+// @see https://www.npmjs.com/package/helmet
 import helmet from 'helmet'
+// @see ./app.module
 import { AppModule } from './app.module'
 
+// @async
+// @since 1.0.0
+// @returns {Promise<void>} - サーバ起動のPromise
+// @throws {Error} - 初期化や起動に失敗した場合
+// @example
+// bootstrap()
+// @see https://docs.nestjs.com/
 async function bootstrap() {
     const app = await NestFactory.create(AppModule)
 

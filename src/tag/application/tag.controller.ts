@@ -25,6 +25,7 @@ import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
 import { CreateTagDto } from './dto/create-tag.dto'
 import { UpdateTagDto } from './dto/update-tag.dto'
+import { buildResponse } from './response.util'
 import { TagService } from './tag.service'
 
 @ApiTags('Tags')
@@ -47,7 +48,7 @@ export class TagController {
         }
         try {
             const tags = await this.tagService.getAllTagsForUser(user.id)
-            return { message: 'Tag list fetched', data: tags }
+            return buildResponse('Tag list fetched', tags)
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -71,7 +72,7 @@ export class TagController {
                 dto.tagName,
                 dto.parentTagId ?? null,
             )
-            return { message: 'Tag created', data: result }
+            return buildResponse('Tag created', result)
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -98,7 +99,7 @@ export class TagController {
                 dto.newName,
                 dto.newParentTagId,
             )
-            return { message: 'Tag updated', data: updated }
+            return buildResponse('Tag updated', updated)
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -116,7 +117,7 @@ export class TagController {
         }
         try {
             await this.tagService.deleteTagForUser(user.id, tagId)
-            return { message: 'Tag deleted' }
+            return buildResponse('Tag deleted')
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -137,7 +138,7 @@ export class TagController {
         }
         try {
             const result = await this.tagService.getTagsByFeedItem(user.id, feedItemId)
-            return { message: 'Tags for feed item', data: result }
+            return buildResponse('Tags for feed item', result)
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -162,7 +163,7 @@ export class TagController {
         }
         try {
             await this.tagService.attachTagToFeedItem(user.id, feedItemId, body.tagId)
-            return { message: 'Tag attached to feed item' }
+            return buildResponse('Tag attached to feed item')
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -189,7 +190,7 @@ export class TagController {
         try {
             const parsedTagId = Number.parseInt(tagId, 10)
             await this.tagService.detachTagFromFeedItem(user.id, feedItemId, parsedTagId)
-            return { message: 'Tag detached from feed item' }
+            return buildResponse('Tag detached from feed item')
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -210,7 +211,7 @@ export class TagController {
         }
         try {
             const result = await this.tagService.getTagsBySubscription(user.id, subscriptionId)
-            return { message: 'Tags for subscription', data: result }
+            return buildResponse('Tags for subscription', result)
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -235,7 +236,7 @@ export class TagController {
         }
         try {
             await this.tagService.attachTagToSubscription(user.id, subscriptionId, body.tagId)
-            return { message: 'Tag attached to subscription' }
+            return buildResponse('Tag attached to subscription')
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
@@ -262,7 +263,7 @@ export class TagController {
         try {
             const parsedTagId = Number.parseInt(tagId, 10)
             await this.tagService.detachTagFromSubscription(user.id, subscriptionId, parsedTagId)
-            return { message: 'Tag detached from subscription' }
+            return buildResponse('Tag detached from subscription')
         } catch (err) {
             throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
         }
