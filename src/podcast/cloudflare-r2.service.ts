@@ -56,10 +56,10 @@ export class CloudflareR2Service {
 
         try {
             await this.s3Client.send(command)
-            
+
             // 署名付きURLを生成（有効期限24時間）
             const url = await this.getSignedUrl(bucket, key, 86400)
-            
+
             this.logger.log(`ファイルをR2にアップロード: ${key}`)
             return { publicUrl: url }
         } catch (error) {

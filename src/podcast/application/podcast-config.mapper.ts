@@ -1,15 +1,11 @@
 import { PodcastConfig } from '../domain/podcast-config.entity'
 import { PodcastConfigResponseDto } from './dto/podcast-config.dto'
 
-/**
- * PodcastConfigエンティティとDTOの変換を担うマッパー関数群
- */
+//  PodcastConfigエンティティとDTOの変換を担うマッパー関数群
 export const PodcastConfigMapper = {
-    /**
-     * PodcastConfigエンティティをレスポンスDTOに変換
-     * @param config PodcastConfig
-     * @returns PodcastConfigResponseDto
-     */
+    //  PodcastConfigエンティティをレスポンスDTOに変換
+    //  @param config PodcastConfig
+    //  @returns PodcastConfigResponseDto
     toResponseDto(config: PodcastConfig): PodcastConfigResponseDto {
         return {
             podcast_enabled: config.podcast_enabled,
@@ -19,10 +15,8 @@ export const PodcastConfigMapper = {
         }
     },
 
-    /**
-     * デフォルトのPodcastConfigResponseDtoを生成
-     * @returns PodcastConfigResponseDto
-     */
+    //  デフォルトのPodcastConfigResponseDtoを生成
+    //  @returns PodcastConfigResponseDto
     createDefaultResponse(): PodcastConfigResponseDto {
         return {
             podcast_enabled: false,
@@ -30,5 +24,5 @@ export const PodcastConfigMapper = {
             podcast_language: 'ja-JP',
             updated_at: new Date().toISOString(),
         }
-    }
+    },
 }

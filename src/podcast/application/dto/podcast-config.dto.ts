@@ -1,15 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { IsBoolean, IsEnum, IsOptional, IsString, Matches } from 'class-validator'
 
-/**
- * ポッドキャスト設定更新DTO
- * @description クライアントからのポッドキャスト設定更新リクエスト用DTO
- */
+//  ポッドキャスト設定更新DTO
+//  @description クライアントからのポッドキャスト設定更新リクエスト用DTO
 export class UpdatePodcastConfigDto {
-    /**
-     * ポッドキャスト機能の有効/無効
-     * @type {boolean}
-     */
+    //  ポッドキャスト機能の有効/無効
+    //  @type {boolean}
     @ApiProperty({
         description: 'ポッドキャスト機能の有効/無効',
         example: true,
@@ -19,10 +15,8 @@ export class UpdatePodcastConfigDto {
     @IsOptional()
     podcast_enabled?: boolean
 
-    /**
-     * ポッドキャスト生成スケジュール時刻（HH:MM形式）
-     * @type {string}
-     */
+    //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
+    //  @type {string}
     @ApiProperty({
         description: 'ポッドキャスト生成スケジュール時刻（HH:MM形式）',
         example: '07:30',
@@ -35,10 +29,8 @@ export class UpdatePodcastConfigDto {
     })
     podcast_schedule_time?: string
 
-    /**
-     * ポッドキャスト言語
-     * @type {'ja-JP' | 'en-US'}
-     */
+    //  ポッドキャスト言語
+    //  @type {'ja-JP' | 'en-US'}
     @ApiProperty({
         description: 'ポッドキャスト言語',
         example: 'ja-JP',
@@ -52,25 +44,19 @@ export class UpdatePodcastConfigDto {
     podcast_language?: 'ja-JP' | 'en-US'
 }
 
-/**
- * ポッドキャスト設定レスポンスDTO
- * @description サーバーから返却されるポッドキャスト設定情報
- */
+//  ポッドキャスト設定レスポンスDTO
+//  @description サーバーから返却されるポッドキャスト設定情報
 export class PodcastConfigResponseDto {
-    /**
-     * ポッドキャスト機能の有効/無効
-     * @type {boolean}
-     */
+    //  ポッドキャスト機能の有効/無効
+    //  @type {boolean}
     @ApiProperty({
         description: 'ポッドキャスト機能の有効/無効',
         example: true,
     })
     podcast_enabled: boolean
 
-    /**
-     * ポッドキャスト生成スケジュール時刻（HH:MM形式）
-     * @type {string | null}
-     */
+    //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
+    //  @type {string | null}
     @ApiProperty({
         description: 'ポッドキャスト生成スケジュール時刻（HH:MM形式）',
         example: '07:30',
@@ -78,10 +64,8 @@ export class PodcastConfigResponseDto {
     })
     podcast_schedule_time: string | null
 
-    /**
-     * ポッドキャスト言語
-     * @type {'ja-JP' | 'en-US'}
-     */
+    //  ポッドキャスト言語
+    //  @type {'ja-JP' | 'en-US'}
     @ApiProperty({
         description: 'ポッドキャスト言語',
         example: 'ja-JP',
@@ -89,10 +73,8 @@ export class PodcastConfigResponseDto {
     })
     podcast_language: 'ja-JP' | 'en-US'
 
-    /**
-     * 最終更新日時
-     * @type {string}
-     */
+    //  最終更新日時
+    //  @type {string}
     @ApiProperty({
         description: '最終更新日時',
         example: '2025-05-13T07:30:00.000Z',

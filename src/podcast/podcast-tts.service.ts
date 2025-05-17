@@ -12,7 +12,7 @@ export class PodcastTtsService {
 
     constructor(private readonly r2: CloudflareR2Service) {
         this.client = new TextToSpeechClient()
-        }
+    }
 
     // 音声を合成し、Cloudflare R2にアップロードして署名付きURLを返す
     async synthesizeAndUploadToR2(

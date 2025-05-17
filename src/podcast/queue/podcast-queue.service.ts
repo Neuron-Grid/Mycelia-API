@@ -8,14 +8,12 @@ export class PodcastQueueService {
 
     constructor(@InjectQueue('podcastQueue') private readonly podcastQueue: Queue) {}
 
-    /**
-     * ポッドキャスト生成ジョブをキューに追加
-     * @param text 音声合成するテキスト
-     * @param userId ユーザーID
-     * @param language 言語コード（デフォルト: ja-JP）
-     * @param filename 保存ファイル名（指定なしの場合は自動生成）
-     * @param title 書名（メタデータとして保存）
-     */
+    //  ポッドキャスト生成ジョブをキューに追加
+    //  @param text 音声合成するテキスト
+    //  @param userId ユーザーID
+    //  @param language 言語コード（デフォルト: ja-JP）
+    //  @param filename 保存ファイル名（指定なしの場合は自動生成）
+    //  @param title 書名（メタデータとして保存）
     async addPodcastJob(
         text: string,
         userId: string,

@@ -61,27 +61,21 @@ export class PodcastUploadService {
         return { publicUrl }
     }
 
-    /**
-     * ポッドキャスト用バケット名を返す
-     */
+    //  ポッドキャスト用バケット名を返す
     private getPodcastBucketName(): string {
         return 'podcasts'
     }
 
-    /**
-     * オブジェクトキー（パス）を生成
-     * @param userId ユーザーID
-     * @param filename ファイル名
-     */
+    //  オブジェクトキー（パス）を生成
+    //  @param userId ユーザーID
+    //  @param filename ファイル名
     private buildPodcastObjectKey(userId: string, filename: string): string {
         return `${userId}/${filename}`
     }
 
-    /**
-     * メタデータを生成
-     * @param userId ユーザーID
-     * @param title 書名
-     */
+    //  メタデータを生成
+    //  @param userId ユーザーID
+    //  @param title 書名
     private buildPodcastMetadata(userId: string, title?: string): Record<string, string> {
         const metadata: Record<string, string> = {
             userId,
