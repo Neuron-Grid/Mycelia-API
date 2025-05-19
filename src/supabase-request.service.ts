@@ -60,7 +60,7 @@ export class SupabaseRequestService {
     // @public
     // @since 1.0.0
     // @param {string} userId - 削除対象ユーザーのID
-    // @returns {Promise<any>} - 削除したユーザー情報
+    // @returns {Promise<unknown>} - 削除したユーザー情報
     // @throws {Error} - 削除に失敗した場合
     // @example
     // await supabaseRequestService.deleteUserAccount('user-id')

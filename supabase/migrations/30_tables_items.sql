@@ -1,3 +1,4 @@
+-- depends-on: 20
 -- feed_items & favorites
 CREATE TABLE public.feed_items(
     id Bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

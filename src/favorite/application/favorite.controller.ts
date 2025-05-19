@@ -38,7 +38,7 @@ export class FavoriteController {
     // @public
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
-    // @returns {Promise<any>} - お気に入り一覧
+    // @returns {Promise<unknown>} - お気に入り一覧
     // @throws {HttpException} - 認証エラーや取得失敗時
     // @example
     // await favoriteController.getUserFavorites(user)
@@ -61,7 +61,7 @@ export class FavoriteController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} feedItemId - チェック対象FeedItemのID
-    // @returns {Promise<any>} - お気に入り判定結果
+    // @returns {Promise<unknown>} - お気に入り判定結果
     // @throws {HttpException} - 認証エラーや取得失敗時
     // @example
     // await favoriteController.checkFavorite(user, 1)
@@ -87,7 +87,7 @@ export class FavoriteController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} feedItemId - お気に入り登録対象FeedItemのID
-    // @returns {Promise<any>} - 登録結果
+    // @returns {Promise<unknown>} - 登録結果
     // @throws {HttpException} - 認証エラーや登録失敗時
     // @example
     // await favoriteController.favoriteItem(user, 1)
@@ -113,7 +113,7 @@ export class FavoriteController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} feedItemId - お気に入り解除対象FeedItemのID
-    // @returns {Promise<any>} - 解除結果
+    // @returns {Promise<unknown>} - 解除結果
     // @throws {HttpException} - 認証エラーや解除失敗時
     // @example
     // await favoriteController.unfavoriteItem(user, 1)

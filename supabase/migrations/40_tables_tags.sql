@@ -1,3 +1,4 @@
+-- depends-on: 30
 -- tags
 CREATE TABLE public.tags(
     id Bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -1,3 +1,4 @@
+-- depends-on: 60
 --  user_settingsにポッドキャスト列を追加
 ALTER TABLE public.user_settings
     ADD COLUMN podcast_enabled Boolean NOT NULL DEFAULT FALSE,

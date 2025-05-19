@@ -45,7 +45,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {SignUpDto} signUpDto - ユーザー登録情報
-    // @returns {Promise<any>} - 登録結果のレスポンス
+    // @returns {Promise<unknown>} - 登録結果のレスポンス
     // @throws {HttpException} - 登録失敗時
     // @example
     // await authController.signUp({ email, password, username })
@@ -65,7 +65,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {SignInDto} signInDto - ログイン情報
-    // @returns {Promise<any>} - ログイン結果のレスポンス
+    // @returns {Promise<unknown>} - ログイン結果のレスポンス
     // @throws {HttpException} - 認証失敗時
     // @example
     // await authController.signIn({ email, password })
@@ -85,7 +85,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {ForgotPasswordDto} dto - パスワードリセットリクエスト情報
-    // @returns {Promise<any>} - リセットメール送信結果のレスポンス
+    // @returns {Promise<unknown>} - リセットメール送信結果のレスポンス
     // @throws {HttpException} - 送信失敗時
     // @example
     // await authController.forgotPassword({ email })
@@ -105,7 +105,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {ResetPasswordDto} dto - リセット情報
-    // @returns {Promise<any>} - リセット処理結果のレスポンス
+    // @returns {Promise<unknown>} - リセット処理結果のレスポンス
     // @throws {HttpException} - リセット失敗時
     // @example
     // await authController.resetPassword({ accessToken, newPassword })
@@ -125,7 +125,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {VerifyEmailDto} dto - メール認証情報
-    // @returns {Promise<any>} - 認証処理結果のレスポンス
+    // @returns {Promise<unknown>} - 認証処理結果のレスポンス
     // @throws {HttpException} - 認証失敗時
     // @example
     // await authController.verifyEmail({ email, token })
@@ -144,7 +144,7 @@ export class AuthController {
     // @async
     // @public
     // @since 1.0.0
-    // @returns {Promise<any>} - ログアウト処理結果のレスポンス
+    // @returns {Promise<unknown>} - ログアウト処理結果のレスポンス
     // @throws {HttpException} - ログアウト失敗時
     // @example
     // await authController.signOut()
@@ -165,7 +165,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {User} user - 認証済みユーザー
-    // @returns {Promise<any>} - アカウント削除処理結果のレスポンス
+    // @returns {Promise<unknown>} - アカウント削除処理結果のレスポンス
     // @throws {HttpException} - 削除失敗時
     // @example
     // await authController.deleteAccount(user)
@@ -190,7 +190,7 @@ export class AuthController {
     // @since 1.0.0
     // @param {User} user - 認証済みユーザー
     // @param {UpdateEmailDto} dto - 新しいメールアドレス情報
-    // @returns {Promise<any>} - メールアドレス更新処理結果のレスポンス
+    // @returns {Promise<unknown>} - メールアドレス更新処理結果のレスポンス
     // @throws {HttpException} - 更新失敗時
     // @example
     // await authController.updateEmail(user, { newEmail: 'new@example.com' })
@@ -215,7 +215,7 @@ export class AuthController {
     // @since 1.0.0
     // @param {User} user - 認証済みユーザー
     // @param {UpdateUsernameDto} dto - 新しいユーザー名情報
-    // @returns {Promise<any>} - ユーザー名更新処理結果のレスポンス
+    // @returns {Promise<unknown>} - ユーザー名更新処理結果のレスポンス
     // @throws {HttpException} - 更新失敗時
     // @example
     // await authController.updateUsername(user, { newUsername: 'newname' })
@@ -240,7 +240,7 @@ export class AuthController {
     // @since 1.0.0
     // @param {User} user - 認証済みユーザー
     // @param {UpdatePasswordDto} dto - パスワード更新情報
-    // @returns {Promise<any>} - パスワード更新処理結果のレスポンス
+    // @returns {Promise<unknown>} - パスワード更新処理結果のレスポンス
     // @throws {HttpException} - 更新失敗時
     // @example
     // await authController.updatePassword(user, { oldPassword: 'old', newPassword: 'new' })
@@ -264,10 +264,10 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {User} user - 認証済みユーザー
-    // @returns {any} - ユーザープロフィールのレスポンス
+    // @returns {{ message: string, data: User }} - ユーザープロフィールのレスポンス
     // @example
     // authController.getProfile(user)
-    getProfile(@SupabaseUser() user: User) {
+    getProfile(@SupabaseUser() user: User): { message: string; data: User } {
         return buildResponse('User profile fetched successfully', user)
     }
 
@@ -275,7 +275,7 @@ export class AuthController {
     // @public
     // @since 1.0.0
     // @param {VerifyTotpDto} dto - TOTP認証情報
-    // @returns {Promise<any>} - TOTP認証処理結果のレスポンス
+    // @returns {Promise<unknown>} - TOTP認証処理結果のレスポンス
     // @throws {HttpException} - 認証失敗時
     // @example
     // await authController.verifyTotp({ factorId, code })

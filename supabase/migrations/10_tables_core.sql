@@ -1,3 +1,4 @@
+-- depends-on: 01
 --  users / user_settings
 CREATE TABLE public.users(
     id Uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

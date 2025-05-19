@@ -101,7 +101,7 @@ export class FeedController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {AddSubscriptionDto} dto - 購読追加リクエストDTO
-    // @returns {Promise<any>} - 追加結果
+    // @returns {Promise<unknown>} - 追加結果
     // @throws {HttpException} - 認証エラーや追加失敗時
     // @example
     // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
@@ -142,7 +142,7 @@ export class FeedController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} subscriptionId - 購読ID
-    // @returns {Promise<any>} - フィード取得結果
+    // @returns {Promise<unknown>} - フィード取得結果
     // @throws {HttpException} - 認証エラーや取得失敗時
     // @example
     // await feedController.fetchSubscription(user, 123)
@@ -199,7 +199,7 @@ export class FeedController {
     // @param {User} user - Supabase認証ユーザー
     // @param {number} id - 購読ID
     // @param {UpdateSubscriptionDto} dto - 更新内容DTO
-    // @returns {Promise<any>} - 更新結果
+    // @returns {Promise<unknown>} - 更新結果
     // @throws {HttpException} - 認証エラーや更新失敗時
     // @example
     // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
@@ -225,7 +225,7 @@ export class FeedController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} subscriptionId - 購読ID
-    // @returns {Promise<any>} - 削除結果
+    // @returns {Promise<unknown>} - 削除結果
     // @throws {HttpException} - 認証エラーや削除失敗時
     // @example
     // await feedController.deleteSubscription(user, 123)

@@ -1,3 +1,4 @@
+-- depends-on: 71
 -- LLM要約
 -- ポッドキャスト機能
 CREATE TABLE public.daily_summaries(
@@ -29,7 +30,7 @@ CREATE TABLE public.podcast_episodes(
     summary_id Bigint NOT NULL REFERENCES public.daily_summaries(id) ON DELETE CASCADE,
     title Text NOT NULL,
     title_emb VECTOR(1536),
-    audio_url Text NOT NULL, -- podcasts/{user_id}/YYYY-MM-DD.mp3
+    audio_url Text NOT NULL,
     created_at Timestamptz NOT NULL DEFAULT NOW(),
     updated_at Timestamptz NOT NULL DEFAULT NOW(),
     UNIQUE (summary_id)

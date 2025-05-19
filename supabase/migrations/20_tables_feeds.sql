@@ -1,3 +1,4 @@
+-- depends-on: 11
 -- user_subscriptions
 CREATE TABLE public.user_subscriptions(
     id Bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -24,7 +24,7 @@ export class AuthService {
     // @param {string} email - メールアドレス
     // @param {string} password - パスワード
     // @param {string} username - ユーザー名
-    // @returns {Promise<any>} - 登録結果
+    // @returns {Promise<unknown>} - 登録結果
     // @throws {Error} - 登録失敗時
     // @example
     // await authService.signUp('a@example.com', 'pw', 'user')
@@ -38,7 +38,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {string} email - メールアドレス
     // @param {string} password - パスワード
-    // @returns {Promise<any>} - ログイン結果
+    // @returns {Promise<unknown>} - ログイン結果
     // @throws {Error} - 認証失敗時
     // @example
     // await authService.signIn('a@example.com', 'pw')
@@ -50,7 +50,7 @@ export class AuthService {
     // @async
     // @public
     // @since 1.0.0
-    // @returns {Promise<any>} - ログアウト結果
+    // @returns {Promise<unknown>} - ログアウト結果
     // @throws {Error} - ログアウト失敗時
     // @example
     // await authService.signOut()
@@ -63,7 +63,7 @@ export class AuthService {
     // @public
     // @since 1.0.0
     // @param {string} userId - ユーザーID
-    // @returns {Promise<any>} - アカウント削除結果
+    // @returns {Promise<unknown>} - アカウント削除結果
     // @throws {Error} - 削除失敗時
     // @example
     // await authService.deleteAccount('user-id')
@@ -77,7 +77,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {User} user - ユーザー
     // @param {string} newEmail - 新しいメールアドレス
-    // @returns {Promise<any>} - メールアドレス更新結果
+    // @returns {Promise<unknown>} - メールアドレス更新結果
     // @throws {Error} - 更新失敗時
     // @example
     // await authService.updateEmail(user, 'new@example.com')
@@ -91,7 +91,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {User} user - ユーザー
     // @param {string} newUsername - 新しいユーザー名
-    // @returns {Promise<any>} - ユーザー名更新結果
+    // @returns {Promise<unknown>} - ユーザー名更新結果
     // @throws {Error} - 更新失敗時
     // @example
     // await authService.updateUsername(user, 'newname')
@@ -106,7 +106,7 @@ export class AuthService {
     // @param {User} user - ユーザー
     // @param {string} oldPw - 現在のパスワード
     // @param {string} newPw - 新しいパスワード
-    // @returns {Promise<any>} - パスワード更新結果
+    // @returns {Promise<unknown>} - パスワード更新結果
     // @throws {Error} - 更新失敗時
     // @example
     // await authService.updatePassword(user, 'old', 'new')
@@ -119,7 +119,7 @@ export class AuthService {
     // @public
     // @since 1.0.0
     // @param {string} email - メールアドレス
-    // @returns {Promise<any>} - パスワードリセットメール送信結果
+    // @returns {Promise<unknown>} - パスワードリセットメール送信結果
     // @throws {Error} - 送信失敗時
     // @example
     // await authService.forgotPassword('a@example.com')
@@ -133,7 +133,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {string} accessToken - リセット用トークン
     // @param {string} newPw - 新しいパスワード
-    // @returns {Promise<any>} - パスワードリセット結果
+    // @returns {Promise<unknown>} - パスワードリセット結果
     // @throws {Error} - リセット失敗時
     // @example
     // await authService.resetPassword('token', 'newpw')
@@ -147,7 +147,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {string} email - メールアドレス
     // @param {string} token - 認証トークン
-    // @returns {Promise<any>} - メール認証結果
+    // @returns {Promise<unknown>} - メール認証結果
     // @throws {Error} - 認証失敗時
     // @example
     // await authService.verifyEmail('a@example.com', 'token')
@@ -161,7 +161,7 @@ export class AuthService {
     // @since 1.0.0
     // @param {string} factorId - TOTPファクターID
     // @param {string} code - TOTPコード
-    // @returns {Promise<any>} - TOTP認証結果
+    // @returns {Promise<unknown>} - TOTP認証結果
     // @throws {Error} - 認証失敗時
     // @example
     // await authService.verifyTotp('factorId', '123456')

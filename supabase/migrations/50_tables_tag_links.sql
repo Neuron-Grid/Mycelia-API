@@ -1,3 +1,4 @@
+-- depends-on: 40
 -- user_subscription_tags & feed_item_tags
 CREATE TABLE public.user_subscription_tags(
     id Bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

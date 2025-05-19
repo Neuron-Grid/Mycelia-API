@@ -60,7 +60,7 @@ export class FeedItemService {
     // @param {string} link - リンク
     // @param {string} description - 説明
     // @param {Date|null} publishedAt - 公開日時
-    // @returns {Promise<any>} - 登録結果
+    // @returns {Promise<unknown>} - 登録結果
     // @throws {Error} - 登録に失敗した場合
     // @example
     // await feedItemService.insertFeedItem(1, 'user1', 'タイトル', 'http://example.com', '説明', new Date())

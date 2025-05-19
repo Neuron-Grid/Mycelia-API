@@ -1,3 +1,4 @@
+-- depends-on: 00
 -- 共通トリガ関数
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
 

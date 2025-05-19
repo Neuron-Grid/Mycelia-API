@@ -13,6 +13,8 @@ import { PodcastQueueModule } from './podcast/queue/podcast-queue.module'
 import { SupabaseRequestModule } from './supabase-request.module'
 import { TagModule } from './tag/tag.module'
 
+import { LlmModule } from './llm/llm.module'
+
 @Module({
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
@@ -29,6 +31,8 @@ import { TagModule } from './tag/tag.module'
         // ポッドキャスト機能
         PodcastModule,
         PodcastQueueModule,
+        // LLM (Gemini) 機能
+        LlmModule,
     ],
     controllers: [AppController],
     providers: [AppService],

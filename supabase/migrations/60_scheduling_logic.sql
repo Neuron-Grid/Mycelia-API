@@ -1,3 +1,4 @@
+-- depends-on: 50
 -- next_fetch_at 自動計算
 -- refresh_every 変更反映
 CREATE OR REPLACE FUNCTION public.set_next_fetch()
