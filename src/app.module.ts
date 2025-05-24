@@ -8,12 +8,11 @@ import { FavoriteModule } from './favorite/favorite.module'
 import { FeedModule } from './feed/feed.module'
 import { FeedQueueModule } from './feed/queue/feed-queue.module'
 import { HealthModule } from './health/health.module'
+import { LlmModule } from './llm/llm.module'
 import { PodcastModule } from './podcast/podcast.module'
 import { PodcastQueueModule } from './podcast/queue/podcast-queue.module'
 import { SupabaseRequestModule } from './supabase-request.module'
 import { TagModule } from './tag/tag.module'
-
-import { LlmModule } from './llm/llm.module'
 
 @Module({
     imports: [
