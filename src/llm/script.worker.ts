@@ -1,10 +1,10 @@
-import { Processor } from '@nestjs/bullmq'
+import { Processor, WorkerHost } from '@nestjs/bullmq' // WorkerHost をインポート
 import { Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 
 @Processor('script-generate')
 @Injectable()
-export class ScriptWorker {
+export class ScriptWorker extends WorkerHost { // WorkerHost を継承
     private readonly logger = new Logger(ScriptWorker.name)
 
     // BullMQでは@Processデコレータは不要。handleメソッド名で自動的に紐付く場合もあるが、明示的にjob nameで分岐するのが安全。

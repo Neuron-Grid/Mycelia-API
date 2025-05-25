@@ -1,10 +1,10 @@
-import { Processor } from '@nestjs/bullmq'
+import { Processor, WorkerHost } from '@nestjs/bullmq' // WorkerHost をインポート
 import { Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 
 @Processor('summary-generate')
 @Injectable()
-export class SummaryWorker {
+export class SummaryWorker extends WorkerHost { // WorkerHost を継承
     private readonly logger = new Logger(SummaryWorker.name)
 
     async process(job: Job) {

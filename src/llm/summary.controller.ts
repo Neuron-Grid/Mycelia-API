@@ -126,6 +126,8 @@ export class SummaryController {
         this.logger.warn(
             `Ownership check for summaryId ${summaryId} by user ${user.id} is currently skipped. Implement this check!`,
         )
+        // DEBUG: 所有者チェックがスキップされたことを示すログ
+        this.logger.debug(`DEBUG: Ownership check skipped for summaryId: ${summaryId}, requestingUser: ${user.id}`);
 
         try {
             const result = await this.summaryScriptService.requestScriptGeneration(

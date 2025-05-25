@@ -2,6 +2,7 @@ import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
+import { SupabaseRequestModule } from 'src/supabase-request.module' // SupabaseRequestModule をインポート
 import { GeminiFlashClient } from './gemini-flash.client'
 import { LLM_SERVICE } from './llm.service'
 import { MockLlmService } from './mock-llm.service'
@@ -20,9 +21,24 @@ import { SummaryWorker } from './summary.worker'
         ConfigModule, // ConfigService を使う場合
         BullModule.registerQueue(
             // キューを登録
-            { name: SUMMARY_GENERATE_QUEUE },
-            { name: SCRIPT_GENERATE_QUEUE },
+            {
+                name: SUMMARY_GENERATE_QUEUE,
+                // Redis 接続設定を追加
+                connection: {
+                    host: process.env.REDIS_HOST || 'localhost',
+                    port: Number.parseInt(process.env.REDIS_PORT || '6379', 10),
+                },
+            },
+            {
+                name: SCRIPT_GENERATE_QUEUE,
+                // Redis 接続設定を追加
+                connection: {
+                    host: process.env.REDIS_HOST || 'localhost',
+                    port: Number.parseInt(process.env.REDIS_PORT || '6379', 10),
+                },
+            },
         ),
+        SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
     ],
     providers: [
         {
@@ -32,7 +48,7 @@ import { SummaryWorker } from './summary.worker'
                 if (configService.get<string>('TEST_MODE') === 'true') {
                     return new MockLlmService()
                 }
-                return new GeminiFlashClient(httpClient) // httpClient を注入
+                return new GeminiFlashClient(httpClient, configService) // httpClient と configService を注入
             },
             inject: [ConfigService, HttpService], // 注入するものを指定
         },

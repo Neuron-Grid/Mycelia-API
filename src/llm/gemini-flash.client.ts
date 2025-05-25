@@ -1,5 +1,6 @@
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config' // ConfigService をインポート
 import { AxiosError, AxiosResponse } from 'axios'
 import { backOff } from 'exponential-backoff'
 import { firstValueFrom } from 'rxjs'
@@ -49,19 +50,21 @@ interface GeminiErrorPayload {
 @Injectable()
 export class GeminiFlashClient implements LlmService {
     public logger = new Logger(GeminiFlashClient.name)
-    public readonly apiUrl =
-        process.env.GEMINI_API_URL ||
-        // Google Vertex AI または Google AI Generative Language API の正しいエンドポイントを使用
-        // 例: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
-        // 仕様書の 'v1/models/gemini-2.5-flash-preview:generateContent' が最新ドキュメントで確認できる場合、それを使用
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent'
-    public readonly apiKey = process.env.GEMINI_API_KEY
+    public readonly apiUrl: string
+    public readonly apiKey: string
     public readonly defaultTimeout = 30000
 
-    constructor(public readonly http: HttpService) {
+    constructor(
+        public readonly http: HttpService,
+        private readonly configService: ConfigService, // ConfigService を注入
+    ) {
+        this.apiUrl =
+            this.configService.get<string>('GEMINI_API_URL') ||
+            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent'
+        this.apiKey = this.configService.get<string>('GEMINI_API_KEY') || ''
+
         if (!this.apiKey) {
             this.logger.error('GEMINI_API_KEY is not set')
-            // アプリケーション起動時にエラーにするため、ここでスロー
             throw new Error('GEMINI_API_KEY is not set in environment variables.')
         }
     }

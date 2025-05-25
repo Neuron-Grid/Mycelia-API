@@ -1,17 +1,17 @@
 services:
-  rss-news-api:
-    build:
-      context: ./
-      dockerfile: Containerfile
-    container_name: rss-news-api
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    env_file: .env
-    volumes:
-      - ./container/rss-news-api:/data
-    depends_on:
-      - redis
+  # rss-news-api:
+  #   build:
+  #     context: ./
+  #     dockerfile: Containerfile
+  #   container_name: rss-news-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   env_file: .env
+  #   volumes:
+  #     - ./container/rss-news-api:/data
+  #   depends_on:
+  #     - redis
 
   redis:
     image: docker.io/library/redis:latest
@@ -22,19 +22,19 @@ services:
     volumes:
       - ./container/redis-data:/data
 
-  nginx:
-    image: nginx:1.26-alpine
-    container_name: nginx
-    restart: unless-stopped
-    environment:
-      DOMAIN: ${DOMAIN:?err}
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - rss-news-api
-      - redis
-    volumes:
-      - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
-      - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
-      - ./nginx/rss-news-api.conf.template:/etc/nginx/templates/rss-news-api.conf.template:ro
+  # nginx:
+  #   image: nginx:1.26-alpine
+  #   container_name: nginx
+  #   restart: unless-stopped
+  #   environment:
+  #     DOMAIN: ${DOMAIN:?err}
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   depends_on:
+  #     - rss-news-api
+  #     - redis
+  #   volumes:
+  #     - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
+  #     - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
+  #     - ./nginx/rss-news-api.conf.template:/etc/nginx/templates/rss-news-api.conf.template:ro
