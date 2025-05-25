@@ -38,9 +38,3 @@ DROP TABLE IF EXISTS public.user_settings CASCADE;
 
 DROP TABLE IF EXISTS public.users CASCADE;
 
--- Extensions are typically not dropped in a cleanup script unless absolutely necessary
--- because they affect the entire database.
-DROP EXTENSION IF EXISTS pgvector;
-
-DROP EXTENSION IF EXISTS pgcrypto;
-
