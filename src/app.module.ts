@@ -11,6 +11,7 @@ import { HealthModule } from './health/health.module'
 import { LlmModule } from './llm/llm.module'
 import { PodcastModule } from './podcast/podcast.module'
 import { PodcastQueueModule } from './podcast/queue/podcast-queue.module'
+import { SearchModule } from './search/search.module'
 import { SupabaseRequestModule } from './supabase-request.module'
 import { TagModule } from './tag/tag.module'
 
@@ -32,6 +33,8 @@ import { TagModule } from './tag/tag.module'
         PodcastQueueModule,
         // LLM (Gemini) 機能
         LlmModule,
+        // ベクトル検索機能
+        SearchModule,
     ],
     controllers: [AppController],
     providers: [AppService],

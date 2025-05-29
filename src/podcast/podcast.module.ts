@@ -4,6 +4,7 @@ import { PodcastConfigController } from './application/podcast-config.controller
 import { PodcastConfigService } from './application/podcast-config.service'
 import { CloudflareR2Service } from './cloudflare-r2.service'
 import { PodcastConfigRepository } from './infrastructure/podcast-config.repository'
+import { PodcastEpisodeRepository } from './infrastructure/podcast-episode.repository'
 import { PodcastTtsService } from './podcast-tts.service'
 import { PodcastUploadService } from './podcast-upload.service'
 
@@ -15,8 +16,9 @@ import { PodcastUploadService } from './podcast-upload.service'
         PodcastUploadService,
         PodcastConfigService,
         PodcastConfigRepository,
+        PodcastEpisodeRepository,
         CloudflareR2Service,
     ],
-    exports: [PodcastTtsService, PodcastUploadService, PodcastConfigService],
+    exports: [PodcastTtsService, PodcastUploadService, PodcastConfigService, PodcastEpisodeRepository, CloudflareR2Service],
 })
 export class PodcastModule {}

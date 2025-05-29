@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { SupabaseRequestModule } from 'src/supabase-request.module' // SupabaseRequestModule をインポート
 import { GeminiFlashClient } from './gemini-flash.client'
+import { DailySummaryRepository } from './infrastructure/daily-summary.repository'
 import { LLM_SERVICE } from './llm.service'
 import { MockLlmService } from './mock-llm.service'
 import { ScriptWorker } from './script.worker'
@@ -41,6 +42,7 @@ import { SummaryWorker } from './summary.worker'
         SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
     ],
     providers: [
+        DailySummaryRepository,
         {
             provide: LLM_SERVICE,
             useFactory: (configService: ConfigService, httpClient: HttpService) => {

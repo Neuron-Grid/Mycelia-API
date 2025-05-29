@@ -65,6 +65,7 @@ export class SubscriptionRepository {
 
     // next_fetch_atが期日以内のレコードを取得
     // 昇順ソート
+    // 注意: システム全体のスケジューリング用のため、全ユーザーのデータを取得します
     async findDueSubscriptions(cutoff: Date): Promise<Row[]> {
         const sb = this.sbReq.getClient()
         const { data, error } = await sb
@@ -75,6 +76,23 @@ export class SubscriptionRepository {
 
         if (error) {
             this.logger.error(`findDueSubscriptions: ${error.message}`, error)
+            throw error
+        }
+        return data ?? []
+    }
+
+    // ユーザー固有の期限到達サブスクリプション取得（ユーザー分離版）
+    async findDueSubscriptionsByUser(userId: string, cutoff: Date): Promise<Row[]> {
+        const sb = this.sbReq.getClient()
+        const { data, error } = await sb
+            .from('user_subscriptions')
+            .select('*')
+            .eq('user_id', userId)  // ユーザー分離の保証
+            .lte('next_fetch_at', cutoff.toISOString())
+            .order('next_fetch_at', { ascending: true })
+
+        if (error) {
+            this.logger.error(`findDueSubscriptionsByUser: ${error.message}`, error)
             throw error
         }
         return data ?? []
