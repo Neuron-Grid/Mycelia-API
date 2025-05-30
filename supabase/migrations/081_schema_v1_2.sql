@@ -7,12 +7,10 @@ DO $$
 DECLARE
     t Text;
 BEGIN
-    FOR t IN
-    SELECT
-        unnest(ARRAY['public.user_subscriptions', 'public.feed_items', 'public.feed_item_favorites', 'public.tags', 'public.user_subscription_tags', 'public.feed_item_tags', 'public.user_settings', 'public.daily_summaries', 'public.podcast_episodes'])
-        LOOP
-            EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS soft_deleted BOOLEAN NOT NULL DEFAULT FALSE;', t);
-        END LOOP;
+    -- public スキーマ内 9 テーブルへ soft_deleted 列を追加
+    FOREACH t IN ARRAY ARRAY['user_subscriptions', 'feed_items', 'feed_item_favorites', 'tags', 'user_subscription_tags', 'feed_item_tags', 'user_settings', 'daily_summaries', 'podcast_episodes'] LOOP
+        EXECUTE format('ALTER TABLE public.%I ADD COLUMN IF NOT EXISTS soft_deleted BOOLEAN NOT NULL DEFAULT FALSE;', t);
+    END LOOP;
 END;
 $$;
 
