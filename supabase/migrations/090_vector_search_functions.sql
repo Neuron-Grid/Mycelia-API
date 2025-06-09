@@ -1,5 +1,6 @@
--- ベクトル検索用のSQL関数を定義
--- フィードアイテムのベクトル検索関数
+-- depends-on: 81
+-- ベクトル検索用の SQL 関数を定義
+-- フィードアイテム検索
 CREATE OR REPLACE FUNCTION search_feed_items_by_vector(query_embedding vector(1536), match_threshold Float, match_count Int, target_user_id Uuid)
     RETURNS TABLE(
         id Bigint,
@@ -36,7 +37,7 @@ BEGIN
 END;
 $$;
 
--- 要約のベクトル検索関数
+-- サマリー検索
 CREATE OR REPLACE FUNCTION search_summaries_by_vector(query_embedding vector(1536), match_threshold Float, match_count Int, target_user_id Uuid)
     RETURNS TABLE(
         id Bigint,
@@ -69,7 +70,7 @@ BEGIN
 END;
 $$;
 
--- ポッドキャストエピソードのベクトル検索関数
+-- ポッドキャスト検索
 CREATE OR REPLACE FUNCTION search_podcast_episodes_by_vector(query_embedding vector(1536), match_threshold Float, match_count Int, target_user_id Uuid)
     RETURNS TABLE(
         id Bigint,
@@ -102,7 +103,7 @@ BEGIN
 END;
 $$;
 
--- タグのベクトル検索関数
+-- タグ検索
 CREATE OR REPLACE FUNCTION search_tags_by_vector(query_embedding vector(1536), match_threshold Float, match_count Int, target_user_id Uuid)
     RETURNS TABLE(
         id Bigint,
@@ -131,7 +132,7 @@ BEGIN
 END;
 $$;
 
--- 統合検索関数（全タイプを横断検索）
+-- 横断検索
 CREATE OR REPLACE FUNCTION search_all_content_by_vector(query_embedding vector(1536), match_threshold Float, match_count Int, target_user_id Uuid)
     RETURNS TABLE(
         content_type Text,
@@ -143,69 +144,73 @@ CREATE OR REPLACE FUNCTION search_all_content_by_vector(query_embedding vector(1
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    RETURN QUERY(
-        -- フィードアイテム
-        SELECT
-            'feed_item'::Text AS content_type, fi.id, fi.title, COALESCE(fi.description, '') AS content,(1 -(fi.title_emb <=> query_embedding)) AS similarity, jsonb_build_object('link', fi.link, 'published_at', fi.published_at, 'feed_title', us.feed_title) AS metadata FROM feed_items fi
-            JOIN user_subscriptions us ON fi.user_subscription_id = us.id
-                AND fi.user_id = us.user_id
-            WHERE
-                fi.user_id = target_user_id
-                AND fi.soft_deleted = FALSE
-                AND fi.title_emb IS NOT NULL
-                AND(1 -(fi.title_emb <=> query_embedding)) > match_threshold)
-UNION ALL(
+    RETURN QUERY
+    -- フィードアイテム
+    SELECT
+        'feed_item',
+        fi.id,
+        fi.title,
+        COALESCE(fi.description, ''),
+(1 -(fi.title_emb <=> query_embedding)) AS similarity,
+        jsonb_build_object('link', fi.link, 'published_at', fi.published_at, 'feed_title', us.feed_title)
+    FROM
+        feed_items fi
+        JOIN user_subscriptions us ON fi.user_subscription_id = us.id
+            AND fi.user_id = us.user_id
+    WHERE
+        fi.user_id = target_user_id
+        AND fi.soft_deleted = FALSE
+        AND fi.title_emb IS NOT NULL
+        AND(1 -(fi.title_emb <=> query_embedding)) > match_threshold
+    UNION ALL
     -- 要約
     SELECT
-        'summary'::Text AS content_type,
+        'summary',
         ds.id,
-        COALESCE(ds.summary_title, 'No Title') AS title,
-        COALESCE(ds.markdown, '') AS content,
-(1 -(ds.summary_emb <=> query_embedding)) AS similarity,
-        jsonb_build_object('summary_date', ds.summary_date, 'has_script',(ds.script_text IS NOT NULL)) AS metadata
+        COALESCE(ds.summary_title, 'No Title'),
+        COALESCE(ds.markdown, ''),
+(1 -(ds.summary_emb <=> query_embedding)),
+        jsonb_build_object('summary_date', ds.summary_date, 'has_script', ds.script_text IS NOT NULL)
     FROM
         daily_summaries ds
     WHERE
         ds.user_id = target_user_id
         AND ds.soft_deleted = FALSE
         AND ds.summary_emb IS NOT NULL
-        AND(1 -(ds.summary_emb <=> query_embedding)) > match_threshold)
-UNION ALL(
-    -- ポッドキャストエピソード
+        AND(1 -(ds.summary_emb <=> query_embedding)) > match_threshold
+    UNION ALL
+    -- ポッドキャスト
     SELECT
-        'podcast'::Text AS content_type,
+        'podcast',
         pe.id,
-        COALESCE(pe.title, 'No Title') AS title,
-        COALESCE(pe.title, '') AS content,
-(1 -(pe.title_emb <=> query_embedding)) AS similarity,
-        jsonb_build_object('audio_url', pe.audio_url, 'summary_id', pe.summary_id, 'created_at', pe.created_at) AS metadata
+        COALESCE(pe.title, 'No Title'),
+        COALESCE(pe.title, ''),
+(1 -(pe.title_emb <=> query_embedding)),
+        jsonb_build_object('audio_url', pe.audio_url, 'summary_id', pe.summary_id, 'created_at', pe.created_at)
     FROM
         podcast_episodes pe
     WHERE
         pe.user_id = target_user_id
         AND pe.soft_deleted = FALSE
         AND pe.title_emb IS NOT NULL
-        AND(1 -(pe.title_emb <=> query_embedding)) > match_threshold)
-ORDER BY
-    similarity DESC
-LIMIT match_count;
+        AND(1 -(pe.title_emb <=> query_embedding)) > match_threshold
+    ORDER BY
+        similarity DESC
+    LIMIT match_count;
 END;
 $$;
 
--- インデックスの作成（パフォーマンス向上）
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_feed_items_title_emb_hnsw ON feed_items USING hnsw(title_emb vector_cosine_ops)
+--  インデックス
+-- CONCURRENTLYなし
+CREATE INDEX IF NOT EXISTS idx_feed_items_title_emb_hnsw ON feed_items USING hnsw(title_emb vector_cosine_ops)
 WHERE
     title_emb IS NOT NULL AND soft_deleted = FALSE;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_daily_summaries_summary_emb_hnsw ON daily_summaries USING hnsw(summary_emb vector_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_daily_summaries_summary_emb_hnsw ON daily_summaries USING hnsw(summary_emb vector_cosine_ops)
 WHERE
     summary_emb IS NOT NULL AND soft_deleted = FALSE;
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_podcast_episodes_title_emb_hnsw ON podcast_episodes USING hnsw(title_emb vector_cosine_ops)
+CREATE INDEX IF NOT EXISTS idx_podcast_episodes_title_emb_hnsw ON podcast_episodes USING hnsw(title_emb vector_cosine_ops)
 WHERE
     title_emb IS NOT NULL AND soft_deleted = FALSE;
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tags_tag_emb_hnsw ON tags USING hnsw(tag_emb vector_cosine_ops)
-WHERE
-    tag_emb IS NOT NULL AND soft_deleted = FALSE;
 

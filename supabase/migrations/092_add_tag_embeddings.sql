@@ -1,72 +1,135 @@
--- tagsテーブルにベクトル埋め込み、説明、色のカラムを追加
--- ベクトル埋め込み用カラム追加
+-- depends-on: 91
+CREATE OR REPLACE FUNCTION get_tag_statistics()
+    RETURNS TABLE(
+        total_tags Bigint,
+        root_tags Bigint,
+        total_subscriptions Bigint,
+        total_feed_items Bigint)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        -- タグ総数
+        -- 論理削除を除外
+(
+            SELECT
+                COUNT(*)
+            FROM
+                tags
+            WHERE
+                user_id = auth.uid()
+                AND soft_deleted = FALSE), /* 親を持たないルートタグ数 */(
+            SELECT
+                COUNT(*)
+            FROM tags
+            WHERE
+                user_id = auth.uid()
+            AND parent_tag_id IS NULL
+            AND soft_deleted = FALSE), /* 購読×タグのリンク総数 */(
+            SELECT
+                COUNT(*)
+            FROM user_subscription_tags
+        WHERE
+            user_id = auth.uid()
+        AND soft_deleted = FALSE), /* フィードアイテム×タグのリンク総数 */(
+            SELECT
+                COUNT(*)
+            FROM feed_item_tags
+        WHERE
+            user_id = auth.uid()
+        AND soft_deleted = FALSE);
+END;
+$$;
+
+-- tagsテーブルに列を追加
 ALTER TABLE tags
     ADD COLUMN IF NOT EXISTS tag_emb vector(1536),
     ADD COLUMN IF NOT EXISTS description Text,
     ADD COLUMN IF NOT EXISTS color Text;
 
--- 色の制約追加（Hex形式）
-ALTER TABLE tags
-    ADD CONSTRAINT check_color_format CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$');
+--  Hexカラー(#RRGGBB)制約
+DO $$
+BEGIN
+    IF NOT EXISTS(
+        SELECT
+            1
+        FROM
+            pg_constraint
+        WHERE
+            conname = 'check_color_format'
+            AND conrelid = 'tags'::Regclass) THEN
+    ALTER TABLE tags
+        ADD CONSTRAINT check_color_format CHECK(color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$');
+END IF;
+END;
+$$;
 
--- tagsテーブル用のベクトル検索インデックス
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tags_tag_emb_hnsw ON tags USING hnsw(tag_emb vector_cosine_ops)
+-- インデックス
+-- トランザクション内：CONCURRENTLY 不要
+CREATE INDEX IF NOT EXISTS idx_tags_tag_emb_hnsw ON tags USING hnsw(tag_emb vector_cosine_ops)
 WHERE
     tag_emb IS NOT NULL AND soft_deleted = FALSE;
 
--- 階層構造用のインデックス
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tags_parent_tag_id ON tags(parent_tag_id, user_id)
+CREATE INDEX IF NOT EXISTS idx_tags_parent_tag_id ON tags(parent_tag_id, user_id)
 WHERE
     soft_deleted = FALSE;
 
--- タグ名での検索用インデックス
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tags_name_user ON tags(user_id, tag_name)
+CREATE INDEX IF NOT EXISTS idx_tags_name_user ON tags(user_id, tag_name)
 WHERE
     soft_deleted = FALSE;
 
--- 階層構造の整合性を保つためのチェック制約
-ALTER TABLE tags
-    ADD CONSTRAINT check_no_self_reference CHECK (id != parent_tag_id);
+-- 自己参照禁止制約
+-- id <> parent_tag_id
+DO $$
+BEGIN
+    IF NOT EXISTS(
+        SELECT
+            1
+        FROM
+            pg_constraint
+        WHERE
+            conname = 'check_no_self_reference'
+            AND conrelid = 'tags'::Regclass) THEN
+    ALTER TABLE tags
+        ADD CONSTRAINT check_no_self_reference CHECK(id <> parent_tag_id);
+END IF;
+END;
+$$;
 
--- タグの階層深度を制限（最大5階層）
+--  深さ ≤5 + 循環参照防止トリガー
 CREATE OR REPLACE FUNCTION check_tag_depth()
     RETURNS TRIGGER
+    LANGUAGE plpgsql
     AS $$
 DECLARE
-    depth_count Integer := 0;
-    current_parent Integer := NEW.parent_tag_id;
+    depth_cnt Int := 0;
+    current_parent Bigint := NEW.parent_tag_id;
 BEGIN
-    -- 親タグがnullの場合（ルートタグ）は制限なし
+    -- 親がNULLの場合は制限なし
     IF NEW.parent_tag_id IS NULL THEN
         RETURN NEW;
     END IF;
-    -- 親タグから上に向かって階層をカウント
-    WHILE current_parent IS NOT NULL
-        AND depth_count < 10 LOOP
-            depth_count := depth_count + 1;
-            -- 最大階層数チェック
-            IF depth_count >= 5 THEN
-                RAISE EXCEPTION 'Tag hierarchy cannot exceed 5 levels';
-            END IF;
-            -- 循環参照チェック
-            IF current_parent = NEW.id THEN
-                RAISE EXCEPTION 'Circular reference detected in tag hierarchy';
-            END IF;
-            -- 次の親を取得
-            SELECT
-                parent_tag_id INTO current_parent
-            FROM
-                tags
-            WHERE
-                id = current_parent
-                AND user_id = NEW.user_id;
-        END LOOP;
+    WHILE current_parent IS NOT NULL LOOP
+        depth_cnt := depth_cnt + 1;
+        IF depth_cnt > 5 THEN
+            RAISE EXCEPTION 'Tag hierarchy cannot exceed 5 levels';
+        END IF;
+        IF current_parent = NEW.id THEN
+            RAISE EXCEPTION 'Circular reference detected in tag hierarchy';
+        END IF;
+        SELECT
+            parent_tag_id INTO current_parent
+        FROM
+            tags
+        WHERE
+            id = current_parent
+            AND user_id = NEW.user_id;
+    END LOOP;
     RETURN NEW;
 END;
-$$
-LANGUAGE plpgsql;
+$$;
 
--- トリガーの作成
 DROP TRIGGER IF EXISTS trigger_check_tag_depth ON tags;
 
 CREATE TRIGGER trigger_check_tag_depth
@@ -74,78 +137,7 @@ CREATE TRIGGER trigger_check_tag_depth
     FOR EACH ROW
     EXECUTE FUNCTION check_tag_depth();
 
--- タグ統計を取得する関数
-CREATE OR REPLACE FUNCTION get_tag_statistics(target_user_id Uuid)
-    RETURNS TABLE(
-        total_tags Bigint,
-        root_tags Bigint,
-        max_depth Integer,
-        tagged_subscriptions Bigint,
-        tagged_feed_items Bigint
-    )
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-(
-            SELECT
-                COUNT(*)
-            FROM
-                tags
-            WHERE
-                user_id = target_user_id
-                AND soft_deleted = FALSE) AS total_tags,
-(
-            SELECT
-                COUNT(*)
-            FROM
-                tags
-            WHERE
-                user_id = target_user_id
-                AND parent_tag_id IS NULL
-                AND soft_deleted = FALSE) AS root_tags,
-(
-            SELECT
-                COALESCE(MAX(( WITH RECURSIVE tag_path AS(
-                            SELECT
-                                id, parent_tag_id, 0 AS depth
-                            FROM tags
-                            WHERE
-                                user_id = target_user_id
-                                AND parent_tag_id IS NULL
-                                AND soft_deleted = FALSE
-                            UNION ALL
-                            SELECT
-                                t.id, t.parent_tag_id, tp.depth + 1
-                            FROM tags t
-                            JOIN tag_path tp ON t.parent_tag_id = tp.id
-                            WHERE
-                                t.user_id = target_user_id
-                                AND t.soft_deleted = FALSE)
-                            SELECT
-                                depth
-                            FROM tag_path)), 0)) AS max_depth,
-(
-            SELECT
-                COUNT(DISTINCT user_subscription_id)
-            FROM
-                user_subscription_tags
-            WHERE
-                user_id = target_user_id
-                AND soft_deleted = FALSE) AS tagged_subscriptions,
-(
-            SELECT
-                COUNT(DISTINCT feed_item_id)
-            FROM
-                feed_item_tags
-            WHERE
-                user_id = target_user_id
-                AND soft_deleted = FALSE) AS tagged_feed_items;
-END;
-$$
-LANGUAGE plpgsql;
-
--- 階層構造でタグを取得する関数
+-- タグ階層取得関数
 CREATE OR REPLACE FUNCTION get_tag_hierarchy(target_user_id Uuid)
     RETURNS TABLE(
         id Bigint,
@@ -153,16 +145,16 @@ CREATE OR REPLACE FUNCTION get_tag_hierarchy(target_user_id Uuid)
         parent_tag_id Bigint,
         description Text,
         color Text,
-        level Integer,
+        level Int,
         path Text,
         children_count Bigint,
         subscription_count Bigint,
-        feed_item_count Bigint
-    )
+        feed_item_count Bigint)
+    LANGUAGE plpgsql
     AS $$
 BEGIN
-    RETURN QUERY WITH RECURSIVE tag_hierarchy AS(
-        -- ルートタグ（親がnull）
+    RETURN QUERY WITH RECURSIVE th AS(
+        -- ルートノード
         SELECT
             t.id,
             t.tag_name,
@@ -179,22 +171,22 @@ BEGIN
             AND t.parent_tag_id IS NULL
             AND t.soft_deleted = FALSE
         UNION ALL
-        -- 子タグ
+        -- 子ノード
         SELECT
-            t.id,
-            t.tag_name,
-            t.parent_tag_id,
-            t.description,
-            t.color,
-            th.level + 1,
-            th.path || ' > ' || t.tag_name,
-            t.created_at
+            c.id,
+            c.tag_name,
+            c.parent_tag_id,
+            c.description,
+            c.color,
+            p.level + 1,
+            p.path || ' > ' || c.tag_name,
+            c.created_at
         FROM
-            tags t
-            JOIN tag_hierarchy th ON t.parent_tag_id = th.id
+            tags c
+            JOIN th p ON c.parent_tag_id = p.id
         WHERE
-            t.user_id = target_user_id
-            AND t.soft_deleted = FALSE
+            c.user_id = target_user_id
+            AND c.soft_deleted = FALSE
 )
     SELECT
         th.id,
@@ -203,49 +195,43 @@ BEGIN
         th.description,
         th.color,
         th.level,
-        th.path,
-(
+        th.path, /* 子タグ数 */(
             SELECT
                 COUNT(*)
-            FROM
-                tags child
+            FROM tags ch
             WHERE
-                child.parent_tag_id = th.id
-                AND child.user_id = target_user_id
-                AND child.soft_deleted = FALSE) AS children_count,
-(
+                ch.parent_tag_id = th.id
+                AND ch.user_id = target_user_id
+                AND ch.soft_deleted = FALSE), /* 購読数 */(
             SELECT
                 COUNT(*)
-            FROM
-                user_subscription_tags ust
+            FROM user_subscription_tags ust
             WHERE
                 ust.tag_id = th.id
                 AND ust.user_id = target_user_id
-                AND ust.soft_deleted = FALSE) AS subscription_count,
-(
+                AND ust.soft_deleted = FALSE), /* フィードアイテム数 */(
             SELECT
                 COUNT(*)
-            FROM
-                feed_item_tags fit
-            WHERE
-                fit.tag_id = th.id
-                AND fit.user_id = target_user_id
-                AND fit.soft_deleted = FALSE) AS feed_item_count
+            FROM feed_item_tags fit
+        WHERE
+            fit.tag_id = th.id
+            AND fit.user_id = target_user_id
+            AND fit.soft_deleted = FALSE)
     FROM
-        tag_hierarchy th
+        th
     ORDER BY
         th.level,
         th.created_at;
 END;
-$$
-LANGUAGE plpgsql;
+$$;
 
--- 関数のセキュリティ設定
-REVOKE ALL ON FUNCTION get_tag_statistics FROM PUBLIC;
+-- 関数の実行権限
+-- 認証ユーザーのみ
+REVOKE ALL ON FUNCTION get_tag_statistics() FROM PUBLIC;
 
-GRANT EXECUTE ON FUNCTION get_tag_statistics TO authenticated;
+REVOKE ALL ON FUNCTION get_tag_hierarchy(uuid) FROM PUBLIC;
 
-REVOKE ALL ON FUNCTION get_tag_hierarchy FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_tag_statistics() TO authenticated;
 
-GRANT EXECUTE ON FUNCTION get_tag_hierarchy TO authenticated;
+GRANT EXECUTE ON FUNCTION get_tag_hierarchy(uuid) TO authenticated;
 

@@ -1,165 +1,255 @@
--- 強化されたRow Level Security (RLS) ポリシー
--- daily_summariesテーブルのRLS有効化とポリシー
-ALTER TABLE daily_summaries ENABLE ROW LEVEL SECURITY;
+-- depends-on: 81
+-- ① tags テーブルに埋め込みベクトル＆メタ列を追加
+-- ② 制約・インデックス・トリガ―を冪等に整備
+-- ③ タグ階層取得関数 / 統計関数を実装
+-- ④ 必要な EXECUTE 権限だけを認証ユーザーに付与
+-- 列追加
+ALTER TABLE tags
+    ADD COLUMN IF NOT EXISTS tag_emb vector(1536),
+    ADD COLUMN IF NOT EXISTS description Text,
+    ADD COLUMN IF NOT EXISTS color Text;
 
--- daily_summariesのポリシー
-CREATE POLICY "Users can only access their own summaries" ON daily_summaries
-    FOR ALL
-        USING (auth.uid() = user_id);
+-- Hex カラー制約
+-- #RRGGBB
+DO $$
+BEGIN
+    IF NOT EXISTS(
+        SELECT
+            1
+        FROM
+            pg_constraint
+        WHERE
+            conname = 'check_color_format'
+            AND conrelid = 'tags'::Regclass) THEN
+    ALTER TABLE tags
+        ADD CONSTRAINT check_color_format CHECK(color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$');
+END IF;
+END;
+$$;
 
--- daily_summary_itemsテーブルのRLS有効化とポリシー
-ALTER TABLE daily_summary_items ENABLE ROW LEVEL SECURITY;
-
--- daily_summary_itemsのポリシー（要約とフィードアイテムの両方でユーザー確認）
-CREATE POLICY "Users can only access their own summary items" ON daily_summary_items
-    FOR ALL
-        USING (EXISTS (
-            SELECT
-                1
-            FROM
-                daily_summaries ds
-            WHERE
-                ds.id = daily_summary_items.summary_id AND ds.user_id = auth.uid())
-                AND EXISTS (
-                    SELECT
-                        1
-                    FROM
-                        feed_items fi
-                    WHERE
-                        fi.id = daily_summary_items.feed_item_id AND fi.user_id = auth.uid()));
-
--- podcast_episodesテーブルのRLS有効化とポリシー
-ALTER TABLE podcast_episodes ENABLE ROW LEVEL SECURITY;
-
--- podcast_episodesのポリシー
-CREATE POLICY "Users can only access their own podcast episodes" ON podcast_episodes
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- user_settingsテーブルの既存ポリシーを確認・更新
-DROP POLICY IF EXISTS "Users can manage their own settings" ON user_settings;
-
-CREATE POLICY "Users can only access their own settings" ON user_settings
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- feed_item_favoritesテーブルのポリシー強化
-DROP POLICY IF EXISTS "Users can manage their own favorites" ON feed_item_favorites;
-
-CREATE POLICY "Users can only access their own favorites" ON feed_item_favorites
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- feed_item_tagsテーブルのポリシー強化
-DROP POLICY IF EXISTS "Users can manage their own item tags" ON feed_item_tags;
-
-CREATE POLICY "Users can only access their own feed item tags" ON feed_item_tags
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- user_subscription_tagsテーブルのポリシー強化
-DROP POLICY IF EXISTS "Users can manage their own subscription tags" ON user_subscription_tags;
-
-CREATE POLICY "Users can only access their own subscription tags" ON user_subscription_tags
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- tagsテーブルのポリシー強化（階層関係も考慮）
-DROP POLICY IF EXISTS "Users can manage their own tags" ON tags;
-
-CREATE POLICY "Users can only access their own tags" ON tags
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- 既存テーブルのポリシー確認・強化
-DROP POLICY IF EXISTS "Users can manage their own subscriptions" ON user_subscriptions;
-
-CREATE POLICY "Users can only access their own subscriptions" ON user_subscriptions
-    FOR ALL
-        USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can manage their own feed items" ON feed_items;
-
-CREATE POLICY "Users can only access their own feed items" ON feed_items
-    FOR ALL
-        USING (auth.uid() = user_id);
-
--- 関数レベルのセキュリティ
--- ベクトル検索関数の実行権限を認証済みユーザーのみに制限
-REVOKE ALL ON FUNCTION search_feed_items_by_vector FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION search_feed_items_by_vector TO authenticated;
-
-REVOKE ALL ON FUNCTION search_summaries_by_vector FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION search_summaries_by_vector TO authenticated;
-
-REVOKE ALL ON FUNCTION search_podcast_episodes_by_vector FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION search_podcast_episodes_by_vector TO authenticated;
-
-REVOKE ALL ON FUNCTION search_tags_by_vector FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION search_tags_by_vector TO authenticated;
-
-REVOKE ALL ON FUNCTION search_all_content_by_vector FROM PUBLIC;
-
-GRANT EXECUTE ON FUNCTION search_all_content_by_vector TO authenticated;
-
--- セキュリティ監査用のビュー（管理者用）
-CREATE OR REPLACE VIEW security_audit_log AS
-SELECT
-    'daily_summaries' AS table_name,
-    id::Text AS record_id,
-    user_id,
-    created_at,
-    updated_at
-FROM
-    daily_summaries
+-- インデックス
+-- マイグレーションはトランザクション内で動くためCONCURRENTLY不要
+CREATE INDEX IF NOT EXISTS idx_tags_tag_emb_hnsw ON tags USING hnsw(tag_emb vector_cosine_ops)
 WHERE
-    soft_deleted = FALSE
-UNION ALL
-SELECT
-    'podcast_episodes' AS table_name,
-    id::Text AS record_id,
-    user_id,
-    created_at,
-    updated_at
-FROM
-    podcast_episodes
-WHERE
-    soft_deleted = FALSE
-UNION ALL
-SELECT
-    'feed_items' AS table_name,
-    id::Text AS record_id,
-    user_id,
-    created_at,
-    updated_at
-FROM
-    feed_items
+    tag_emb IS NOT NULL AND soft_deleted = FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_tags_parent_tag_id ON tags(parent_tag_id, user_id)
 WHERE
     soft_deleted = FALSE;
 
--- 管理者ロールのみがセキュリティ監査ビューにアクセス可能
-REVOKE ALL ON security_audit_log FROM PUBLIC;
+CREATE INDEX IF NOT EXISTS idx_tags_name_user ON tags(user_id, tag_name)
+WHERE
+    soft_deleted = FALSE;
 
--- GRANT SELECT ON security_audit_log TO service_role; -- 必要に応じてコメントアウト解除
--- データ整合性チェック用の制約
--- user_settingsでpodcast設定の整合性を保証
-ALTER TABLE user_settings
-    ADD CONSTRAINT check_podcast_schedule_format CHECK (podcast_schedule_time IS NULL OR podcast_schedule_time ~ '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$');
+--  自己参照禁止制約
+-- id <> parent_tag_id
+DO $$
+BEGIN
+    IF NOT EXISTS(
+        SELECT
+            1
+        FROM
+            pg_constraint
+        WHERE
+            conname = 'check_no_self_reference'
+            AND conrelid = 'tags'::Regclass) THEN
+    ALTER TABLE tags
+        ADD CONSTRAINT check_no_self_reference CHECK(id <> parent_tag_id);
+END IF;
+END;
+$$;
 
--- refresh_everyが最低5分以上であることを保証
-ALTER TABLE user_settings
-    ADD CONSTRAINT check_refresh_every_minimum CHECK (EXTRACT(EPOCH FROM refresh_every) >= 300 -- 5分 = 300秒
-);
+-- 深さ≤5 & 循環参照防止トリガー
+CREATE OR REPLACE FUNCTION check_tag_depth()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    depth_cnt Int := 0;
+    current_parent Bigint := NEW.parent_tag_id;
+BEGIN
+    -- 親がNULLの場合は制限なし
+    IF NEW.parent_tag_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+    WHILE current_parent IS NOT NULL LOOP
+        depth_cnt := depth_cnt + 1;
+        IF depth_cnt > 5 THEN
+            RAISE EXCEPTION 'Tag hierarchy cannot exceed 5 levels';
+        END IF;
+        IF current_parent = NEW.id THEN
+            RAISE EXCEPTION 'Circular reference detected in tag hierarchy';
+        END IF;
+        SELECT
+            parent_tag_id INTO current_parent
+        FROM
+            tags
+        WHERE
+            id = current_parent
+            AND user_id = NEW.user_id;
+    END LOOP;
+    RETURN NEW;
+END;
+$$;
 
--- daily_summariesの要約日付が現実的な範囲内であることを保証
-ALTER TABLE daily_summaries
-    ADD CONSTRAINT check_summary_date_range CHECK (summary_date >= '2020-01-01' AND summary_date <= CURRENT_DATE + Interval '1 day');
+DROP TRIGGER IF EXISTS trigger_check_tag_depth ON tags;
 
--- podcast_episodesがdaily_summariesと関連していることを保証
-ALTER TABLE podcast_episodes
-    ADD CONSTRAINT fk_podcast_summary FOREIGN KEY (summary_id, user_id) REFERENCES daily_summaries(id, user_id) ON DELETE CASCADE;
+CREATE TRIGGER trigger_check_tag_depth
+    BEFORE INSERT OR UPDATE ON tags
+    FOR EACH ROW
+    EXECUTE FUNCTION check_tag_depth();
+
+-- タグ階層 (ツリー) 取得関数
+CREATE OR REPLACE FUNCTION get_tag_hierarchy(target_user_id Uuid)
+    RETURNS TABLE(
+        id Bigint,
+        tag_name Text,
+        parent_tag_id Bigint,
+        description Text,
+        color Text,
+        level Int,
+        path Text,
+        children_count Bigint,
+        subscription_count Bigint,
+        feed_item_count Bigint)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN QUERY WITH RECURSIVE th AS(
+        -- ルートノード
+        SELECT
+            t.id,
+            t.tag_name,
+            t.parent_tag_id,
+            t.description,
+            t.color,
+            0 AS level,
+            t.tag_name AS path,
+            t.created_at
+        FROM
+            tags t
+        WHERE
+            t.user_id = target_user_id
+            AND t.parent_tag_id IS NULL
+            AND t.soft_deleted = FALSE
+        UNION ALL
+        -- 子ノード
+        SELECT
+            c.id,
+            c.tag_name,
+            c.parent_tag_id,
+            c.description,
+            c.color,
+            p.level + 1,
+            p.path || ' > ' || c.tag_name,
+            c.created_at
+        FROM
+            tags c
+            JOIN th p ON c.parent_tag_id = p.id
+        WHERE
+            c.user_id = target_user_id
+            AND c.soft_deleted = FALSE
+)
+    SELECT
+        th.id,
+        th.tag_name,
+        th.parent_tag_id,
+        th.description,
+        th.color,
+        th.level,
+        th.path,
+        -- 子タグ数
+(
+            SELECT
+                COUNT(*)
+            FROM tags ch
+            WHERE
+                ch.parent_tag_id = th.id
+                AND ch.user_id = target_user_id
+                AND ch.soft_deleted = FALSE),
+        -- 購読数
+(
+            SELECT
+                COUNT(*)
+            FROM user_subscription_tags ust
+            WHERE
+                ust.tag_id = th.id
+                AND ust.user_id = target_user_id
+                AND ust.soft_deleted = FALSE),
+        -- フィードアイテム数
+(
+            SELECT
+                COUNT(*)
+            FROM feed_item_tags fit
+        WHERE
+            fit.tag_id = th.id
+            AND fit.user_id = target_user_id
+            AND fit.soft_deleted = FALSE)
+    FROM
+        th
+    ORDER BY
+        th.level,
+        th.created_at;
+END;
+$$;
+
+-- タグ統計取得関数
+CREATE OR REPLACE FUNCTION get_tag_statistics()
+    RETURNS TABLE(
+        total_tags Bigint,
+        root_tags Bigint,
+        total_subscriptions Bigint,
+        total_feed_items Bigint)
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        -- タグ総数
+        -- 論理削除除外
+(
+            SELECT
+                COUNT(*)
+            FROM
+                tags
+            WHERE
+                user_id = auth.uid()
+                AND soft_deleted = FALSE),
+        --  ルートタグ数
+(
+            SELECT
+                COUNT(*)
+            FROM tags
+            WHERE
+                user_id = auth.uid()
+            AND parent_tag_id IS NULL
+            AND soft_deleted = FALSE),
+        --  購読タグリンク数
+(
+            SELECT
+                COUNT(*)
+            FROM user_subscription_tags
+        WHERE
+            user_id = auth.uid()
+        AND soft_deleted = FALSE),
+        -- フィードアイテムタグリンク数
+(
+            SELECT
+                COUNT(*)
+            FROM feed_item_tags
+        WHERE
+            user_id = auth.uid()
+        AND soft_deleted = FALSE);
+END;
+$$;
+
+-- 権限設定
+-- 認証済みユーザーだけが自分のデータを取得できるようにする
+REVOKE ALL ON FUNCTION get_tag_statistics() FROM PUBLIC;
+
+REVOKE ALL ON FUNCTION get_tag_hierarchy(uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION get_tag_statistics() TO authenticated;
+
+GRANT EXECUTE ON FUNCTION get_tag_hierarchy(uuid) TO authenticated;
 
