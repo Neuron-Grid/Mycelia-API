@@ -22,60 +22,42 @@ ALTER TABLE public.feed_items RENAME COLUMN title_embedding TO title_emb;
 -- HNSWインデックス新設
 CREATE INDEX IF NOT EXISTS hnsw_feed_items__title_emb ON public.feed_items USING hnsw(title_emb vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 
-COMMENT ON INDEX hnsw_feed_items__title_emb IS 'For ANN search on active feed_items.title_emb';
+COMMENT ON INDEX hnsw_feed_items__title_emb IS 'For ANN search on feed_items.title_emb';
 
--- soft_deleted部分インデックス追加
-CREATE INDEX IF NOT EXISTS idx_user_subscriptions__active_user_id ON public.user_subscriptions(user_id)
-WHERE
-    soft_deleted = FALSE;
+-- user_id インデックス追加（ソフトデリートはアプリケーション層で制御）
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions__user_id ON public.user_subscriptions(user_id);
 
-COMMENT ON INDEX idx_user_subscriptions__active_user_id IS 'For efficiently querying active user_subscriptions by user_id.';
+COMMENT ON INDEX idx_user_subscriptions__user_id IS 'For efficiently querying user_subscriptions by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_feed_items__active_user_id ON public.feed_items(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_feed_items__user_id ON public.feed_items(user_id);
 
-COMMENT ON INDEX idx_feed_items__active_user_id IS 'For efficiently querying active feed_items by user_id.';
+COMMENT ON INDEX idx_feed_items__user_id IS 'For efficiently querying feed_items by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_feed_item_favorites__active_user_id ON public.feed_item_favorites(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_feed_item_favorites__user_id ON public.feed_item_favorites(user_id);
 
-COMMENT ON INDEX idx_feed_item_favorites__active_user_id IS 'For efficiently querying active feed_item_favorites by user_id.';
+COMMENT ON INDEX idx_feed_item_favorites__user_id IS 'For efficiently querying feed_item_favorites by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_tags__active_user_id ON public.tags(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tags__user_id ON public.tags(user_id);
 
-COMMENT ON INDEX idx_tags__active_user_id IS 'For efficiently querying active tags by user_id.';
+COMMENT ON INDEX idx_tags__user_id IS 'For efficiently querying tags by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_user_subscription_tags__active_user_id ON public.user_subscription_tags(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_subscription_tags__user_id ON public.user_subscription_tags(user_id);
 
-COMMENT ON INDEX idx_user_subscription_tags__active_user_id IS 'For efficiently querying active user_subscription_tags by user_id.';
+COMMENT ON INDEX idx_user_subscription_tags__user_id IS 'For efficiently querying user_subscription_tags by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_feed_item_tags__active_user_id ON public.feed_item_tags(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_feed_item_tags__user_id ON public.feed_item_tags(user_id);
 
-COMMENT ON INDEX idx_feed_item_tags__active_user_id IS 'For efficiently querying active feed_item_tags by user_id.';
+COMMENT ON INDEX idx_feed_item_tags__user_id IS 'For efficiently querying feed_item_tags by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_user_settings__active_user_id ON public.user_settings(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_user_settings__user_id ON public.user_settings(user_id);
 
-COMMENT ON INDEX idx_user_settings__active_user_id IS 'For efficiently querying active user_settings by user_id.';
+COMMENT ON INDEX idx_user_settings__user_id IS 'For efficiently querying user_settings by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_daily_summaries__active_user_id ON public.daily_summaries(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_daily_summaries__user_id ON public.daily_summaries(user_id);
 
-COMMENT ON INDEX idx_daily_summaries__active_user_id IS 'For efficiently querying active daily_summaries by user_id.';
+COMMENT ON INDEX idx_daily_summaries__user_id IS 'For efficiently querying daily_summaries by user_id.';
 
-CREATE INDEX IF NOT EXISTS idx_podcast_episodes__active_user_id ON public.podcast_episodes(user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_podcast_episodes__user_id ON public.podcast_episodes(user_id);
 
-COMMENT ON INDEX idx_podcast_episodes__active_user_id IS 'For efficiently querying active podcast_episodes by user_id.';
+COMMENT ON INDEX idx_podcast_episodes__user_id IS 'For efficiently querying podcast_episodes by user_id.';
 

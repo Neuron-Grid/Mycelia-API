@@ -31,15 +31,11 @@ $$;
 -- マイグレーションはトランザクション内で動くためCONCURRENTLY不要
 CREATE INDEX IF NOT EXISTS idx_tags_tag_emb_hnsw ON tags USING hnsw(tag_emb vector_cosine_ops)
 WHERE
-    tag_emb IS NOT NULL AND soft_deleted = FALSE;
+    tag_emb IS NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_tags_parent_tag_id ON tags(parent_tag_id, user_id)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tags_parent_tag_id ON tags(parent_tag_id, user_id);
 
-CREATE INDEX IF NOT EXISTS idx_tags_name_user ON tags(user_id, tag_name)
-WHERE
-    soft_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_tags_name_user ON tags(user_id, tag_name);
 
 --  自己参照禁止制約
 -- id <> parent_tag_id
@@ -131,7 +127,6 @@ BEGIN
         WHERE
             t.user_id = target_user_id
             AND t.parent_tag_id IS NULL
-            AND t.soft_deleted = FALSE
         UNION ALL
         -- 子ノード
         SELECT
@@ -148,7 +143,6 @@ BEGIN
             JOIN th p ON c.parent_tag_id = p.id
         WHERE
             c.user_id = target_user_id
-            AND c.soft_deleted = FALSE
 )
     SELECT
         th.id,
@@ -166,7 +160,7 @@ BEGIN
             WHERE
                 ch.parent_tag_id = th.id
                 AND ch.user_id = target_user_id
-                AND ch.soft_deleted = FALSE),
+),
         -- 購読数
 (
             SELECT
@@ -175,7 +169,7 @@ BEGIN
             WHERE
                 ust.tag_id = th.id
                 AND ust.user_id = target_user_id
-                AND ust.soft_deleted = FALSE),
+),
         -- フィードアイテム数
 (
             SELECT
@@ -184,7 +178,7 @@ BEGIN
         WHERE
             fit.tag_id = th.id
             AND fit.user_id = target_user_id
-            AND fit.soft_deleted = FALSE)
+)
     FROM
         th
     ORDER BY
@@ -214,7 +208,7 @@ BEGIN
                 tags
             WHERE
                 user_id = auth.uid()
-                AND soft_deleted = FALSE),
+),
         --  ルートタグ数
 (
             SELECT

@@ -28,7 +28,6 @@ BEGIN
             AND fi.user_id = us.user_id
     WHERE
         fi.user_id = target_user_id
-        AND fi.soft_deleted = FALSE
         AND fi.title_emb IS NOT NULL
         AND(1 -(fi.title_emb <=> query_embedding)) > match_threshold
     ORDER BY
@@ -61,7 +60,6 @@ BEGIN
         daily_summaries ds
     WHERE
         ds.user_id = target_user_id
-        AND ds.soft_deleted = FALSE
         AND ds.summary_emb IS NOT NULL
         AND(1 -(ds.summary_emb <=> query_embedding)) > match_threshold
     ORDER BY
@@ -94,7 +92,6 @@ BEGIN
         podcast_episodes pe
     WHERE
         pe.user_id = target_user_id
-        AND pe.soft_deleted = FALSE
         AND pe.title_emb IS NOT NULL
         AND(1 -(pe.title_emb <=> query_embedding)) > match_threshold
     ORDER BY
@@ -123,7 +120,6 @@ BEGIN
         tags t
     WHERE
         t.user_id = target_user_id
-        AND t.soft_deleted = FALSE
         AND t.tag_emb IS NOT NULL
         AND(1 -(t.tag_emb <=> query_embedding)) > match_threshold
     ORDER BY
@@ -159,7 +155,6 @@ BEGIN
             AND fi.user_id = us.user_id
     WHERE
         fi.user_id = target_user_id
-        AND fi.soft_deleted = FALSE
         AND fi.title_emb IS NOT NULL
         AND(1 -(fi.title_emb <=> query_embedding)) > match_threshold
     UNION ALL
@@ -175,7 +170,6 @@ BEGIN
         daily_summaries ds
     WHERE
         ds.user_id = target_user_id
-        AND ds.soft_deleted = FALSE
         AND ds.summary_emb IS NOT NULL
         AND(1 -(ds.summary_emb <=> query_embedding)) > match_threshold
     UNION ALL
@@ -191,7 +185,6 @@ BEGIN
         podcast_episodes pe
     WHERE
         pe.user_id = target_user_id
-        AND pe.soft_deleted = FALSE
         AND pe.title_emb IS NOT NULL
         AND(1 -(pe.title_emb <=> query_embedding)) > match_threshold
     ORDER BY
@@ -204,13 +197,13 @@ $$;
 -- CONCURRENTLYなし
 CREATE INDEX IF NOT EXISTS idx_feed_items_title_emb_hnsw ON feed_items USING hnsw(title_emb vector_cosine_ops)
 WHERE
-    title_emb IS NOT NULL AND soft_deleted = FALSE;
+    title_emb IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_daily_summaries_summary_emb_hnsw ON daily_summaries USING hnsw(summary_emb vector_cosine_ops)
 WHERE
-    summary_emb IS NOT NULL AND soft_deleted = FALSE;
+    summary_emb IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_podcast_episodes_title_emb_hnsw ON podcast_episodes USING hnsw(title_emb vector_cosine_ops)
 WHERE
-    title_emb IS NOT NULL AND soft_deleted = FALSE;
+    title_emb IS NOT NULL;
 

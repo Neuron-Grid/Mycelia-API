@@ -38,8 +38,8 @@ BEGIN
             -- owner_only ポリシを再作成
             EXECUTE format('CREATE POLICY owner_only ON %I.%I
                FOR ALL
-               USING      (user_id = auth.uid() AND soft_deleted IS FALSE)
-               WITH CHECK (user_id = auth.uid() AND soft_deleted IS FALSE);', v_schema, v_table);
+               USING      (user_id = auth.uid())
+               WITH CHECK (user_id = auth.uid());', v_schema, v_table);
         END LOOP;
 END;
 $$;
@@ -55,12 +55,12 @@ CREATE POLICY owner_only_daily_summary_items ON public.daily_summary_items
             FROM
                 public.daily_summaries
             WHERE
-                id = summary_id AND soft_deleted = FALSE) = auth.uid())
+                id = summary_id) = auth.uid())
             WITH CHECK ((
                 SELECT
                     user_id
                 FROM
                     public.daily_summaries
                 WHERE
-                    id = summary_id AND soft_deleted = FALSE) = auth.uid());
+                    id = summary_id) = auth.uid());
 
