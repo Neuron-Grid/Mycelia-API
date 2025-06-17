@@ -6,7 +6,7 @@ import { IntervalDto } from '../../feed/application/dto/subscription-interval.dt
 export class UpdateUserSettingsDto {
     @ApiPropertyOptional({
         description: 'デフォルトのRSSフィード更新間隔',
-        type: IntervalDto
+        type: IntervalDto,
     })
     @IsOptional()
     @ValidateNested()
@@ -15,7 +15,7 @@ export class UpdateUserSettingsDto {
 
     @ApiPropertyOptional({
         description: 'ポッドキャスト機能の有効/無効',
-        example: true
+        example: true,
     })
     @IsOptional()
     @IsBoolean()
@@ -24,19 +24,19 @@ export class UpdateUserSettingsDto {
     @ApiPropertyOptional({
         description: 'ポッドキャスト生成スケジュール時刻（HH:MM形式）',
         pattern: '^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$',
-        example: '07:30'
+        example: '07:30',
     })
     @IsOptional()
     @IsString()
     @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
-        message: 'Schedule time must be in HH:MM format (24-hour)'
+        message: 'Schedule time must be in HH:MM format (24-hour)',
     })
     podcast_schedule_time?: string
 
     @ApiPropertyOptional({
         description: 'ポッドキャスト言語',
         enum: ['ja-JP', 'en-US'],
-        example: 'ja-JP'
+        example: 'ja-JP',
     })
     @IsOptional()
     @IsString()
@@ -113,43 +113,43 @@ export class UpdateUserSettingsDto {
 export class UserSettingsResponseDto {
     @ApiProperty({
         description: 'ユーザーID',
-        example: '123e4567-e89b-12d3-a456-426614174000'
+        example: '123e4567-e89b-12d3-a456-426614174000',
     })
     user_id!: string
 
     @ApiProperty({
         description: 'RSSフィード更新間隔',
-        type: IntervalDto
+        type: IntervalDto,
     })
     refresh_every!: IntervalDto
 
     @ApiProperty({
         description: 'ポッドキャスト機能の有効/無効',
-        example: true
+        example: true,
     })
     podcast_enabled!: boolean
 
     @ApiProperty({
         description: 'ポッドキャスト生成スケジュール時刻',
-        example: '07:30'
+        example: '07:30',
     })
     podcast_schedule_time!: string | null
 
     @ApiProperty({
         description: 'ポッドキャスト言語',
-        example: 'ja-JP'
+        example: 'ja-JP',
     })
     podcast_language!: 'ja-JP' | 'en-US'
 
     @ApiProperty({
         description: '作成日時',
-        example: '2023-12-01T00:00:00Z'
+        example: '2023-12-01T00:00:00Z',
     })
     created_at!: string
 
     @ApiProperty({
         description: '更新日時',
-        example: '2023-12-01T00:00:00Z'
+        example: '2023-12-01T00:00:00Z',
     })
     updated_at!: string
 
@@ -168,12 +168,12 @@ export class UserSettingsResponseDto {
 
     // 人間が読みやすい形式でのサマリー
     getReadableSummary(): string {
-        const parts = [
-            `更新間隔: ${this.refresh_every.toHumanReadable()}`
-        ]
+        const parts = [`更新間隔: ${this.refresh_every.toHumanReadable()}`]
 
         if (this.podcast_enabled) {
-            parts.push(`ポッドキャスト: 有効（${this.podcast_schedule_time}、${this.podcast_language}）`)
+            parts.push(
+                `ポッドキャスト: 有効（${this.podcast_schedule_time}、${this.podcast_language}）`,
+            )
         } else {
             parts.push('ポッドキャスト: 無効')
         }

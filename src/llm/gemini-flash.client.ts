@@ -85,11 +85,9 @@ export class GeminiFlashClient implements LlmService {
             async () => {
                 // backOffのコールバックもasyncにする
                 return await firstValueFrom(
-                    this.http.post<TResponse>(
-                        `${this.apiUrl}?key=${this.apiKey}`,
-                        requestPayload,
-                        { timeout: this.defaultTimeout },
-                    ),
+                    this.http.post<TResponse>(`${this.apiUrl}?key=${this.apiKey}`, requestPayload, {
+                        timeout: this.defaultTimeout,
+                    }),
                 )
             },
             {

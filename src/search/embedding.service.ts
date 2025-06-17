@@ -28,32 +28,35 @@ export class EmbeddingService {
             const response = await fetch(`${this.baseUrl}/embeddings`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     model: 'text-embedding-3-small',
                     input: text.trim(),
-                    encoding_format: 'float'
-                })
+                    encoding_format: 'float',
+                }),
             })
 
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
+                throw new Error(
+                    `OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`,
+                )
             }
 
             const result = await response.json()
-            
+
             if (!result.data || result.data.length === 0) {
                 throw new Error('No embedding data returned from OpenAI API')
             }
 
             const embedding = result.data[0].embedding
-            this.logger.debug(`Generated embedding for text (${text.length} chars): ${embedding.length} dimensions`)
-            
-            return embedding
+            this.logger.debug(
+                `Generated embedding for text (${text.length} chars): ${embedding.length} dimensions`,
+            )
 
+            return embedding
         } catch (error) {
             this.logger.error(`Failed to generate embedding: ${error.message}`)
             throw error
@@ -71,7 +74,7 @@ export class EmbeddingService {
         }
 
         // 空のテキストを除外
-        const validTexts = texts.filter(text => text && text.trim().length > 0)
+        const validTexts = texts.filter((text) => text && text.trim().length > 0)
         if (validTexts.length === 0) {
             throw new Error('No valid texts provided')
         }
@@ -80,32 +83,33 @@ export class EmbeddingService {
             const response = await fetch(`${this.baseUrl}/embeddings`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    Authorization: `Bearer ${this.apiKey}`,
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     model: 'text-embedding-3-small',
-                    input: validTexts.map(text => text.trim()),
-                    encoding_format: 'float'
-                })
+                    input: validTexts.map((text) => text.trim()),
+                    encoding_format: 'float',
+                }),
             })
 
             if (!response.ok) {
                 const errorData = await response.json()
-                throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`)
+                throw new Error(
+                    `OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`,
+                )
             }
 
             const result = await response.json()
-            
+
             if (!result.data || result.data.length === 0) {
                 throw new Error('No embedding data returned from OpenAI API')
             }
 
             const embeddings = result.data.map((item: any) => item.embedding)
             this.logger.debug(`Generated ${embeddings.length} embeddings`)
-            
-            return embeddings
 
+            return embeddings
         } catch (error) {
             this.logger.error(`Failed to generate embeddings: ${error.message}`)
             throw error

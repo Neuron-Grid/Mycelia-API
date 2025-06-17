@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { DailySummaryRepository } from './infrastructure/daily-summary.repository'
-import { LLM_SERVICE, LlmService, GeminiSummaryRequest } from './llm.service'
+import { GeminiSummaryRequest, LLM_SERVICE, LlmService } from './llm.service'
 
 export interface SummaryJobData {
     userId: string
@@ -27,7 +27,10 @@ export class SummaryWorker extends WorkerHost {
 
         try {
             // 既存の要約をチェック
-            const existingSummary = await this.dailySummaryRepository.findByUserAndDate(userId, summaryDate)
+            const existingSummary = await this.dailySummaryRepository.findByUserAndDate(
+                userId,
+                summaryDate,
+            )
             if (existingSummary && existingSummary.isCompleteSummary()) {
                 this.logger.log(`Summary already exists for user ${userId}, date ${summaryDate}`)
                 return { success: true, summaryId: existingSummary.id }
@@ -35,7 +38,7 @@ export class SummaryWorker extends WorkerHost {
 
             // 最新24時間のフィードアイテムを取得
             const feedItems = await this.dailySummaryRepository.getRecentFeedItems(userId, 24)
-            
+
             if (feedItems.length === 0) {
                 this.logger.log(`No feed items found for user ${userId}`)
                 return { success: false, reason: 'No feed items found' }
@@ -43,14 +46,14 @@ export class SummaryWorker extends WorkerHost {
 
             // LLM用のリクエストデータを準備
             const summaryRequest: GeminiSummaryRequest = {
-                articles: feedItems.map(item => ({
+                articles: feedItems.map((item) => ({
                     title: item.title,
                     content: item.description || '',
                     url: item.link,
                     publishedAt: item.published_at,
-                    language: this.detectLanguage(item.title, item.description)
+                    language: this.detectLanguage(item.title, item.description),
                 })),
-                targetLanguage: this.determineTargetLanguage(feedItems)
+                targetLanguage: this.determineTargetLanguage(feedItems),
             }
 
             // LLMで要約生成
@@ -61,29 +64,30 @@ export class SummaryWorker extends WorkerHost {
             if (summary) {
                 summary = await this.dailySummaryRepository.update(summary.id, userId, {
                     markdown: summaryResponse.content,
-                    summary_title: this.extractTitleFromMarkdown(summaryResponse.content)
+                    summary_title: this.extractTitleFromMarkdown(summaryResponse.content),
                 })
             } else {
                 summary = await this.dailySummaryRepository.create(userId, summaryDate, {
                     markdown: summaryResponse.content,
-                    summary_title: this.extractTitleFromMarkdown(summaryResponse.content)
+                    summary_title: this.extractTitleFromMarkdown(summaryResponse.content),
                 })
             }
 
             // フィードアイテムとの関連を保存
-            const feedItemIds = feedItems.map(item => item.id)
+            const feedItemIds = feedItems.map((item) => item.id)
             await this.dailySummaryRepository.addSummaryItems(summary.id, userId, feedItemIds)
 
-            this.logger.log(`Summary generated successfully for user ${userId}, summary ID: ${summary.id}`)
+            this.logger.log(
+                `Summary generated successfully for user ${userId}, summary ID: ${summary.id}`,
+            )
             return { success: true, summaryId: summary.id }
-
         } catch (error) {
             this.logger.error(`Failed to process summary job: ${error.message}`, error.stack)
             throw error
         }
     }
 
-    private detectLanguage(title: string, description: string = ''): string {
+    private detectLanguage(title: string, description = ''): string {
         const text = (title + ' ' + description).toLowerCase()
         // 簡単な日本語検出（ひらがな、カタカナ、漢字）
         const japaneseRegex = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/
@@ -91,10 +95,10 @@ export class SummaryWorker extends WorkerHost {
     }
 
     private determineTargetLanguage(feedItems: any[]): 'ja' | 'en' {
-        const japaneseCount = feedItems.filter(item => 
-            this.detectLanguage(item.title, item.description) === 'ja'
+        const japaneseCount = feedItems.filter(
+            (item) => this.detectLanguage(item.title, item.description) === 'ja',
         ).length
-        
+
         // 日本語記事が半数以上なら日本語、そうでなければ英語
         return japaneseCount >= feedItems.length / 2 ? 'ja' : 'en'
     }
@@ -105,7 +109,7 @@ export class SummaryWorker extends WorkerHost {
         if (titleMatch) {
             return titleMatch[1].trim()
         }
-        
+
         // タイトルが見つからない場合は最初の50文字を使用
         const plainText = markdown.replace(/[#*_`]/g, '').trim()
         return plainText.substring(0, 50) + (plainText.length > 50 ? '...' : '')

@@ -69,7 +69,10 @@ export class DomainConfigService {
     }
 
     // ユーザー設定を更新
-    async updateUserSettings(userId: string, dto: UpdateUserSettingsDto): Promise<UserSettingsResponseDto> {
+    async updateUserSettings(
+        userId: string,
+        dto: UpdateUserSettingsDto,
+    ): Promise<UserSettingsResponseDto> {
         // バリデーション
         if (!dto.isValid()) {
             const messages = dto.getValidationMessages()
@@ -79,7 +82,7 @@ export class DomainConfigService {
         try {
             const updateData = {
                 ...dto.toPostgresData(),
-                updated_at: new Date().toISOString()
+                updated_at: new Date().toISOString(),
             }
 
             const { data, error } = await this.supabaseRequestService
@@ -90,7 +93,7 @@ export class DomainConfigService {
                         user_id: userId,
                         ...updateData,
                     },
-                    { onConflict: 'user_id' }
+                    { onConflict: 'user_id' },
                 )
                 .select()
                 .single()
@@ -133,18 +136,20 @@ export class DomainConfigService {
 
     // ポッドキャスト設定のみを更新
     async updatePodcastSettings(
-        userId: string, 
-        enabled: boolean, 
-        scheduleTime?: string, 
-        language?: 'ja-JP' | 'en-US'
+        userId: string,
+        enabled: boolean,
+        scheduleTime?: string,
+        language?: 'ja-JP' | 'en-US',
     ): Promise<UserSettingsResponseDto> {
         if (enabled && (!scheduleTime || !language)) {
-            throw new BadRequestException('Schedule time and language are required when enabling podcast')
+            throw new BadRequestException(
+                'Schedule time and language are required when enabling podcast',
+            )
         }
 
         const updateData: any = {
             podcast_enabled: enabled,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
         }
 
         if (enabled) {
@@ -186,7 +191,7 @@ export class DomainConfigService {
 
             if (error) throw error
 
-            return data.map(record => record.user_id)
+            return data.map((record) => record.user_id)
         } catch (error) {
             this.logger.error(`Failed to get users for podcast generation: ${error.message}`)
             return []
@@ -197,7 +202,7 @@ export class DomainConfigService {
     async getUserSettingsStats(userId: string) {
         try {
             const settings = await this.getUserSettings(userId)
-            
+
             return {
                 hasCustomSettings: true,
                 refreshInterval: settings.refresh_every.toHumanReadable(),
@@ -205,7 +210,7 @@ export class DomainConfigService {
                 podcastSchedule: settings.podcast_schedule_time,
                 podcastLanguage: settings.podcast_language,
                 lastUpdated: settings.updated_at,
-                summary: settings.getReadableSummary()
+                summary: settings.getReadableSummary(),
             }
         } catch (error) {
             this.logger.error(`Failed to get user settings stats: ${error.message}`)
@@ -216,7 +221,7 @@ export class DomainConfigService {
                 podcastSchedule: null,
                 podcastLanguage: 'ja-JP',
                 lastUpdated: null,
-                summary: 'デフォルト設定'
+                summary: 'デフォルト設定',
             }
         }
     }

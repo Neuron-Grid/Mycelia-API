@@ -28,16 +28,16 @@ export class VectorSearchService {
 
     // フィードアイテムのベクトル検索
     async searchFeedItems(
-        userId: string, 
-        query: string, 
-        options: SearchOptions = {}
+        userId: string,
+        query: string,
+        options: SearchOptions = {},
     ): Promise<SearchResult[]> {
         const { limit = 20, threshold = 0.7 } = options
 
         try {
             // クエリのベクトル化
             const queryEmbedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(query)
+                this.embeddingService.preprocessText(query),
             )
 
             // PostgreSQLのベクトル検索を実行
@@ -47,7 +47,7 @@ export class VectorSearchService {
                     query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId
+                    target_user_id: userId,
                 })
 
             if (error) {
@@ -64,10 +64,9 @@ export class VectorSearchService {
                 metadata: {
                     link: item.link,
                     published_at: item.published_at,
-                    feed_title: item.feed_title
-                }
+                    feed_title: item.feed_title,
+                },
             }))
-
         } catch (error) {
             this.logger.error(`Failed to search feed items: ${error.message}`)
             return []
@@ -76,16 +75,16 @@ export class VectorSearchService {
 
     // 要約のベクトル検索
     async searchSummaries(
-        userId: string, 
-        query: string, 
-        options: SearchOptions = {}
+        userId: string,
+        query: string,
+        options: SearchOptions = {},
     ): Promise<SearchResult[]> {
         const { limit = 20, threshold = 0.7 } = options
 
         try {
             // クエリのベクトル化
             const queryEmbedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(query)
+                this.embeddingService.preprocessText(query),
             )
 
             // PostgreSQLのベクトル検索を実行
@@ -95,7 +94,7 @@ export class VectorSearchService {
                     query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId
+                    target_user_id: userId,
                 })
 
             if (error) {
@@ -111,10 +110,9 @@ export class VectorSearchService {
                 type: 'summary' as const,
                 metadata: {
                     summary_date: item.summary_date,
-                    has_script: !!item.script_text
-                }
+                    has_script: !!item.script_text,
+                },
             }))
-
         } catch (error) {
             this.logger.error(`Failed to search summaries: ${error.message}`)
             return []
@@ -123,16 +121,16 @@ export class VectorSearchService {
 
     // ポッドキャストエピソードのベクトル検索
     async searchPodcastEpisodes(
-        userId: string, 
-        query: string, 
-        options: SearchOptions = {}
+        userId: string,
+        query: string,
+        options: SearchOptions = {},
     ): Promise<SearchResult[]> {
         const { limit = 20, threshold = 0.7 } = options
 
         try {
             // クエリのベクトル化
             const queryEmbedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(query)
+                this.embeddingService.preprocessText(query),
             )
 
             // PostgreSQLのベクトル検索を実行
@@ -142,7 +140,7 @@ export class VectorSearchService {
                     query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId
+                    target_user_id: userId,
                 })
 
             if (error) {
@@ -159,10 +157,9 @@ export class VectorSearchService {
                 metadata: {
                     audio_url: item.audio_url,
                     summary_id: item.summary_id,
-                    created_at: item.created_at
-                }
+                    created_at: item.created_at,
+                },
             }))
-
         } catch (error) {
             this.logger.error(`Failed to search podcast episodes: ${error.message}`)
             return []
@@ -171,9 +168,9 @@ export class VectorSearchService {
 
     // 統合検索（全タイプを横断検索）
     async searchAll(
-        userId: string, 
-        query: string, 
-        options: SearchOptions = {}
+        userId: string,
+        query: string,
+        options: SearchOptions = {},
     ): Promise<SearchResult[]> {
         const { includeTypes = ['feed_item', 'summary', 'podcast'], limit = 20 } = options
         const results: SearchResult[] = []
@@ -185,28 +182,31 @@ export class VectorSearchService {
             const promises = []
 
             if (includeTypes.includes('feed_item')) {
-                promises.push(this.searchFeedItems(userId, query, { ...options, limit: limitPerType }))
+                promises.push(
+                    this.searchFeedItems(userId, query, { ...options, limit: limitPerType }),
+                )
             }
 
             if (includeTypes.includes('summary')) {
-                promises.push(this.searchSummaries(userId, query, { ...options, limit: limitPerType }))
+                promises.push(
+                    this.searchSummaries(userId, query, { ...options, limit: limitPerType }),
+                )
             }
 
             if (includeTypes.includes('podcast')) {
-                promises.push(this.searchPodcastEpisodes(userId, query, { ...options, limit: limitPerType }))
+                promises.push(
+                    this.searchPodcastEpisodes(userId, query, { ...options, limit: limitPerType }),
+                )
             }
 
             const searchResults = await Promise.all(promises)
-            
+
             // 結果をマージして類似度でソート
             for (const result of searchResults) {
                 results.push(...result)
             }
 
-            return results
-                .sort((a, b) => b.similarity - a.similarity)
-                .slice(0, limit)
-
+            return results.sort((a, b) => b.similarity - a.similarity).slice(0, limit)
         } catch (error) {
             this.logger.error(`Failed to perform unified search: ${error.message}`)
             return []
@@ -214,11 +214,16 @@ export class VectorSearchService {
     }
 
     // フィードアイテムのベクトル埋め込みを更新
-    async updateFeedItemEmbedding(feedItemId: number, userId: string, title: string, description?: string): Promise<void> {
+    async updateFeedItemEmbedding(
+        feedItemId: number,
+        userId: string,
+        title: string,
+        description?: string,
+    ): Promise<void> {
         try {
             const content = `${title} ${description || ''}`.trim()
             const embedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(content)
+                this.embeddingService.preprocessText(content),
             )
 
             const { error } = await this.supabaseRequestService
@@ -231,7 +236,6 @@ export class VectorSearchService {
             if (error) throw error
 
             this.logger.debug(`Updated embedding for feed item ${feedItemId}`)
-
         } catch (error) {
             this.logger.error(`Failed to update feed item embedding: ${error.message}`)
             throw error
@@ -239,10 +243,14 @@ export class VectorSearchService {
     }
 
     // 要約のベクトル埋め込みを更新
-    async updateSummaryEmbedding(summaryId: number, userId: string, content: string): Promise<void> {
+    async updateSummaryEmbedding(
+        summaryId: number,
+        userId: string,
+        content: string,
+    ): Promise<void> {
         try {
             const embedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(content)
+                this.embeddingService.preprocessText(content),
             )
 
             const { error } = await this.supabaseRequestService
@@ -255,7 +263,6 @@ export class VectorSearchService {
             if (error) throw error
 
             this.logger.debug(`Updated embedding for summary ${summaryId}`)
-
         } catch (error) {
             this.logger.error(`Failed to update summary embedding: ${error.message}`)
             throw error
@@ -263,10 +270,14 @@ export class VectorSearchService {
     }
 
     // ポッドキャストエピソードのベクトル埋め込みを更新
-    async updatePodcastEpisodeEmbedding(episodeId: number, userId: string, title: string): Promise<void> {
+    async updatePodcastEpisodeEmbedding(
+        episodeId: number,
+        userId: string,
+        title: string,
+    ): Promise<void> {
         try {
             const embedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(title)
+                this.embeddingService.preprocessText(title),
             )
 
             const { error } = await this.supabaseRequestService
@@ -279,7 +290,6 @@ export class VectorSearchService {
             if (error) throw error
 
             this.logger.debug(`Updated embedding for podcast episode ${episodeId}`)
-
         } catch (error) {
             this.logger.error(`Failed to update podcast episode embedding: ${error.message}`)
             throw error

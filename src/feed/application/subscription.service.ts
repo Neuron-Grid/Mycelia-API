@@ -2,8 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
 import { Database } from 'src/types/schema'
 import { SubscriptionRepository } from '../infrastructure/subscription.repository'
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
 import { IntervalDto, UpdateSubscriptionIntervalDto } from './dto/subscription-interval.dto'
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
 
 type Row = Database['public']['Tables']['user_subscriptions']['Row']
 
@@ -34,7 +34,12 @@ export class SubscriptionService {
     }
 
     // 購読を追加（間隔設定付き）
-    async addSubscription(userId: string, feedUrl: string, feedTitle: string, updateInterval?: IntervalDto) {
+    async addSubscription(
+        userId: string,
+        feedUrl: string,
+        feedTitle: string,
+        updateInterval?: IntervalDto,
+    ) {
         // URLの妥当性チェック
         if (!this.isValidFeedUrl(feedUrl)) {
             throw new BadRequestException('Invalid feed URL format')
@@ -42,7 +47,9 @@ export class SubscriptionService {
 
         // 更新間隔の検証
         if (updateInterval && !updateInterval.isValidInterval()) {
-            throw new BadRequestException('Invalid update interval: must be between 5 minutes and 24 hours')
+            throw new BadRequestException(
+                'Invalid update interval: must be between 5 minutes and 24 hours',
+            )
         }
 
         return await this.repo.insertSubscription(userId, feedUrl, feedTitle)
@@ -73,7 +80,11 @@ export class SubscriptionService {
     }
 
     // 更新間隔の変更
-    async updateSubscriptionInterval(userId: string, subId: number, intervalDto: UpdateSubscriptionIntervalDto) {
+    async updateSubscriptionInterval(
+        userId: string,
+        subId: number,
+        intervalDto: UpdateSubscriptionIntervalDto,
+    ) {
         if (!intervalDto.isValid()) {
             throw new BadRequestException(intervalDto.getValidationMessage())
         }
@@ -84,12 +95,12 @@ export class SubscriptionService {
         }
 
         this.logger.log(
-            `Updating subscription ${subId} interval for user ${userId}: ${intervalDto.interval.toHumanReadable()}`
+            `Updating subscription ${subId} interval for user ${userId}: ${intervalDto.interval.toHumanReadable()}`,
         )
 
         // 間隔更新メソッドをリポジトリに追加する必要があります
         // return await this.repo.updateSubscriptionInterval(subId, userId, intervalDto.interval.toPostgresInterval())
-        
+
         // 暫定的にタイトル更新として実装
         return await this.repo.updateSubscriptionTitle(subId, userId, sub.feed_title || '')
     }
@@ -97,15 +108,15 @@ export class SubscriptionService {
     // フィードの手動更新
     async refreshSubscription(userId: string, subId: number) {
         this.logger.log(`Manually refreshing subscription ${subId} for user ${userId}`)
-        
+
         const sub = await this.repo.findOne(subId, userId)
         if (!sub) {
             throw new NotFoundException(`Subscription not found (id=${subId}, user=${userId})`)
         }
-        
+
         // next_fetch_atを現在時刻に設定して即座に更新対象にする
         // リポジトリにメソッド追加が必要
-        
+
         return { message: 'Subscription marked for immediate update' }
     }
 

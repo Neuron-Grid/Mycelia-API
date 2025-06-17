@@ -39,7 +39,7 @@ export class FeedSchedulerService {
 
         try {
             const dueSubscriptions = await this.subscriptionService.findDueSubscriptions(new Date())
-            
+
             if (dueSubscriptions.length === 0) {
                 this.logger.debug('No due subscriptions found')
                 return
@@ -72,7 +72,6 @@ export class FeedSchedulerService {
 
                 this.logger.debug(`Queued feed fetch job for subscription ${subscription.id}`)
             }
-
         } catch (error) {
             this.logger.error(`Failed to schedule feed updates: ${error.message}`, error.stack)
         }
@@ -109,7 +108,6 @@ export class FeedSchedulerService {
 
                 this.logger.debug(`Queued summary generation for user ${userId}`)
             }
-
         } catch (error) {
             this.logger.error(`Failed to schedule auto summaries: ${error.message}`, error.stack)
         }
@@ -141,9 +139,10 @@ export class FeedSchedulerService {
                     removeOnFail: 3,
                 })
 
-                this.logger.debug(`Queued podcast generation for user ${userId}, summary ${summaryId}`)
+                this.logger.debug(
+                    `Queued podcast generation for user ${userId}, summary ${summaryId}`,
+                )
             }
-
         } catch (error) {
             this.logger.error(`Failed to schedule auto podcasts: ${error.message}`, error.stack)
         }
@@ -153,7 +152,10 @@ export class FeedSchedulerService {
     async triggerFeedUpdate(subscriptionId: number, userId: string) {
         this.logger.log(`Manually triggering feed update for subscription ${subscriptionId}`)
 
-        const subscription = await this.subscriptionService.getSubscriptionById(userId, subscriptionId)
+        const subscription = await this.subscriptionService.getSubscriptionById(
+            userId,
+            subscriptionId,
+        )
         if (!subscription) {
             throw new Error('Subscription not found')
         }
@@ -177,8 +179,10 @@ export class FeedSchedulerService {
     // 手動で要約生成をトリガー
     async triggerSummaryGeneration(userId: string, date?: string) {
         const summaryDate = date || new Date().toISOString().split('T')[0]
-        
-        this.logger.log(`Manually triggering summary generation for user ${userId}, date ${summaryDate}`)
+
+        this.logger.log(
+            `Manually triggering summary generation for user ${userId}, date ${summaryDate}`,
+        )
 
         const jobData: SummaryGenerationJobData = {
             userId,
@@ -196,7 +200,9 @@ export class FeedSchedulerService {
 
     // 手動でポッドキャスト生成をトリガー
     async triggerPodcastGeneration(userId: string, summaryId: number) {
-        this.logger.log(`Manually triggering podcast generation for user ${userId}, summary ${summaryId}`)
+        this.logger.log(
+            `Manually triggering podcast generation for user ${userId}, summary ${summaryId}`,
+        )
 
         const jobData: PodcastGenerationJobData = {
             userId,
@@ -216,21 +222,23 @@ export class FeedSchedulerService {
     private async getActiveUsersForSummary(): Promise<string[]> {
         // 実装例: 最近24時間でフィードアイテムが追加されたユーザー
         // この実装は簡略化されており、実際のクエリが必要
-        
+
         // TODO: RepositoryまたはDatabaseサービスから取得
         // const activeUsers = await this.someRepository.getActiveUsers()
-        
+
         // 暫定的に空配列を返す
         return []
     }
 
     // ポッドキャスト生成対象のユーザーと要約を取得
-    private async getActiveUsersForPodcast(): Promise<Array<{ userId: string; summaryId: number }>> {
+    private async getActiveUsersForPodcast(): Promise<
+        Array<{ userId: string; summaryId: number }>
+    > {
         // 実装例: ポッドキャスト設定が有効で、当日の要約があるユーザー
-        
+
         // TODO: RepositoryまたはDatabaseサービスから取得
         // const podcastUsers = await this.someRepository.getPodcastEnabledUsers()
-        
+
         // 暫定的に空配列を返す
         return []
     }

@@ -35,11 +35,15 @@ export class PodcastEpisodeRepository {
     }
 
     // エピソードの作成
-    async create(userId: string, summaryId: number, data: {
-        title?: string
-        title_emb?: number[]
-        audio_url?: string
-    }): Promise<PodcastEpisodeEntity> {
+    async create(
+        userId: string,
+        summaryId: number,
+        data: {
+            title?: string
+            title_emb?: number[]
+            audio_url?: string
+        },
+    ): Promise<PodcastEpisodeEntity> {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
@@ -50,7 +54,7 @@ export class PodcastEpisodeRepository {
                     title: data.title || null,
                     title_emb: data.title_emb || null,
                     audio_url: data.audio_url || null,
-                    soft_deleted: false
+                    soft_deleted: false,
                 })
                 .select()
                 .single()
@@ -64,18 +68,22 @@ export class PodcastEpisodeRepository {
     }
 
     // エピソードの更新
-    async update(id: number, userId: string, data: {
-        title?: string
-        title_emb?: number[]
-        audio_url?: string
-    }): Promise<PodcastEpisodeEntity> {
+    async update(
+        id: number,
+        userId: string,
+        data: {
+            title?: string
+            title_emb?: number[]
+            audio_url?: string
+        },
+    ): Promise<PodcastEpisodeEntity> {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from('podcast_episodes')
                 .update({
                     ...data,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .eq('user_id', userId) // ユーザー分離の保証
@@ -96,7 +104,11 @@ export class PodcastEpisodeRepository {
     }
 
     // 指定ユーザーのエピソード一覧取得（ページネーション対応）
-    async findByUser(userId: string, limit = 20, offset = 0): Promise<{
+    async findByUser(
+        userId: string,
+        limit = 20,
+        offset = 0,
+    ): Promise<{
         episodes: PodcastEpisodeEntity[]
         total: number
     }> {
@@ -124,8 +136,8 @@ export class PodcastEpisodeRepository {
             if (error) throw error
 
             return {
-                episodes: data.map(item => new PodcastEpisodeEntity(item)),
-                total: count || 0
+                episodes: data.map((item) => new PodcastEpisodeEntity(item)),
+                total: count || 0,
             }
         } catch (error) {
             this.logger.error(`Failed to find podcast episodes: ${error.message}`)
@@ -160,15 +172,24 @@ export class PodcastEpisodeRepository {
     }
 
     // 音声URLを更新（Cloudflare R2アップロード後）
-    async updateAudioUrl(id: number, userId: string, audioUrl: string): Promise<PodcastEpisodeEntity> {
+    async updateAudioUrl(
+        id: number,
+        userId: string,
+        audioUrl: string,
+    ): Promise<PodcastEpisodeEntity> {
         return this.update(id, userId, { audio_url: audioUrl })
     }
 
     // タイトルと埋め込みベクトルを更新
-    async updateTitleAndEmbedding(id: number, userId: string, title: string, titleEmb?: number[]): Promise<PodcastEpisodeEntity> {
-        return this.update(id, userId, { 
-            title, 
-            title_emb: titleEmb || null
+    async updateTitleAndEmbedding(
+        id: number,
+        userId: string,
+        title: string,
+        titleEmb?: number[],
+    ): Promise<PodcastEpisodeEntity> {
+        return this.update(id, userId, {
+            title,
+            title_emb: titleEmb || null,
         })
     }
 
@@ -178,9 +199,9 @@ export class PodcastEpisodeRepository {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('podcast_episodes')
-                .update({ 
+                .update({
                     soft_deleted: true,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .eq('user_id', userId) // ユーザー分離の保証
@@ -207,7 +228,7 @@ export class PodcastEpisodeRepository {
                 .lt('created_at', cutoffDate.toISOString())
 
             if (error) throw error
-            return data.map(item => new PodcastEpisodeEntity(item))
+            return data.map((item) => new PodcastEpisodeEntity(item))
         } catch (error) {
             this.logger.error(`Failed to find old podcast episodes: ${error.message}`)
             return []

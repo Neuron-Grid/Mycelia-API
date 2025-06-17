@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 import { EmbeddingService } from './embedding.service'
-import { VectorSearchService } from './vector-search.service'
 import { SearchController } from './search.controller'
+import { VectorSearchService } from './vector-search.service'
 
 @Module({
     controllers: [SearchController],

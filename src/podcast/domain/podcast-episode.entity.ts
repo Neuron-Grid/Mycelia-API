@@ -31,7 +31,7 @@ export class PodcastEpisodeEntity {
     // ビジネスロジック: Cloudflare R2のファイル名を取得
     getAudioFileName(): string | null {
         if (!this.audio_url) return null
-        
+
         try {
             const url = new URL(this.audio_url)
             const pathParts = url.pathname.split('/')
@@ -44,9 +44,9 @@ export class PodcastEpisodeEntity {
     // ビジネスロジック: エピソードの期間をメタデータから推定
     estimateDurationFromTitle(): number | null {
         if (!this.title) return null
-        
+
         // タイトルから時間情報を抽出（例：「15分のニュース要約」）
         const durationMatch = this.title.match(/(\d+)分/)
-        return durationMatch ? parseInt(durationMatch[1]) * 60 : null
+        return durationMatch ? Number.parseInt(durationMatch[1]) * 60 : null
     }
 }

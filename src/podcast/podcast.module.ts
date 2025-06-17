@@ -19,6 +19,12 @@ import { PodcastUploadService } from './podcast-upload.service'
         PodcastEpisodeRepository,
         CloudflareR2Service,
     ],
-    exports: [PodcastTtsService, PodcastUploadService, PodcastConfigService, PodcastEpisodeRepository, CloudflareR2Service],
+    exports: [
+        PodcastTtsService,
+        PodcastUploadService,
+        PodcastConfigService,
+        PodcastEpisodeRepository,
+        CloudflareR2Service,
+    ],
 })
 export class PodcastModule {}

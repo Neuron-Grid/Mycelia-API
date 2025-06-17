@@ -49,14 +49,14 @@ export class CloudflareR2Service {
 
     // ポッドキャスト音声ファイルをR2にアップロード（メタデータ付き）
     async uploadPodcastAudio(
-        userId: string, 
-        buffer: Buffer, 
-        metadata: PodcastMetadata
+        userId: string,
+        buffer: Buffer,
+        metadata: PodcastMetadata,
     ): Promise<string> {
         try {
             // ユーザー固有のフォルダ構造でキーを生成
             const key = this.generatePodcastKey(userId, metadata.summaryId, metadata.generatedAt)
-            
+
             const command = new PutObjectCommand({
                 Bucket: this.bucketName,
                 Key: key,
@@ -66,9 +66,9 @@ export class CloudflareR2Service {
                     'user-id': userId,
                     'summary-id': metadata.summaryId.toString(),
                     'episode-id': metadata.episodeId?.toString() || '',
-                    'title': metadata.title,
-                    'duration': metadata.duration?.toString() || '',
-                    'language': metadata.language,
+                    title: metadata.title,
+                    duration: metadata.duration?.toString() || '',
+                    language: metadata.language,
                     'generated-at': metadata.generatedAt,
                     'content-type': 'podcast-audio',
                 },
@@ -154,10 +154,12 @@ export class CloudflareR2Service {
             // ユーザーフォルダ内のすべてのファイルを削除
             // 実際の実装では ListObjectsV2Command を使ってファイル一覧を取得してから削除
             const userPrefix = `podcasts/${userId}/`
-            
+
             // 簡易実装: 単一ファイルのみ削除（本来はリスト取得後に一括削除）
-            this.logger.log(`Deleting all podcast files for user ${userId} with prefix: ${userPrefix}`)
-            
+            this.logger.log(
+                `Deleting all podcast files for user ${userId} with prefix: ${userPrefix}`,
+            )
+
             // TODO: ListObjectsV2Command を使用して実際のファイル一覧を取得し、一括削除を実装
         } catch (error) {
             this.logger.error(`Failed to delete user podcasts: ${error.message}`)
@@ -177,7 +179,7 @@ export class CloudflareR2Service {
         if (this.publicDomain) {
             return `https://${this.publicDomain}/${key}`
         }
-        
+
         // カスタムドメインが設定されていない場合はデフォルトを使用
         const accountId = this.configService.get<string>('CLOUDFLARE_ACCOUNT_ID')
         return `https://${this.bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`

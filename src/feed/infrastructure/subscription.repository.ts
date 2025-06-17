@@ -87,7 +87,7 @@ export class SubscriptionRepository {
         const { data, error } = await sb
             .from('user_subscriptions')
             .select('*')
-            .eq('user_id', userId)  // ユーザー分離の保証
+            .eq('user_id', userId) // ユーザー分離の保証
             .lte('next_fetch_at', cutoff.toISOString())
             .order('next_fetch_at', { ascending: true })
 

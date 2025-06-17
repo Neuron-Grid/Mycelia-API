@@ -34,7 +34,7 @@ export class FeedItemEntity {
     // ビジネスロジック: 指定した期間内に公開されたかをチェック
     isPublishedWithinHours(hours: number): boolean {
         if (!this.published_at) return false
-        
+
         const publishedAt = new Date(this.published_at)
         const cutoffTime = new Date()
         cutoffTime.setHours(cutoffTime.getHours() - hours)
@@ -54,13 +54,13 @@ export class FeedItemEntity {
     }
 
     // ビジネスロジック: 短い説明文を取得（指定文字数で切り詰め）
-    getTruncatedDescription(maxLength: number = 200): string {
+    getTruncatedDescription(maxLength = 200): string {
         if (!this.description) return ''
-        
+
         if (this.description.length <= maxLength) {
             return this.description
         }
-        
+
         return this.description.substring(0, maxLength) + '...'
     }
 

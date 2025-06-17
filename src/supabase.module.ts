@@ -9,7 +9,8 @@ export const SUPABASE_CLIENT = 'SUPABASE_CLIENT'
     providers: [
         {
             provide: SUPABASE_CLIENT,
-            useFactory: (configService: ConfigService): SupabaseClient<Database> => { // ConfigService を注入
+            useFactory: (configService: ConfigService): SupabaseClient<Database> => {
+                // ConfigService を注入
                 const supabaseUrl = configService.get<string>('SUPABASE_URL') || ''
                 const supabaseKey = configService.get<string>('SUPABASE_ANON_KEY') || ''
                 return createClient(supabaseUrl, supabaseKey)

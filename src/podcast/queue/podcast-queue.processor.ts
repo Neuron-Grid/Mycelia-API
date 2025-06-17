@@ -2,10 +2,10 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { DailySummaryRepository } from '../../llm/infrastructure/daily-summary.repository'
+import { EmbeddingService } from '../../search/embedding.service'
+import { CloudflareR2Service, PodcastMetadata } from '../cloudflare-r2.service'
 import { PodcastEpisodeRepository } from '../infrastructure/podcast-episode.repository'
 import { PodcastTtsService } from '../podcast-tts.service'
-import { CloudflareR2Service, PodcastMetadata } from '../cloudflare-r2.service'
-import { EmbeddingService } from '../../search/embedding.service'
 
 export interface PodcastGenerationJobData {
     userId: string
@@ -34,7 +34,10 @@ export class PodcastQueueProcessor extends WorkerHost {
 
         try {
             // 既存のエピソードをチェック
-            const existingEpisode = await this.podcastEpisodeRepository.findBySummaryId(userId, summaryId)
+            const existingEpisode = await this.podcastEpisodeRepository.findBySummaryId(
+                userId,
+                summaryId,
+            )
             if (existingEpisode && existingEpisode.isComplete()) {
                 this.logger.log(`Podcast episode already exists for summary ${summaryId}`)
                 return { success: true, episodeId: existingEpisode.id, existed: true }
@@ -42,8 +45,8 @@ export class PodcastQueueProcessor extends WorkerHost {
 
             // 要約を取得
             const summaries = await this.dailySummaryRepository.findByUser(userId, 100, 0)
-            const summary = summaries.find(s => s.id === summaryId)
-            
+            const summary = summaries.find((s) => s.id === summaryId)
+
             if (!summary) {
                 throw new Error(`Summary not found for user ${userId}, summary ID: ${summaryId}`)
             }
@@ -56,13 +59,16 @@ export class PodcastQueueProcessor extends WorkerHost {
             let episode = existingEpisode
             if (!episode) {
                 // エピソードタイトルを生成
-                const episodeTitle = this.generateEpisodeTitle(summary.summary_title, summary.summary_date)
-                
+                const episodeTitle = this.generateEpisodeTitle(
+                    summary.summary_title,
+                    summary.summary_date,
+                )
+
                 // タイトルのベクトル埋め込みを生成
                 let titleEmbedding: number[] | undefined
                 try {
                     titleEmbedding = await this.embeddingService.generateEmbedding(
-                        this.embeddingService.preprocessText(episodeTitle)
+                        this.embeddingService.preprocessText(episodeTitle),
                     )
                 } catch (error) {
                     this.logger.warn(`Failed to generate title embedding: ${error.message}`)
@@ -70,7 +76,7 @@ export class PodcastQueueProcessor extends WorkerHost {
 
                 episode = await this.podcastEpisodeRepository.create(userId, summaryId, {
                     title: episodeTitle,
-                    title_emb: titleEmbedding
+                    title_emb: titleEmbedding,
                 })
             }
 
@@ -81,11 +87,13 @@ export class PodcastQueueProcessor extends WorkerHost {
             }
 
             // TTS音声生成
-            this.logger.log(`Generating TTS audio for script length: ${summary.script_text!.length} characters`)
+            this.logger.log(
+                `Generating TTS audio for script length: ${summary.script_text!.length} characters`,
+            )
             const audioBuffer = await this.podcastTtsService.generateSpeech(
                 summary.script_text!,
                 'ja-JP', // TODO: ユーザー設定から取得
-                'ja-JP-Wavenet-B' // 男性ニュースキャスターらしい声
+                'ja-JP-Wavenet-B', // 男性ニュースキャスターらしい声
             )
 
             // 音声の長さを推定（概算）
@@ -99,36 +107,35 @@ export class PodcastQueueProcessor extends WorkerHost {
                 title: episode.title || 'Untitled Episode',
                 duration: estimatedDurationSec,
                 language: 'ja-JP',
-                generatedAt: new Date().toISOString()
+                generatedAt: new Date().toISOString(),
             }
 
             const audioUrl = await this.cloudflareR2Service.uploadPodcastAudio(
                 userId,
                 audioBuffer,
-                podcastMetadata
+                podcastMetadata,
             )
 
             // エピソード情報を更新
             const updatedEpisode = await this.podcastEpisodeRepository.updateAudioUrl(
                 episode.id,
                 userId,
-                audioUrl
+                audioUrl,
             )
 
             // 要約にTTS音声の長さを記録
             await this.dailySummaryRepository.update(summaryId, userId, {
-                script_tts_duration_sec: estimatedDurationSec
+                script_tts_duration_sec: estimatedDurationSec,
             })
 
             this.logger.log(`Podcast generation completed successfully for episode ${episode.id}`)
-            return { 
-                success: true, 
-                episodeId: updatedEpisode.id, 
+            return {
+                success: true,
+                episodeId: updatedEpisode.id,
                 audioUrl: updatedEpisode.audio_url,
                 duration: estimatedDurationSec,
-                title: updatedEpisode.title
+                title: updatedEpisode.title,
             }
-
         } catch (error) {
             this.logger.error(`Failed to process podcast generation: ${error.message}`, error.stack)
             throw error
@@ -151,10 +158,9 @@ export class PodcastQueueProcessor extends WorkerHost {
             // - ノイズ除去
             // - 音量正規化
             // - 音声圧縮最適化
-            
+
             this.logger.log(`Audio enhancement completed for episode ${episodeId}`)
             return { success: true, episodeId }
-
         } catch (error) {
             this.logger.error(`Failed to enhance audio: ${error.message}`, error.stack)
             throw error
@@ -169,7 +175,7 @@ export class PodcastQueueProcessor extends WorkerHost {
 
         try {
             const oldEpisodes = await this.podcastEpisodeRepository.findOldEpisodes(userId, daysOld)
-            
+
             for (const episode of oldEpisodes) {
                 if (episode.audio_url) {
                     // R2からファイルを削除
@@ -183,9 +189,10 @@ export class PodcastQueueProcessor extends WorkerHost {
                 await this.podcastEpisodeRepository.softDelete(episode.id, userId)
             }
 
-            this.logger.log(`Cleaned up ${oldEpisodes.length} old podcast episodes for user ${userId}`)
+            this.logger.log(
+                `Cleaned up ${oldEpisodes.length} old podcast episodes for user ${userId}`,
+            )
             return { success: true, cleanedCount: oldEpisodes.length }
-
         } catch (error) {
             this.logger.error(`Failed to cleanup old podcasts: ${error.message}`, error.stack)
             throw error
@@ -198,7 +205,7 @@ export class PodcastQueueProcessor extends WorkerHost {
         const formattedDate = date.toLocaleDateString('ja-JP', {
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
         })
 
         if (summaryTitle) {

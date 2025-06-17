@@ -9,7 +9,10 @@ export class DailySummaryRepository {
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
     // 指定ユーザーの指定日の要約を取得
-    async findByUserAndDate(userId: string, summaryDate: string): Promise<DailySummaryEntity | null> {
+    async findByUserAndDate(
+        userId: string,
+        summaryDate: string,
+    ): Promise<DailySummaryEntity | null> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
@@ -35,11 +38,15 @@ export class DailySummaryRepository {
     }
 
     // 要約の作成
-    async create(userId: string, summaryDate: string, data: {
-        markdown?: string
-        summary_title?: string
-        summary_emb?: number[]
-    }): Promise<DailySummaryEntity> {
+    async create(
+        userId: string,
+        summaryDate: string,
+        data: {
+            markdown?: string
+            summary_title?: string
+            summary_emb?: number[]
+        },
+    ): Promise<DailySummaryEntity> {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
@@ -50,7 +57,7 @@ export class DailySummaryRepository {
                     markdown: data.markdown || null,
                     summary_title: data.summary_title || null,
                     summary_emb: data.summary_emb || null,
-                    soft_deleted: false
+                    soft_deleted: false,
                 })
                 .select()
                 .single()
@@ -64,20 +71,24 @@ export class DailySummaryRepository {
     }
 
     // 要約の更新
-    async update(id: number, userId: string, data: {
-        markdown?: string
-        summary_title?: string
-        summary_emb?: number[]
-        script_text?: string
-        script_tts_duration_sec?: number
-    }): Promise<DailySummaryEntity> {
+    async update(
+        id: number,
+        userId: string,
+        data: {
+            markdown?: string
+            summary_title?: string
+            summary_emb?: number[]
+            script_text?: string
+            script_tts_duration_sec?: number
+        },
+    ): Promise<DailySummaryEntity> {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from('daily_summaries')
                 .update({
                     ...data,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .eq('user_id', userId) // ユーザー分離の保証
@@ -110,7 +121,7 @@ export class DailySummaryRepository {
                 .range(offset, offset + limit - 1)
 
             if (error) throw error
-            return data.map(item => new DailySummaryEntity(item))
+            return data.map((item) => new DailySummaryEntity(item))
         } catch (error) {
             this.logger.error(`Failed to find daily summaries: ${error.message}`)
             return []
@@ -142,15 +153,15 @@ export class DailySummaryRepository {
                 .in('id', feedItemIds)
 
             if (feedError) throw feedError
-            
-            const validFeedItemIds = feedItems?.map(item => item.id) || []
+
+            const validFeedItemIds = feedItems?.map((item) => item.id) || []
             if (validFeedItemIds.length !== feedItemIds.length) {
                 throw new Error('Some feed items do not belong to this user')
             }
 
-            const items = validFeedItemIds.map(feedItemId => ({
+            const items = validFeedItemIds.map((feedItemId) => ({
                 summary_id: summaryId,
-                feed_item_id: feedItemId
+                feed_item_id: feedItemId,
             }))
 
             const { error } = await this.supabaseRequestService
@@ -188,7 +199,7 @@ export class DailySummaryRepository {
                 .eq('summary_id', summaryId)
 
             if (error) throw error
-            return data.map(item => new DailySummaryItemEntity(item))
+            return data.map((item) => new DailySummaryItemEntity(item))
         } catch (error) {
             this.logger.error(`Failed to get summary items: ${error.message}`)
             return []
@@ -231,9 +242,9 @@ export class DailySummaryRepository {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('daily_summaries')
-                .update({ 
+                .update({
                     soft_deleted: true,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
                 .eq('user_id', userId) // ユーザー分離の保証

@@ -62,5 +62,4 @@ import { SummaryWorker } from './summary.worker'
     controllers: [SummaryController],
     exports: [LLM_SERVICE, SummaryScriptService, BullModule], // BullModuleもエクスポートすると他でキューを使える
 })
-
 export class LlmModule {}

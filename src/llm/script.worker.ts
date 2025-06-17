@@ -2,7 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Inject, Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
 import { DailySummaryRepository } from './infrastructure/daily-summary.repository'
-import { LLM_SERVICE, LlmService, GeminiScriptRequest } from './llm.service'
+import { GeminiScriptRequest, LLM_SERVICE, LlmService } from './llm.service'
 
 export interface ScriptJobData {
     userId: string
@@ -23,7 +23,9 @@ export class ScriptWorker extends WorkerHost {
 
     async process(job: Job<ScriptJobData>) {
         const { userId, summaryId } = job.data
-        this.logger.log(`Processing script generation job for user ${userId}, summary ID: ${summaryId}`)
+        this.logger.log(
+            `Processing script generation job for user ${userId}, summary ID: ${summaryId}`,
+        )
 
         try {
             // 要約を取得
@@ -31,12 +33,14 @@ export class ScriptWorker extends WorkerHost {
             if (!summary || summary.id !== summaryId) {
                 // ID直接での取得ができないため、ユーザーの要約一覧から検索
                 const summaries = await this.dailySummaryRepository.findByUser(userId, 100, 0)
-                const targetSummary = summaries.find(s => s.id === summaryId)
-                
+                const targetSummary = summaries.find((s) => s.id === summaryId)
+
                 if (!targetSummary) {
-                    throw new Error(`Summary not found for user ${userId}, summary ID: ${summaryId}`)
+                    throw new Error(
+                        `Summary not found for user ${userId}, summary ID: ${summaryId}`,
+                    )
                 }
-                
+
                 if (!targetSummary.isCompleteSummary()) {
                     throw new Error(`Summary is not complete for summary ID: ${summaryId}`)
                 }
@@ -47,15 +51,18 @@ export class ScriptWorker extends WorkerHost {
                 }
 
                 // 関連するフィードアイテムを取得
-                const summaryItems = await this.dailySummaryRepository.getSummaryItems(summaryId, userId)
-                
+                const summaryItems = await this.dailySummaryRepository.getSummaryItems(
+                    summaryId,
+                    userId,
+                )
+
                 // スクリプト生成用のリクエストデータを準備
                 const scriptRequest: GeminiScriptRequest = {
                     summaryText: targetSummary.markdown || '',
-                    articlesForContext: summaryItems.map(item => ({
+                    articlesForContext: summaryItems.map((item) => ({
                         title: `Feed Item ${item.feed_item_id}`,
-                        url: `#${item.feed_item_id}`
-                    }))
+                        url: `#${item.feed_item_id}`,
+                    })),
                 }
 
                 // LLMでスクリプト生成
@@ -63,18 +70,17 @@ export class ScriptWorker extends WorkerHost {
 
                 // スクリプトを要約に追加
                 await this.dailySummaryRepository.update(summaryId, userId, {
-                    script_text: scriptResponse.script
+                    script_text: scriptResponse.script,
                 })
 
                 this.logger.log(`Script generated successfully for summary ID: ${summaryId}`)
-                return { 
-                    success: true, 
-                    summaryId, 
+                return {
+                    success: true,
+                    summaryId,
                     scriptLength: scriptResponse.script.length,
-                    hasExistingScript: false
+                    hasExistingScript: false,
                 }
             }
-
         } catch (error) {
             this.logger.error(`Failed to process script job: ${error.message}`, error.stack)
             throw error
