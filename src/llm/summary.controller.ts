@@ -12,9 +12,8 @@ import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
 import { User as SupabaseUserType } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
 import { SupabaseUser } from '../auth/supabase-user.decorator'
+import { DailySummaryRepository } from './infrastructure/daily-summary.repository'
 import { SummaryScriptService } from './summary-script.service'
-// daily_summariesテーブルの所有者チェックを行うためにPrismaServiceなどを注入する想定
-// import { PrismaService } from '../../prisma/prisma.service'; // PrismaServiceのパスは適宜調整
 
 @ApiTags('Summary & Script Regeneration')
 @Controller('api/v1') // ベースパス
@@ -23,7 +22,7 @@ export class SummaryController {
 
     constructor(
         private readonly summaryScriptService: SummaryScriptService,
-        // private readonly prisma: PrismaService, // 所有者チェックを行う場合
+        private readonly dailySummaryRepository: DailySummaryRepository,
     ) {}
 
     @Post('summaries/users/:userId/regenerate') // パスをよりRESTfulに、summaryを複数形に
@@ -105,31 +104,17 @@ export class SummaryController {
             `User ${user.id} requesting script regeneration for summary ID ${summaryId}`,
         )
 
-        // TODO: このsummaryIdがリクエスト発行ユーザー (user.id) に属しているかどうかのチェック
-        // PrismaServiceなどを使って、daily_summariesテーブルを検索し、user_idが一致するか確認
-        /*
-        const summaryOwner = await this.prisma.daily_summaries.findUnique({
-            where: { id: summaryId },
-            select: { user_id: true },
-        });
+        // 所有者チェック：このsummaryIdがリクエスト発行ユーザー (user.id) に属しているかどうかのチェック
+        const summary = await this.dailySummaryRepository.findById(summaryId, user.id)
 
-        if (!summaryOwner) {
-            throw new HttpException('Summary not found.', HttpStatus.NOT_FOUND);
+        if (!summary) {
+            this.logger.warn(
+                `Summary not found or access denied: User ${user.id} attempted to access summary ${summaryId}`,
+            )
+            throw new HttpException('Summary not found or access denied.', HttpStatus.NOT_FOUND)
         }
-        if (summaryOwner.user_id !== user.id) {
-            this.logger.warn(`Forbidden: User ${user.id} attempted to regenerate script for summary ${summaryId} owned by ${summaryOwner.user_id}`);
-            throw new HttpException('Forbidden: You can only regenerate scripts for your own summaries.', HttpStatus.FORBIDDEN);
-        }
-        */
-        // 上記の所有者チェックは重要です。コメントアウトを解除し、PrismaService等を適切に設定して実装してください。
-        // 今回は一旦、このチェックがない状態で進めますが、セキュリティ上必須です。
-        this.logger.warn(
-            `Ownership check for summaryId ${summaryId} by user ${user.id} is currently skipped. Implement this check!`,
-        )
-        // DEBUG: 所有者チェックがスキップされたことを示すログ
-        this.logger.debug(
-            `DEBUG: Ownership check skipped for summaryId: ${summaryId}, requestingUser: ${user.id}`,
-        )
+
+        this.logger.log(`Ownership verified: User ${user.id} owns summary ${summaryId}`)
 
         try {
             const result = await this.summaryScriptService.requestScriptGeneration(

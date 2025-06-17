@@ -149,7 +149,7 @@ export class CloudflareR2Service {
     }
 
     // ユーザーのポッドキャストファイルを一括削除
-    async deleteUserPodcasts(userId: string): Promise<void> {
+    deleteUserPodcasts(userId: string): Promise<void> {
         try {
             // ユーザーフォルダ内のすべてのファイルを削除
             // 実際の実装では ListObjectsV2Command を使ってファイル一覧を取得してから削除
@@ -161,9 +161,10 @@ export class CloudflareR2Service {
             )
 
             // TODO: ListObjectsV2Command を使用して実際のファイル一覧を取得し、一括削除を実装
+            return Promise.resolve()
         } catch (error) {
             this.logger.error(`Failed to delete user podcasts: ${error.message}`)
-            throw error
+            return Promise.reject(error)
         }
     }
 

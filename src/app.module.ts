@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { AuthModule } from './auth/auth.module'
+import { EmbeddingModule } from './embedding/embedding.module'
 import { FavoriteModule } from './favorite/favorite.module'
 import { FeedModule } from './feed/feed.module'
 import { FeedQueueModule } from './feed/queue/feed-queue.module'
@@ -35,6 +36,8 @@ import { TagModule } from './tag/tag.module'
         LlmModule,
         // ベクトル検索機能
         SearchModule,
+        // ベクトル埋め込みバッチ処理機能
+        EmbeddingModule,
     ],
     controllers: [AppController],
     providers: [AppService],

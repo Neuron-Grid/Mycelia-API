@@ -88,7 +88,7 @@ export class HierarchicalTagService {
             parent_tag_id: dto.parent_tag_id || null,
             description: dto.description,
             color: dto.color,
-            tag_emb: tagEmbedding,
+            tag_embedding: tagEmbedding,
         })
 
         this.logger.log(`Created hierarchical tag: ${dto.tag_name} for user ${userId}`)
@@ -229,7 +229,10 @@ export class HierarchicalTagService {
 
         // 階層構築
         for (const tag of tags) {
-            const tagHierarchy = tagMap.get(tag.id)!
+            const tagHierarchy = tagMap.get(tag.id)
+            if (!tagHierarchy) {
+                continue // マップに存在しない場合はスキップ
+            }
 
             if (tag.parent_tag_id === null) {
                 rootTags.push(tagHierarchy)
@@ -279,14 +282,14 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: 循環参照チェック
-    private async wouldCreateCircularReference(
-        userId: string,
-        parentId: number,
-        tagName: string,
+    private wouldCreateCircularReference(
+        _userId: string,
+        _parentId: number,
+        _tagName: string,
     ): Promise<boolean> {
         // 簡略化: 実際は既存タグのIDで循環参照をチェック
         // 新規作成時は循環参照は発生しない
-        return false
+        return Promise.resolve(false)
     }
 
     // プライベートメソッド: タグの深度を取得

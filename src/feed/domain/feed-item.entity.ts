@@ -7,7 +7,7 @@ export class FeedItemEntity {
     link_hash!: string | null
     description!: string | null
     published_at!: Date | null
-    title_emb!: number[] | null
+    title_embedding!: number[] | null
     soft_deleted!: boolean
     created_at!: Date
     updated_at!: Date
@@ -43,7 +43,7 @@ export class FeedItemEntity {
 
     // ビジネスロジック: ベクトル埋め込みが存在するかをチェック
     hasEmbedding(): boolean {
-        return !!(this.title_emb && this.title_emb.length > 0)
+        return !!(this.title_embedding && this.title_embedding.length > 0)
     }
 
     // ビジネスロジック: 要約用のテキストコンテンツを取得
@@ -61,12 +61,12 @@ export class FeedItemEntity {
             return this.description
         }
 
-        return this.description.substring(0, maxLength) + '...'
+        return `${this.description.substring(0, maxLength)}...`
     }
 
     // ビジネスロジック: リンクハッシュを生成
     generateLinkHash(): string {
-        const crypto = require('crypto')
+        const crypto = require('node:crypto')
         return crypto.createHash('sha256').update(this.link).digest('hex')
     }
 

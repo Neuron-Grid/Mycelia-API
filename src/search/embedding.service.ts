@@ -106,7 +106,7 @@ export class EmbeddingService {
                 throw new Error('No embedding data returned from OpenAI API')
             }
 
-            const embeddings = result.data.map((item: any) => item.embedding)
+            const embeddings = result.data.map((item: { embedding: number[] }) => item.embedding)
             this.logger.debug(`Generated ${embeddings.length} embeddings`)
 
             return embeddings

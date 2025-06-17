@@ -8,7 +8,7 @@ export interface SearchResult {
     content: string
     similarity: number
     type: 'feed_item' | 'summary' | 'podcast'
-    metadata?: Record<string, any>
+    metadata?: Record<string, string | number | boolean | null>
 }
 
 export interface SearchOptions {
@@ -55,18 +55,28 @@ export class VectorSearchService {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                content: item.description || '',
-                similarity: item.similarity,
-                type: 'feed_item' as const,
-                metadata: {
-                    link: item.link,
-                    published_at: item.published_at,
-                    feed_title: item.feed_title,
-                },
-            }))
+            return data.map(
+                (item: {
+                    id: number
+                    title: string
+                    description: string
+                    link: string
+                    published_at: string
+                    feed_title: string
+                    similarity: number
+                }) => ({
+                    id: item.id,
+                    title: item.title,
+                    content: item.description || '',
+                    similarity: item.similarity,
+                    type: 'feed_item' as const,
+                    metadata: {
+                        link: item.link,
+                        published_at: item.published_at,
+                        feed_title: item.feed_title,
+                    },
+                }),
+            )
         } catch (error) {
             this.logger.error(`Failed to search feed items: ${error.message}`)
             return []
@@ -102,17 +112,26 @@ export class VectorSearchService {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.summary_title || 'No Title',
-                content: item.markdown || '',
-                similarity: item.similarity,
-                type: 'summary' as const,
-                metadata: {
-                    summary_date: item.summary_date,
-                    has_script: !!item.script_text,
-                },
-            }))
+            return data.map(
+                (item: {
+                    id: number
+                    summary_title: string
+                    markdown: string
+                    summary_date: string
+                    script_text: string
+                    similarity: number
+                }) => ({
+                    id: item.id,
+                    title: item.summary_title || 'No Title',
+                    content: item.markdown || '',
+                    similarity: item.similarity,
+                    type: 'summary' as const,
+                    metadata: {
+                        summary_date: item.summary_date,
+                        has_script: !!item.script_text,
+                    },
+                }),
+            )
         } catch (error) {
             this.logger.error(`Failed to search summaries: ${error.message}`)
             return []
@@ -148,18 +167,26 @@ export class VectorSearchService {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.title || 'No Title',
-                content: item.title || '',
-                similarity: item.similarity,
-                type: 'podcast' as const,
-                metadata: {
-                    audio_url: item.audio_url,
-                    summary_id: item.summary_id,
-                    created_at: item.created_at,
-                },
-            }))
+            return data.map(
+                (item: {
+                    id: number
+                    title: string
+                    audio_url: string
+                    summary_id: number
+                    similarity: number
+                }) => ({
+                    id: item.id,
+                    title: item.title || 'No Title',
+                    content: item.title || '',
+                    similarity: item.similarity,
+                    type: 'podcast' as const,
+                    metadata: {
+                        audio_url: item.audio_url,
+                        summary_id: item.summary_id,
+                        created_at: item.created_at,
+                    },
+                }),
+            )
         } catch (error) {
             this.logger.error(`Failed to search podcast episodes: ${error.message}`)
             return []
@@ -229,7 +256,7 @@ export class VectorSearchService {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('feed_items')
-                .update({ title_emb: embedding })
+                .update({ title_embedding: embedding })
                 .eq('id', feedItemId)
                 .eq('user_id', userId)
 
@@ -256,7 +283,7 @@ export class VectorSearchService {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('daily_summaries')
-                .update({ summary_emb: embedding })
+                .update({ summary_embedding: embedding })
                 .eq('id', summaryId)
                 .eq('user_id', userId)
 
@@ -283,7 +310,7 @@ export class VectorSearchService {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('podcast_episodes')
-                .update({ title_emb: embedding })
+                .update({ title_embedding: embedding })
                 .eq('id', episodeId)
                 .eq('user_id', userId)
 

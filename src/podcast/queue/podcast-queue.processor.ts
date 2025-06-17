@@ -38,7 +38,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                 userId,
                 summaryId,
             )
-            if (existingEpisode && existingEpisode.isComplete()) {
+            if (existingEpisode?.isComplete()) {
                 this.logger.log(`Podcast episode already exists for summary ${summaryId}`)
                 return { success: true, episodeId: existingEpisode.id, existed: true }
             }
@@ -76,7 +76,7 @@ export class PodcastQueueProcessor extends WorkerHost {
 
                 episode = await this.podcastEpisodeRepository.create(userId, summaryId, {
                     title: episodeTitle,
-                    title_emb: titleEmbedding,
+                    title_embedding: titleEmbedding,
                 })
             }
 
@@ -86,18 +86,23 @@ export class PodcastQueueProcessor extends WorkerHost {
                 return { success: true, episodeId: episode.id, audioUrl: episode.audio_url }
             }
 
+            // script_textの存在チェック
+            if (!summary.script_text) {
+                throw new Error('Script text is required for podcast generation')
+            }
+
             // TTS音声生成
             this.logger.log(
-                `Generating TTS audio for script length: ${summary.script_text!.length} characters`,
+                `Generating TTS audio for script length: ${summary.script_text.length} characters`,
             )
             const audioBuffer = await this.podcastTtsService.generateSpeech(
-                summary.script_text!,
+                summary.script_text,
                 'ja-JP', // TODO: ユーザー設定から取得
                 'ja-JP-Wavenet-B', // 男性ニュースキャスターらしい声
             )
 
             // 音声の長さを推定（概算）
-            const estimatedDurationSec = Math.ceil(summary.script_text!.length / 10) // 1秒あたり約10文字
+            const estimatedDurationSec = Math.ceil(summary.script_text.length / 10) // 1秒あたり約10文字
 
             // Cloudflare R2にアップロード
             const podcastMetadata: PodcastMetadata = {

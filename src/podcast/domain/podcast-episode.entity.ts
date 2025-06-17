@@ -3,7 +3,7 @@ export class PodcastEpisodeEntity {
     user_id!: string
     summary_id!: number
     title!: string | null
-    title_emb!: number[] | null
+    title_embedding!: number[] | null
     audio_url!: string | null
     soft_deleted!: boolean
     created_at!: string

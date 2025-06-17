@@ -4,7 +4,7 @@ export class DailySummaryEntity {
     summary_date!: string
     markdown!: string | null
     summary_title!: string | null
-    summary_emb!: number[] | null
+    summary_embedding!: number[] | null
     script_text!: string | null
     script_tts_duration_sec!: number | null
     soft_deleted!: boolean

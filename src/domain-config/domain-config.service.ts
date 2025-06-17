@@ -147,7 +147,12 @@ export class DomainConfigService {
             )
         }
 
-        const updateData: any = {
+        const updateData: {
+            podcast_enabled: boolean
+            updated_at: string
+            podcast_schedule_time?: string
+            podcast_language?: 'ja-JP' | 'en-US'
+        } = {
             podcast_enabled: enabled,
             updated_at: new Date().toISOString(),
         }

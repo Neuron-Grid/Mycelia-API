@@ -87,8 +87,8 @@ export class UpdateUserSettingsDto {
     }
 
     // PostgreSQL用の変換
-    toPostgresData(): Record<string, any> {
-        const data: Record<string, any> = {}
+    toPostgresData(): Record<string, string | boolean | null | undefined> {
+        const data: Record<string, string | boolean | null | undefined> = {}
 
         if (this.refresh_every) {
             data.refresh_every = this.refresh_every.toPostgresInterval()
@@ -154,7 +154,15 @@ export class UserSettingsResponseDto {
     updated_at!: string
 
     // ファクトリメソッド: データベースレコードから作成
-    static fromDatabaseRecord(record: any): UserSettingsResponseDto {
+    static fromDatabaseRecord(record: {
+        user_id: string
+        refresh_every: string
+        podcast_enabled: boolean
+        podcast_schedule_time: string | null
+        podcast_language: 'ja-JP' | 'en-US'
+        created_at: string
+        updated_at: string
+    }): UserSettingsResponseDto {
         const dto = new UserSettingsResponseDto()
         dto.user_id = record.user_id
         dto.refresh_every = IntervalDto.fromPostgresInterval(record.refresh_every)

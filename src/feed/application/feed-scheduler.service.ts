@@ -219,7 +219,7 @@ export class FeedSchedulerService {
     }
 
     // 要約生成対象のアクティブユーザーを取得
-    private async getActiveUsersForSummary(): Promise<string[]> {
+    private getActiveUsersForSummary(): Promise<string[]> {
         // 実装例: 最近24時間でフィードアイテムが追加されたユーザー
         // この実装は簡略化されており、実際のクエリが必要
 
@@ -227,20 +227,18 @@ export class FeedSchedulerService {
         // const activeUsers = await this.someRepository.getActiveUsers()
 
         // 暫定的に空配列を返す
-        return []
+        return Promise.resolve([])
     }
 
     // ポッドキャスト生成対象のユーザーと要約を取得
-    private async getActiveUsersForPodcast(): Promise<
-        Array<{ userId: string; summaryId: number }>
-    > {
+    private getActiveUsersForPodcast(): Promise<Array<{ userId: string; summaryId: number }>> {
         // 実装例: ポッドキャスト設定が有効で、当日の要約があるユーザー
 
         // TODO: RepositoryまたはDatabaseサービスから取得
         // const podcastUsers = await this.someRepository.getPodcastEnabledUsers()
 
         // 暫定的に空配列を返す
-        return []
+        return Promise.resolve([])
     }
 
     // キューの統計情報を取得

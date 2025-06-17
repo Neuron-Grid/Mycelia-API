@@ -31,7 +31,7 @@ export class SummaryWorker extends WorkerHost {
                 userId,
                 summaryDate,
             )
-            if (existingSummary && existingSummary.isCompleteSummary()) {
+            if (existingSummary?.isCompleteSummary()) {
                 this.logger.log(`Summary already exists for user ${userId}, date ${summaryDate}`)
                 return { success: true, summaryId: existingSummary.id }
             }
@@ -88,13 +88,18 @@ export class SummaryWorker extends WorkerHost {
     }
 
     private detectLanguage(title: string, description = ''): string {
-        const text = (title + ' ' + description).toLowerCase()
+        const text = `${title} ${description}`.toLowerCase()
         // 簡単な日本語検出（ひらがな、カタカナ、漢字）
         const japaneseRegex = /[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/
         return japaneseRegex.test(text) ? 'ja' : 'en'
     }
 
-    private determineTargetLanguage(feedItems: any[]): 'ja' | 'en' {
+    private determineTargetLanguage(
+        feedItems: {
+            title: string
+            description: string
+        }[],
+    ): 'ja' | 'en' {
         const japaneseCount = feedItems.filter(
             (item) => this.detectLanguage(item.title, item.description) === 'ja',
         ).length

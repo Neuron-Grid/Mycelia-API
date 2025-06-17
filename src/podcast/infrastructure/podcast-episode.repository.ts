@@ -40,7 +40,7 @@ export class PodcastEpisodeRepository {
         summaryId: number,
         data: {
             title?: string
-            title_emb?: number[]
+            title_embedding?: number[]
             audio_url?: string
         },
     ): Promise<PodcastEpisodeEntity> {
@@ -52,7 +52,7 @@ export class PodcastEpisodeRepository {
                     user_id: userId,
                     summary_id: summaryId,
                     title: data.title || null,
-                    title_emb: data.title_emb || null,
+                    title_embedding: data.title_embedding || null,
                     audio_url: data.audio_url || null,
                     soft_deleted: false,
                 })
@@ -73,7 +73,7 @@ export class PodcastEpisodeRepository {
         userId: string,
         data: {
             title?: string
-            title_emb?: number[]
+            title_embedding?: number[]
             audio_url?: string
         },
     ): Promise<PodcastEpisodeEntity> {
@@ -172,16 +172,12 @@ export class PodcastEpisodeRepository {
     }
 
     // 音声URLを更新（Cloudflare R2アップロード後）
-    async updateAudioUrl(
-        id: number,
-        userId: string,
-        audioUrl: string,
-    ): Promise<PodcastEpisodeEntity> {
+    updateAudioUrl(id: number, userId: string, audioUrl: string): Promise<PodcastEpisodeEntity> {
         return this.update(id, userId, { audio_url: audioUrl })
     }
 
     // タイトルと埋め込みベクトルを更新
-    async updateTitleAndEmbedding(
+    updateTitleAndEmbedding(
         id: number,
         userId: string,
         title: string,
@@ -189,7 +185,7 @@ export class PodcastEpisodeRepository {
     ): Promise<PodcastEpisodeEntity> {
         return this.update(id, userId, {
             title,
-            title_emb: titleEmb || null,
+            title_embedding: titleEmb || null,
         })
     }
 

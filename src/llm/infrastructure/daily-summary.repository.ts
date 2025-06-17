@@ -44,7 +44,7 @@ export class DailySummaryRepository {
         data: {
             markdown?: string
             summary_title?: string
-            summary_emb?: number[]
+            summary_embedding?: number[]
         },
     ): Promise<DailySummaryEntity> {
         try {
@@ -56,7 +56,7 @@ export class DailySummaryRepository {
                     summary_date: summaryDate,
                     markdown: data.markdown || null,
                     summary_title: data.summary_title || null,
-                    summary_emb: data.summary_emb || null,
+                    summary_embedding: data.summary_embedding || null,
                     soft_deleted: false,
                 })
                 .select()
@@ -77,7 +77,7 @@ export class DailySummaryRepository {
         data: {
             markdown?: string
             summary_title?: string
-            summary_emb?: number[]
+            summary_embedding?: number[]
             script_text?: string
             script_tts_duration_sec?: number
         },
@@ -207,7 +207,19 @@ export class DailySummaryRepository {
     }
 
     // ユーザーの最新24時間以内のフィードアイテムを取得（要約生成用）
-    async getRecentFeedItems(userId: string, hoursBack = 24): Promise<any[]> {
+    async getRecentFeedItems(
+        userId: string,
+        hoursBack = 24,
+    ): Promise<
+        {
+            id: number
+            title: string
+            description: string
+            link: string
+            publication_date: string
+            feed_id: number
+        }[]
+    > {
         try {
             const cutoffTime = new Date()
             cutoffTime.setHours(cutoffTime.getHours() - hoursBack)
@@ -233,6 +245,32 @@ export class DailySummaryRepository {
         } catch (error) {
             this.logger.error(`Failed to get recent feed items: ${error.message}`)
             return []
+        }
+    }
+
+    // 所有者チェック用：指定されたサマリーIDがユーザーのものかを確認
+    async findById(id: number, userId: string): Promise<DailySummaryEntity | null> {
+        try {
+            const { data, error } = await this.supabaseRequestService
+                .getClient()
+                .from('daily_summaries')
+                .select('*')
+                .eq('id', id)
+                .eq('user_id', userId)
+                .eq('soft_deleted', false)
+                .single()
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    return null
+                }
+                throw error
+            }
+
+            return new DailySummaryEntity(data)
+        } catch (error) {
+            this.logger.error(`Failed to find daily summary by ID: ${error.message}`)
+            return null
         }
     }
 

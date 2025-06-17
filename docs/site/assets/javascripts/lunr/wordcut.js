@@ -320,7 +320,6 @@ var PathInfoBuilder = {
   */
 
   buildByAcceptors: function(path, finalAcceptors, i) {
-    var self = this;
     var infos = finalAcceptors.map(function(acceptor) {
       var p = i - acceptor.strOffset + 1
         , _info = path[p];            
@@ -533,22 +532,21 @@ module.exports = Wordcut;
 var WordcutCore = {
 
   buildPath: function(text) {
-    var self = this
-      , path = self.pathSelector.createPath()
+    var path = this.pathSelector.createPath()
       , leftBoundary = 0;
-    self.acceptors.reset();
+    this.acceptors.reset();
     for (var i = 0; i < text.length; i++) {
       var ch = text[i];
-      self.acceptors.transit(ch);
+      this.acceptors.transit(ch);
 
-      var possiblePathInfos = self
+      var possiblePathInfos = this
         .pathInfoBuilder
         .build(path,
-               self.acceptors.getFinalAcceptors(),
+               this.acceptors.getFinalAcceptors(),
                i,
                leftBoundary,
                text);
-      var selectedPath = self.pathSelector.selectPath(possiblePathInfos)
+      var selectedPath = this.pathSelector.selectPath(possiblePathInfos)
 
       path.push(selectedPath);
       if (selectedPath.type !== "UNK") {
@@ -978,7 +976,6 @@ var objectKeys = Object.keys || function (obj) {
 };
 
 },{"util/":28}],10:[function(require,module,exports){
-'use strict';
 module.exports = balanced;
 function balanced(a, b, str) {
   if (a instanceof RegExp) a = maybeMatch(a, str);
@@ -1051,8 +1048,8 @@ var escComma = '\0COMMA'+Math.random()+'\0';
 var escPeriod = '\0PERIOD'+Math.random()+'\0';
 
 function numeric(str) {
-  return parseInt(str, 10) == str
-    ? parseInt(str, 10)
+  return Number.parseInt(str, 10) == str
+    ? Number.parseInt(str, 10)
     : str.charCodeAt(0);
 }
 
@@ -1645,7 +1642,7 @@ function setopts (self, pattern, options) {
   self.stat = !!options.stat
   self.noprocess = !!options.noprocess
 
-  self.maxLength = options.maxLength || Infinity
+  self.maxLength = options.maxLength || Number.POSITIVE_INFINITY
   self.cache = options.cache || Object.create(null)
   self.statCache = options.statCache || Object.create(null)
   self.symlinks = options.symlinks || Object.create(null)
@@ -2328,8 +2325,6 @@ Glob.prototype._readdir = function (abs, inGlobStar, cb) {
     if (Array.isArray(c))
       return cb(null, c)
   }
-
-  var self = this
   fs.readdir(abs, readdirCb(this, abs, cb))
 }
 
@@ -3741,7 +3736,7 @@ function parse (pattern, isSub) {
     // anything.  This trick looks for a character after the end of
     // the string, which is of course impossible, except in multi-line
     // mode, but it's not a /m regex.
-    return new RegExp('$.')
+    return /$./
   }
 
   regExp._glob = pattern
@@ -4312,7 +4307,6 @@ var substr = 'ab'.substr(-1) === 'b'
 }).call(this,require('_process'))
 },{"_process":24}],23:[function(require,module,exports){
 (function (process){
-'use strict';
 
 function posix(path) {
 	return path.charAt(0) === '/';
@@ -4614,7 +4608,7 @@ process.umask = function() { return 0; };
     return _.property(value);
   };
   _.iteratee = function(value, context) {
-    return cb(value, context, Infinity);
+    return cb(value, context, Number.POSITIVE_INFINITY);
   };
 
   // An internal function for creating assigner functions.
@@ -4820,7 +4814,7 @@ process.umask = function() { return 0; };
 
   // Return the maximum element (or element-based computation).
   _.max = function(obj, iteratee, context) {
-    var result = -Infinity, lastComputed = -Infinity,
+    var result = Number.NEGATIVE_INFINITY, lastComputed = Number.NEGATIVE_INFINITY,
         value, computed;
     if (iteratee == null && obj != null) {
       obj = isArrayLike(obj) ? obj : _.values(obj);
@@ -4834,7 +4828,7 @@ process.umask = function() { return 0; };
       iteratee = cb(iteratee, context);
       _.each(obj, function(value, index, list) {
         computed = iteratee(value, index, list);
-        if (computed > lastComputed || computed === -Infinity && result === -Infinity) {
+        if (computed > lastComputed || computed === Number.NEGATIVE_INFINITY && result === Number.NEGATIVE_INFINITY) {
           result = value;
           lastComputed = computed;
         }
@@ -4845,7 +4839,7 @@ process.umask = function() { return 0; };
 
   // Return the minimum element (or element-based computation).
   _.min = function(obj, iteratee, context) {
-    var result = Infinity, lastComputed = Infinity,
+    var result = Number.POSITIVE_INFINITY, lastComputed = Number.POSITIVE_INFINITY,
         value, computed;
     if (iteratee == null && obj != null) {
       obj = isArrayLike(obj) ? obj : _.values(obj);
@@ -4859,7 +4853,7 @@ process.umask = function() { return 0; };
       iteratee = cb(iteratee, context);
       _.each(obj, function(value, index, list) {
         computed = iteratee(value, index, list);
-        if (computed < lastComputed || computed === Infinity && result === Infinity) {
+        if (computed < lastComputed || computed === Number.POSITIVE_INFINITY && result === Number.POSITIVE_INFINITY) {
           result = value;
           lastComputed = computed;
         }
@@ -5762,7 +5756,7 @@ process.umask = function() { return 0; };
 
   // Is a given object a finite number?
   _.isFinite = function(obj) {
-    return isFinite(obj) && !isNaN(parseFloat(obj));
+    return isFinite(obj) && !isNaN(Number.parseFloat(obj));
   };
 
   // Is the given value `NaN`? (NaN is the only number which does not equal itself).
