@@ -34,7 +34,7 @@ import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
 import { SupabaseUser } from 'src/auth/supabase-user.decorator'
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto'
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
-import { Database } from 'src/types/schema'
+import { Database } from '../../types/schema'
 import { AddSubscriptionDto } from './dto/add-subscription.dto'
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
 import { FeedItemService } from './feed-item.service'
@@ -78,6 +78,13 @@ export class FeedController {
     // @example
     // const result = await feedController.getSubscriptions(user, { page: 1, limit: 10 })
     // @see SubscriptionService.getSubscriptionsPaginated
+    @Get()
+    @ApiOperation({ summary: 'ユーザーの購読一覧を取得' })
+    @ApiOkResponse({ description: '購読一覧取得成功' })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'ページ番号' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: '1ページあたりの件数' })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '取得失敗' })
     async getSubscriptions(
         @SupabaseUser() user: User,
         @Query() query: PaginationQueryDto,
@@ -106,6 +113,12 @@ export class FeedController {
     // @example
     // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
     // @see SubscriptionService.addSubscription
+    @Post()
+    @ApiOperation({ summary: 'RSS購読を追加' })
+    @ApiCreatedResponse({ description: '購読追加成功' })
+    @ApiBody({ type: AddSubscriptionDto })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '追加失敗' })
     async addSubscription(@SupabaseUser() user: User, @Body() dto: AddSubscriptionDto) {
         if (!user?.id) {
             throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
@@ -147,6 +160,13 @@ export class FeedController {
     // @example
     // await feedController.fetchSubscription(user, 123)
     // @see FeedUseCaseService.fetchFeedItems
+    @Post(':id/fetch')
+    @ApiOperation({ summary: '指定した購読のフィードを手動取得' })
+    @ApiAcceptedResponse({ description: 'フィード取得開始' })
+    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '取得失敗' })
+    @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async fetchSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
@@ -173,6 +193,15 @@ export class FeedController {
     // @example
     // const items = await feedController.getSubscriptionItems(user, 123, { page: 1, limit: 10 })
     // @see FeedItemService.getFeedItemsPaginated
+    @Get(':id/items')
+    @ApiOperation({ summary: '購読のフィードアイテム一覧を取得' })
+    @ApiOkResponse({ description: 'フィードアイテム一覧取得成功' })
+    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'ページ番号' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: '1ページあたりの件数' })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '取得失敗' })
+    @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async getSubscriptionItems(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
@@ -204,6 +233,14 @@ export class FeedController {
     // @example
     // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
     // @see SubscriptionService.updateSubscription
+    @Patch(':id')
+    @ApiOperation({ summary: '購読情報を更新' })
+    @ApiOkResponse({ description: '購読更新成功' })
+    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @ApiBody({ type: UpdateSubscriptionDto })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '更新失敗' })
+    @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async updateSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) id: number,
@@ -230,6 +267,13 @@ export class FeedController {
     // @example
     // await feedController.deleteSubscription(user, 123)
     // @see SubscriptionService.deleteSubscription
+    @Delete(':id')
+    @ApiOperation({ summary: '購読を削除' })
+    @ApiOkResponse({ description: '購読削除成功' })
+    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @ApiUnauthorizedResponse({ description: '認証エラー' })
+    @ApiBadRequestResponse({ description: '削除失敗' })
+    @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async deleteSubscription(
         @SupabaseUser() user: User,
         @Param('id', ParseIntPipe) subscriptionId: number,
