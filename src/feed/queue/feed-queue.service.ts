@@ -1,6 +1,8 @@
 import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable } from '@nestjs/common'
 import { Queue } from 'bullmq'
+import { validateDto } from 'src/common/utils/validation'
+import { FeedFetchJobDto } from './dto/feed-fetch-job.dto'
 
 @Injectable()
 export class FeedQueueService {
@@ -9,20 +11,29 @@ export class FeedQueueService {
     // Bullキューにジョブを投入する
     // @param subscriptionId ユーザ購読ID
     // @param userId ユーザID
-    async addFeedJob(subscriptionId: number, userId: string) {
+async addFeedJob(
+        subscriptionId: number,
+        userId: string,
+        feedUrl = '',
+        feedTitle = 'Unknown Feed',
+    ) {
+        // DTO に詰めてバリデーション
+        const dto = await validateDto(FeedFetchJobDto, {
+            subscriptionId,
+            userId,
+            feedUrl,
+            feedTitle,
+        })
+
         await this.feedQueue.add(
-            // job name
-            // required by BullMQ
             'default',
-            // job data
-            { subscriptionId, userId },
+            dto,
             {
                 removeOnComplete: true,
                 removeOnFail: false,
-                // retry up to 5 times
                 attempts: 5,
-                // retry after 60s
                 backoff: { type: 'fixed', delay: 60_000 },
+                jobId: `feed-${dto.subscriptionId}`,
             },
         )
     }

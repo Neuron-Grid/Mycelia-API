@@ -25,7 +25,12 @@ export class FeedScheduleService {
         }
 
         for (const s of subs) {
-            await this.feedQueueService.addFeedJob(s.id, s.user_id)
+            await this.feedQueueService.addFeedJob(
+                s.id,
+                s.user_id,
+                s.feed_url,
+                s.feed_title || 'Unknown Feed',
+            )
         }
         this.logger.log(`Enqueued ${subs.length} job(s) (<= ${now.toISOString()})`)
     }
