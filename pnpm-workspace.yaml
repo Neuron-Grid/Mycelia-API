@@ -1,5 +1,8 @@
 packages:
   - .
+
 ignoredBuiltDependencies:
   - '@nestjs/core'
+  - '@swc/core'
   - msgpackr-extract
+  - unrs-resolver
