@@ -26,7 +26,7 @@ export class FeedFetchService {
     // @example
     // const { meta, items } = await feedFetchService.parseFeed('https://example.com/rss')
     // @see FeedParser
-    async parseFeed(feedUrl: string): Promise<{ meta: Meta; items: FeedparserItem[] }> {
+    parseFeed(feedUrl: string): Promise<{ meta: Meta; items: FeedparserItem[] }> {
         const feedparser = new FeedParser({ normalize: true })
         const items: FeedparserItem[] = []
         let meta: Meta = {} as Meta

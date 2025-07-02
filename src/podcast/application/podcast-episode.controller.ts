@@ -1,4 +1,5 @@
 import {
+    BadRequestException,
     Body,
     Controller,
     Delete,
@@ -21,11 +22,9 @@ import {
     ApiResponse,
     ApiTags,
 } from '@nestjs/swagger'
-import { User as SupabaseUserType } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard'
-import { SupabaseUser } from '../../auth/supabase-user.decorator'
-import { DailySummaryRepository } from '../../llm/infrastructure/daily-summary.repository'
-import { PodcastEpisodeEntity } from '../domain/podcast-episode.entity'
+import { UserId } from '../../auth/user-id.decorator'
+import { DailySummaryRepository } from '../../llm/infrastructure/repositories/daily-summary.repository'
 import { PodcastEpisodeRepository } from '../infrastructure/podcast-episode.repository'
 import { PodcastQueueService } from '../queue/podcast-queue.service'
 import {
@@ -74,44 +73,33 @@ export class PodcastEpisodeController {
         type: PodcastEpisodeListResponseDto,
     })
     async getEpisodes(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Query('page') page = 1,
         @Query('limit') limit = 20,
     ): Promise<PodcastEpisodeListResponseDto> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
-
         // パラメータの検証
         const validPage = Math.max(1, Number(page))
         const validLimit = Math.min(Math.max(1, Number(limit)), 100) // 最大100件
         const offset = (validPage - 1) * validLimit
 
         this.logger.log(
-            `User ${user.id} requesting episodes: page=${validPage}, limit=${validLimit}`,
+            `User ${userId} requesting episodes: page=${validPage}, limit=${validLimit}`,
         )
 
-        try {
-            const { episodes, total } = await this.podcastEpisodeRepository.findByUser(
-                user.id,
-                validLimit,
-                offset,
-            )
+        const { episodes, total } = await this.podcastEpisodeRepository.findByUser(
+            userId,
+            validLimit,
+            offset,
+        )
 
-            const totalPages = Math.ceil(total / validLimit)
+        const totalPages = Math.ceil(total / validLimit)
 
-            return {
-                episodes: episodes.map((episode) =>
-                    this.podcastEpisodeMapper.toResponseDto(episode),
-                ),
-                total,
-                page: validPage,
-                limit: validLimit,
-                total_pages: totalPages,
-            }
-        } catch (error) {
-            this.logger.error(`Failed to get episodes for user ${user.id}: ${error.message}`)
-            throw new HttpException('Failed to retrieve episodes', HttpStatus.INTERNAL_SERVER_ERROR)
+        return {
+            episodes: episodes.map((episode) => this.podcastEpisodeMapper.toResponseDto(episode)),
+            total,
+            page: validPage,
+            limit: validLimit,
+            total_pages: totalPages,
         }
     }
 
@@ -132,16 +120,12 @@ export class PodcastEpisodeController {
         description: 'Podcast episode not found or access denied',
     })
     async getEpisodeById(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) episodeId: number,
     ): Promise<PodcastEpisodeResponseDto> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
+        this.logger.log(`User ${userId} requesting episode ${episodeId}`)
 
-        this.logger.log(`User ${user.id} requesting episode ${episodeId}`)
-
-        const episode = await this.podcastEpisodeRepository.findById(episodeId, user.id)
+        const episode = await this.podcastEpisodeRepository.findById(episodeId, userId)
 
         if (!episode) {
             throw new HttpException(
@@ -169,17 +153,13 @@ export class PodcastEpisodeController {
         description: 'Related summary not found or access denied',
     })
     async createEpisode(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Body() createDto: CreatePodcastEpisodeDto,
     ): Promise<PodcastEpisodeResponseDto> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
-
-        this.logger.log(`User ${user.id} creating episode for summary ${createDto.summary_id}`)
+        this.logger.log(`User ${userId} creating episode for summary ${createDto.summary_id}`)
 
         // 要約の所有者チェック
-        const summary = await this.dailySummaryRepository.findById(createDto.summary_id, user.id)
+        const summary = await this.dailySummaryRepository.findById(createDto.summary_id, userId)
         if (!summary) {
             throw new HttpException(
                 'Related summary not found or access denied',
@@ -189,7 +169,7 @@ export class PodcastEpisodeController {
 
         // 既存のエピソードがないかチェック
         const existingEpisode = await this.podcastEpisodeRepository.findBySummaryId(
-            user.id,
+            userId,
             createDto.summary_id,
         )
         if (existingEpisode) {
@@ -199,21 +179,12 @@ export class PodcastEpisodeController {
             )
         }
 
-        try {
-            const episode = await this.podcastEpisodeRepository.create(
-                user.id,
-                createDto.summary_id,
-                {
-                    title: createDto.title,
-                },
-            )
+        const episode = await this.podcastEpisodeRepository.create(userId, createDto.summary_id, {
+            title: createDto.title,
+        })
 
-            this.logger.log(`Episode ${episode.id} created for user ${user.id}`)
-            return this.podcastEpisodeMapper.toResponseDto(episode)
-        } catch (error) {
-            this.logger.error(`Failed to create episode for user ${user.id}: ${error.message}`)
-            throw new HttpException('Failed to create episode', HttpStatus.INTERNAL_SERVER_ERROR)
-        }
+        this.logger.log(`Episode ${episode.id} created for user ${userId}`)
+        return this.podcastEpisodeMapper.toResponseDto(episode)
     }
 
     @Put(':id')
@@ -233,18 +204,14 @@ export class PodcastEpisodeController {
         description: 'Podcast episode not found or access denied',
     })
     async updateEpisode(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) episodeId: number,
         @Body() updateDto: UpdatePodcastEpisodeDto,
     ): Promise<PodcastEpisodeResponseDto> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
-
-        this.logger.log(`User ${user.id} updating episode ${episodeId}`)
+        this.logger.log(`User ${userId} updating episode ${episodeId}`)
 
         // 所有者チェック
-        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, user.id)
+        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId)
         if (!existingEpisode) {
             throw new HttpException(
                 'Podcast episode not found or access denied',
@@ -252,21 +219,14 @@ export class PodcastEpisodeController {
             )
         }
 
-        try {
-            const updatedEpisode = await this.podcastEpisodeRepository.update(
-                episodeId,
-                user.id,
-                updateDto,
-            )
+        const updatedEpisode = await this.podcastEpisodeRepository.update(
+            episodeId,
+            userId,
+            updateDto,
+        )
 
-            this.logger.log(`Episode ${episodeId} updated by user ${user.id}`)
-            return this.podcastEpisodeMapper.toResponseDto(updatedEpisode)
-        } catch (error) {
-            this.logger.error(
-                `Failed to update episode ${episodeId} for user ${user.id}: ${error.message}`,
-            )
-            throw new HttpException('Failed to update episode', HttpStatus.INTERNAL_SERVER_ERROR)
-        }
+        this.logger.log(`Episode ${episodeId} updated by user ${userId}`)
+        return this.podcastEpisodeMapper.toResponseDto(updatedEpisode)
     }
 
     @Delete(':id')
@@ -285,17 +245,13 @@ export class PodcastEpisodeController {
         description: 'Podcast episode not found or access denied',
     })
     async deleteEpisode(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) episodeId: number,
     ): Promise<void> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
-
-        this.logger.log(`User ${user.id} deleting episode ${episodeId}`)
+        this.logger.log(`User ${userId} deleting episode ${episodeId}`)
 
         // 所有者チェック
-        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, user.id)
+        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId)
         if (!existingEpisode) {
             throw new HttpException(
                 'Podcast episode not found or access denied',
@@ -303,15 +259,8 @@ export class PodcastEpisodeController {
             )
         }
 
-        try {
-            await this.podcastEpisodeRepository.softDelete(episodeId, user.id)
-            this.logger.log(`Episode ${episodeId} deleted by user ${user.id}`)
-        } catch (error) {
-            this.logger.error(
-                `Failed to delete episode ${episodeId} for user ${user.id}: ${error.message}`,
-            )
-            throw new HttpException('Failed to delete episode', HttpStatus.INTERNAL_SERVER_ERROR)
-        }
+        await this.podcastEpisodeRepository.softDelete(episodeId, userId)
+        this.logger.log(`Episode ${episodeId} deleted by user ${userId}`)
     }
 
     @Post('generate')
@@ -330,19 +279,15 @@ export class PodcastEpisodeController {
         description: 'Related summary not found or access denied',
     })
     async generateEpisode(
-        @SupabaseUser() user: SupabaseUserType,
+        @UserId() userId: string,
         @Body() generateDto: GeneratePodcastEpisodeDto,
     ): Promise<PodcastGenerationJobResponseDto> {
-        if (!user?.id) {
-            throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED)
-        }
-
         this.logger.log(
-            `User ${user.id} requesting podcast generation for summary ${generateDto.summary_id}`,
+            `User ${userId} requesting podcast generation for summary ${generateDto.summary_id}`,
         )
 
         // 要約の所有者チェック
-        const summary = await this.dailySummaryRepository.findById(generateDto.summary_id, user.id)
+        const summary = await this.dailySummaryRepository.findById(generateDto.summary_id, userId)
         if (!summary) {
             throw new HttpException(
                 'Related summary not found or access denied',
@@ -358,56 +303,42 @@ export class PodcastEpisodeController {
             )
         }
 
-        try {
-            // 既存のエピソードがあるかチェックし、なければ作成
-            let episode = await this.podcastEpisodeRepository.findBySummaryId(
-                user.id,
-                generateDto.summary_id,
+        // 既存のエピソードがあるかチェックし、なければ作成
+        let episode = await this.podcastEpisodeRepository.findBySummaryId(
+            userId,
+            generateDto.summary_id,
+        )
+
+        if (!episode) {
+            episode = await this.podcastEpisodeRepository.create(userId, generateDto.summary_id, {
+                title: summary.summary_title || `Podcast Episode - ${summary.summary_date}`,
+            })
+            this.logger.log(
+                `Created new episode ${episode.id} for summary ${generateDto.summary_id}`,
             )
+        }
 
-            if (!episode) {
-                episode = await this.podcastEpisodeRepository.create(
-                    user.id,
-                    generateDto.summary_id,
-                    {
-                        title: summary.summary_title || `Podcast Episode - ${summary.summary_date}`,
-                    },
-                )
-                this.logger.log(
-                    `Created new episode ${episode.id} for summary ${generateDto.summary_id}`,
-                )
-            }
+        // script_textの存在チェック
+        if (!summary.script_text) {
+            throw new BadRequestException('Script text is required for podcast generation')
+        }
 
-            // script_textの存在チェック
-            if (!summary.script_text) {
-                throw new BadRequestException('Script text is required for podcast generation')
-            }
+        // ポッドキャスト生成ジョブをキューに追加
+        const result = await this.podcastQueueService.addPodcastJob(
+            summary.script_text,
+            userId,
+            'ja-JP', // デフォルト言語
+            `episode-${episode.id}-${Date.now()}.opus`,
+            episode.title || undefined,
+        )
 
-            // ポッドキャスト生成ジョブをキューに追加
-            const result = await this.podcastQueueService.addPodcastJob(
-                summary.script_text,
-                user.id,
-                'ja-JP', // デフォルト言語
-                `episode-${episode.id}-${Date.now()}.opus`,
-                episode.title || undefined,
-            )
+        const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`
+        this.logger.log(message)
 
-            const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`
-            this.logger.log(message)
-
-            return {
-                message,
-                job_id: result.filename, // ファイル名をジョブIDとして使用
-                episode_id: episode.id,
-            }
-        } catch (error) {
-            this.logger.error(
-                `Failed to generate podcast for summary ${generateDto.summary_id}: ${error.message}`,
-            )
-            throw new HttpException(
-                'Failed to queue podcast generation',
-                HttpStatus.INTERNAL_SERVER_ERROR,
-            )
+        return {
+            message,
+            job_id: result.filename, // ファイル名をジョブIDとして使用
+            episode_id: episode.id,
         }
     }
 }

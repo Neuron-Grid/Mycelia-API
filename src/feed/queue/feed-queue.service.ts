@@ -11,7 +11,7 @@ export class FeedQueueService {
     // Bullキューにジョブを投入する
     // @param subscriptionId ユーザ購読ID
     // @param userId ユーザID
-async addFeedJob(
+    async addFeedJob(
         subscriptionId: number,
         userId: string,
         feedUrl = '',
@@ -25,16 +25,12 @@ async addFeedJob(
             feedTitle,
         })
 
-        await this.feedQueue.add(
-            'default',
-            dto,
-            {
-                removeOnComplete: true,
-                removeOnFail: false,
-                attempts: 5,
-                backoff: { type: 'fixed', delay: 60_000 },
-                jobId: `feed-${dto.subscriptionId}`,
-            },
-        )
+        await this.feedQueue.add('default', dto, {
+            removeOnComplete: true,
+            removeOnFail: false,
+            attempts: 5,
+            backoff: { type: 'fixed', delay: 60_000 },
+            jobId: `feed-${dto.subscriptionId}`,
+        })
     }
 }

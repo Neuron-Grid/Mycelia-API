@@ -59,3 +59,6 @@ redis-data/
 .vscode/
 .claude
 claude.md
+GEMINI.md
+.claude/settings.local.json
+.claude/

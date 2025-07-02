@@ -1,17 +1,7 @@
 // @file 認証・ユーザー管理APIのコントローラ
-import {
-    Body,
-    Controller,
-    Delete,
-    Get,
-    HttpException,
-    HttpStatus,
-    Patch,
-    Post,
-    UseGuards,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/common'
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from '@supabase/supabase-js'
 import { AuthService } from './auth.service'
@@ -27,6 +17,7 @@ import { VerifyTotpDto } from './dto/verify-totp.dto'
 import { buildResponse } from './response.util'
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { SupabaseUser } from './supabase-user.decorator'
+import { UserId } from './user-id.decorator'
 
 @ApiTags('Authentication')
 @Controller({
@@ -52,13 +43,9 @@ export class AuthController {
     // @see AuthService.signUp
     @Post('signup')
     async signUp(@Body() signUpDto: SignUpDto) {
-        try {
-            const { email, password, username } = signUpDto
-            const result = await this.authService.signUp(email, password, username)
-            return buildResponse('Signup successful', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const { email, password, username } = signUpDto
+        const result = await this.authService.signUp(email, password, username)
+        return buildResponse('Signup successful', result)
     }
 
     // @async
@@ -72,13 +59,9 @@ export class AuthController {
     // @see AuthService.signIn
     @Post('login')
     async signIn(@Body() signInDto: SignInDto) {
-        try {
-            const { email, password } = signInDto
-            const result = await this.authService.signIn(email, password)
-            return buildResponse('Login successful', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.UNAUTHORIZED)
-        }
+        const { email, password } = signInDto
+        const result = await this.authService.signIn(email, password)
+        return buildResponse('Login successful', result)
     }
 
     // @async
@@ -92,13 +75,9 @@ export class AuthController {
     // @see AuthService.forgotPassword
     @Post('forgot-password')
     async forgotPassword(@Body() dto: ForgotPasswordDto) {
-        try {
-            const { email } = dto
-            const result = await this.authService.forgotPassword(email)
-            return buildResponse('Password reset email sent', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const { email } = dto
+        const result = await this.authService.forgotPassword(email)
+        return buildResponse('Password reset email sent', result)
     }
 
     // @async
@@ -112,13 +91,9 @@ export class AuthController {
     // @see AuthService.resetPassword
     @Post('reset-password')
     async resetPassword(@Body() dto: ResetPasswordDto) {
-        try {
-            const { accessToken, newPassword } = dto
-            const result = await this.authService.resetPassword(accessToken, newPassword)
-            return buildResponse('Password has been reset', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const { accessToken, newPassword } = dto
+        const result = await this.authService.resetPassword(accessToken, newPassword)
+        return buildResponse('Password has been reset', result)
     }
 
     // @async
@@ -132,13 +107,9 @@ export class AuthController {
     // @see AuthService.verifyEmail
     @Post('verify-email')
     async verifyEmail(@Body() dto: VerifyEmailDto) {
-        try {
-            const { email, token } = dto
-            const result = await this.authService.verifyEmail(email, token)
-            return buildResponse('Email verified successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const { email, token } = dto
+        const result = await this.authService.verifyEmail(email, token)
+        return buildResponse('Email verified successfully', result)
     }
 
     // @async
@@ -153,12 +124,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async signOut() {
-        try {
-            const result = await this.authService.signOut()
-            return buildResponse('Logout successful', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.authService.signOut()
+        return buildResponse('Logout successful', result)
     }
 
     // @async
@@ -173,16 +140,9 @@ export class AuthController {
     @Delete('delete')
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    async deleteAccount(@SupabaseUser() user: User) {
-        try {
-            if (!user?.id) {
-                throw new HttpException('User ID not found', HttpStatus.UNAUTHORIZED)
-            }
-            const result = await this.authService.deleteAccount(user.id)
-            return buildResponse('Account deleted', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+    async deleteAccount(@UserId() userId: string) {
+        const result = await this.authService.deleteAccount(userId)
+        return buildResponse('Account deleted', result)
     }
 
     // @async
@@ -199,15 +159,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
-        try {
-            if (!user) {
-                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
-            }
-            const result = await this.authService.updateEmail(user, dto.newEmail)
-            return buildResponse('Email updated successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.authService.updateEmail(user, dto.newEmail)
+        return buildResponse('Email updated successfully', result)
     }
 
     // @async
@@ -224,15 +177,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updateUsername(@SupabaseUser() user: User, @Body() dto: UpdateUsernameDto) {
-        try {
-            if (!user) {
-                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
-            }
-            const result = await this.authService.updateUsername(user, dto.newUsername)
-            return buildResponse('Username updated successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.authService.updateUsername(user, dto.newUsername)
+        return buildResponse('Username updated successfully', result)
     }
 
     // @async
@@ -249,16 +195,9 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updatePassword(@SupabaseUser() user: User, @Body() dto: UpdatePasswordDto) {
-        try {
-            if (!user) {
-                throw new HttpException('No authenticated user', HttpStatus.UNAUTHORIZED)
-            }
-            const { oldPassword, newPassword } = dto
-            const result = await this.authService.updatePassword(user, oldPassword, newPassword)
-            return buildResponse('Password updated successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const { oldPassword, newPassword } = dto
+        const result = await this.authService.updatePassword(user, oldPassword, newPassword)
+        return buildResponse('Password updated successfully', result)
     }
 
     // @public
@@ -267,6 +206,9 @@ export class AuthController {
     // @returns {{ message: string, data: User }} - ユーザープロフィールのレスポンス
     // @example
     // authController.getProfile(user)
+    @Get('profile')
+    @ApiBearerAuth()
+    @UseGuards(SupabaseAuthGuard)
     getProfile(@SupabaseUser() user: User): { message: string; data: User } {
         return buildResponse('User profile fetched successfully', user)
     }
@@ -282,13 +224,9 @@ export class AuthController {
     // @see AuthService.verifyTotp
     @Post('verify-totp')
     async verifyTotp(@Body() dto: VerifyTotpDto) {
-        try {
-            // dto内に factorId, code がある想定
-            const { factorId, code } = dto
-            const result = await this.authService.verifyTotp(factorId, code)
-            return buildResponse('TOTP verified successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        // dto内に factorId, code がある想定
+        const { factorId, code } = dto
+        const result = await this.authService.verifyTotp(factorId, code)
+        return buildResponse('TOTP verified successfully', result)
     }
 }

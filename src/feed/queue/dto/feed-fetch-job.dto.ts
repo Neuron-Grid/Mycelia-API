@@ -14,4 +14,3 @@ export class FeedFetchJobDto {
     @IsString()
     feedTitle!: string
 }
-

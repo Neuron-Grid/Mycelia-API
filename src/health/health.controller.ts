@@ -1,8 +1,8 @@
 // @file システムヘルスチェックAPIのコントローラ
 import { InjectQueue } from '@nestjs/bullmq'
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common'
+import { Controller, Get } from '@nestjs/common'
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiTags } from '@nestjs/swagger'
 // @see https://docs.bullmq.io/
 import { Queue } from 'bullmq'
 import { RedisService } from 'src/shared/redis/redis.service'
@@ -45,29 +45,22 @@ export class HealthController {
     // await healthController.checkHealth()
     // @see HealthCheckResponseDto
     @Get()
+    @Get()
     async checkHealth(): Promise<HealthCheckResponseDto> {
-        try {
-            await this.checkDatabaseWithTimeout()
-            await this.checkRedisWithTimeout()
-            const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout()
+        await this.checkDatabaseWithTimeout()
+        await this.checkRedisWithTimeout()
+        const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout()
 
-            return {
-                status: 'OK',
-                db: 'OK',
-                bullQueue: {
-                    status: bullStatus,
-                    jobCounts,
-                },
-                redis: 'OK',
-            }
-        } catch (err) {
-            throw new HttpException(
-                `Health check failed: ${err instanceof Error ? err.message : err}`,
-                HttpStatus.SERVICE_UNAVAILABLE,
-            )
+        return {
+            status: 'OK',
+            db: 'OK',
+            bullQueue: {
+                status: bullStatus,
+                jobCounts,
+            },
+            redis: 'OK',
         }
     }
-
     // @async
     // @private
     // @since 1.0.0
@@ -82,7 +75,9 @@ export class HealthController {
         await this.withTimeout(
             (async () => {
                 const { error } = await supabase.from('users').select('id').limit(1)
-                if (error) throw new Error(`Database check failed: ${error.message}`)
+                if (error) {
+                    throw new Error(`Database check failed: ${error.message}`)
+                }
             })(),
             this.TIMEOUT_MS,
         )
@@ -162,7 +157,7 @@ export class HealthController {
     // @throws {Error} - タイムアウト時
     // @example
     // await healthController['withTimeout'](Promise.resolve(1), 1000)
-    private async withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
 

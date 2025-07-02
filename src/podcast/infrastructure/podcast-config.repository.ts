@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { SupabaseRequestService } from '../../supabase-request.service'
-import { PodcastConfig, PodcastConfigInput, UserSettings } from '../domain/podcast-config.entity'
+import { PodcastConfig, PodcastConfigInput } from '../domain/podcast-config.entity'
 
 // ポッドキャスト設定リポジトリ
 // user_settingsテーブルを使用してポッドキャスト設定を管理

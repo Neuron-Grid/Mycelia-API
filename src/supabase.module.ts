@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config' // ConfigService をインポート
-import { SupabaseClient, createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { Database } from './types/schema'
 
 export const SUPABASE_CLIENT = 'SUPABASE_CLIENT'

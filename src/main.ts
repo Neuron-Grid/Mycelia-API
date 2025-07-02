@@ -8,6 +8,7 @@ import { NestFactory } from '@nestjs/core'
 import helmet from 'helmet'
 // @see ./app.module
 import { AppModule } from './app.module'
+import { AllExceptionsFilter } from './common/filters/http-exception.filter'
 
 // @async
 // @since 1.0.0
@@ -29,6 +30,7 @@ async function bootstrap() {
 
     // global settings
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }))
+    app.useGlobalFilters(new AllExceptionsFilter())
     app.setGlobalPrefix('api/v1')
     app.getHttpAdapter()
         .getInstance()

@@ -1,3 +1,5 @@
+// NOTE: DTOクラスは ./embedding/queue/dto/vector-update-job.dto.ts で定義
+// ここでは型互換性のためにinterface定義を残す
 export interface VectorUpdateJobData {
     userId: string
     tableType: TableType

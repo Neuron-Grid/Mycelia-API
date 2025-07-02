@@ -1,6 +1,8 @@
 import {
     DeleteObjectCommand,
+    DeleteObjectsCommand,
     GetObjectCommand,
+    ListObjectsV2Command,
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3'
@@ -149,22 +151,73 @@ export class CloudflareR2Service {
     }
 
     // ユーザーのポッドキャストファイルを一括削除
-    deleteUserPodcasts(userId: string): Promise<void> {
+    async deleteUserPodcasts(userId: string): Promise<void> {
         try {
-            // ユーザーフォルダ内のすべてのファイルを削除
-            // 実際の実装では ListObjectsV2Command を使ってファイル一覧を取得してから削除
             const userPrefix = `podcasts/${userId}/`
-
-            // 簡易実装: 単一ファイルのみ削除（本来はリスト取得後に一括削除）
             this.logger.log(
                 `Deleting all podcast files for user ${userId} with prefix: ${userPrefix}`,
             )
 
-            // TODO: ListObjectsV2Command を使用して実際のファイル一覧を取得し、一括削除を実装
-            return Promise.resolve()
+            let continuationToken: string | undefined
+            let totalDeleted = 0
+
+            do {
+                // 1. ユーザーフォルダ内のオブジェクト一覧を取得（最大1000件）
+                const listCommand = new ListObjectsV2Command({
+                    Bucket: this.bucketName,
+                    Prefix: userPrefix,
+                    MaxKeys: 1000,
+                    ContinuationToken: continuationToken,
+                })
+
+                const listResult = await this.s3Client.send(listCommand)
+
+                // 2. 削除対象オブジェクトが存在する場合
+                if (listResult.Contents && listResult.Contents.length > 0) {
+                    const objectsToDelete = listResult.Contents.filter((obj) => obj.Key).map(
+                        (obj) => ({ Key: obj.Key as string }),
+                    )
+
+                    // 3. バッチ削除実行（最大1000件）
+                    if (objectsToDelete.length > 0) {
+                        const deleteCommand = new DeleteObjectsCommand({
+                            Bucket: this.bucketName,
+                            Delete: {
+                                Objects: objectsToDelete,
+                                Quiet: false, // 削除結果を詳細に取得
+                            },
+                        })
+
+                        const deleteResult = await this.s3Client.send(deleteCommand)
+
+                        // 削除結果の確認
+                        if (deleteResult.Deleted) {
+                            totalDeleted += deleteResult.Deleted.length
+                            this.logger.log(
+                                `Successfully deleted ${deleteResult.Deleted.length} files for user ${userId}`,
+                            )
+                        }
+
+                        // エラーがあった場合はログ出力
+                        if (deleteResult.Errors && deleteResult.Errors.length > 0) {
+                            this.logger.warn(
+                                `Some files could not be deleted for user ${userId}:`,
+                                deleteResult.Errors,
+                            )
+                        }
+                    }
+                }
+
+                // 4. 次のページがあるかチェック
+                continuationToken = listResult.NextContinuationToken
+            } while (continuationToken)
+
+            this.logger.log(
+                `Completed deletion of ${totalDeleted} podcast files for user ${userId}`,
+            )
         } catch (error) {
-            this.logger.error(`Failed to delete user podcasts: ${error.message}`)
-            return Promise.reject(error)
+            this.logger.error(`Failed to delete user podcasts: ${error.message}`, error.stack)
+            throw new Error(`Failed to delete user podcasts: ${error.message}`)
         }
     }
 
@@ -184,6 +237,48 @@ export class CloudflareR2Service {
         // カスタムドメインが設定されていない場合はデフォルトを使用
         const accountId = this.configService.get<string>('CLOUDFLARE_ACCOUNT_ID')
         return `https://${this.bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`
+    }
+
+    // オブジェクトを取得
+    async getObject(key: string): Promise<string> {
+        try {
+            const command = new GetObjectCommand({
+                Bucket: this.bucketName,
+                Key: key,
+            })
+
+            const response = await this.s3Client.send(command)
+
+            if (!response.Body) {
+                throw new Error(`Object not found: ${key}`)
+            }
+
+            // ストリームをテキストに変換
+            const chunks: Uint8Array[] = []
+            const reader = response.Body.transformToWebStream().getReader()
+
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+                chunks.push(value)
+            }
+
+            // バイトを文字列に変換
+            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+            const combined = new Uint8Array(totalLength)
+            let offset = 0
+            for (const chunk of chunks) {
+                combined.set(chunk, offset)
+                offset += chunk.length
+            }
+
+            const content = new TextDecoder('utf-8').decode(combined)
+            this.logger.log(`Successfully retrieved object: ${key}`)
+            return content
+        } catch (error) {
+            this.logger.error(`Failed to get object: ${key}`, error.stack)
+            throw new Error(`Failed to get object: ${error.message}`)
+        }
     }
 
     // URLからキーを抽出

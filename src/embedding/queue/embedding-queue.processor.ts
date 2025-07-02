@@ -1,16 +1,12 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq'
 import { Logger } from '@nestjs/common'
 import { Job, Queue } from 'bullmq'
+import { validateDto } from 'src/common/utils/validation'
 import { EmbeddingService } from '../../search/embedding.service'
 import { EmbeddingBatchDataService } from '../services/embedding-batch-data.service'
 import { EmbeddingBatchUpdateService } from '../services/embedding-batch-update.service'
-import {
-    BatchItem,
-    BatchProcessResult,
-    EmbeddingUpdateItem,
-    TableType,
-    VectorUpdateJobData,
-} from '../types/embedding-batch.types'
+import { BatchProcessResult, EmbeddingUpdateItem, TableType } from '../types/embedding-batch.types'
+import { VectorUpdateJobDto } from './dto/vector-update-job.dto'
 
 @Processor('embeddingQueue')
 export class EmbeddingQueueProcessor extends WorkerHost {
@@ -25,7 +21,9 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         super()
     }
 
-    async process(job: Job<VectorUpdateJobData>): Promise<BatchProcessResult> {
+    async process(job: Job<VectorUpdateJobDto>): Promise<BatchProcessResult> {
+        // DTO バリデーション – 破損データを早期検出
+        await validateDto(VectorUpdateJobDto, job.data)
         const { userId, tableType, batchSize = 50, lastProcessedId } = job.data
 
         try {
@@ -106,7 +104,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         tableType: TableType,
         batchSize: number,
         lastId: number,
-        _currentJob: Job<VectorUpdateJobData>,
+        _currentJob: Job<VectorUpdateJobDto>,
     ): Promise<void> {
         await this.embeddingQueue.add(
             'batch-process',
@@ -115,7 +113,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 tableType,
                 batchSize,
                 lastProcessedId: lastId,
-            } as VectorUpdateJobData,
+            } as VectorUpdateJobDto,
             {
                 delay: 2000,
                 priority: 5,

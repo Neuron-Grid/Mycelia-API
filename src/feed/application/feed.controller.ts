@@ -29,9 +29,8 @@ import {
     ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
-import { SupabaseUser } from 'src/auth/supabase-user.decorator'
+import { UserId } from 'src/auth/user-id.decorator'
 import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto'
 import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
 import { Database } from '../../types/schema'
@@ -81,26 +80,29 @@ export class FeedController {
     @Get()
     @ApiOperation({ summary: 'ユーザーの購読一覧を取得' })
     @ApiOkResponse({ description: '購読一覧取得成功' })
-    @ApiQuery({ name: 'page', required: false, type: Number, description: 'ページ番号' })
-    @ApiQuery({ name: 'limit', required: false, type: Number, description: '1ページあたりの件数' })
+    @ApiQuery({
+        name: 'page',
+        required: false,
+        type: Number,
+        description: 'ページ番号',
+    })
+    @ApiQuery({
+        name: 'limit',
+        required: false,
+        type: Number,
+        description: '1ページあたりの件数',
+    })
     @ApiUnauthorizedResponse({ description: '認証エラー' })
     @ApiBadRequestResponse({ description: '取得失敗' })
     async getSubscriptions(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Query() query: PaginationQueryDto,
     ): Promise<PaginatedResult<SubscriptionRow>> {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            return await this.subscriptionService.getSubscriptionsPaginated(
-                user.id,
-                query.page,
-                query.limit,
-            )
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        return await this.subscriptionService.getSubscriptionsPaginated(
+            userId,
+            query.page,
+            query.limit,
+        )
     }
 
     // @async
@@ -119,10 +121,7 @@ export class FeedController {
     @ApiBody({ type: AddSubscriptionDto })
     @ApiUnauthorizedResponse({ description: '認証エラー' })
     @ApiBadRequestResponse({ description: '追加失敗' })
-    async addSubscription(@SupabaseUser() user: User, @Body() dto: AddSubscriptionDto) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
+    async addSubscription(@UserId() userId: string, @Body() dto: AddSubscriptionDto) {
         const { feedUrl } = dto
         if (!feedUrl) {
             throw new HttpException('feedUrl is required', HttpStatus.BAD_REQUEST)
@@ -138,16 +137,8 @@ export class FeedController {
             feedTitle = ''
         }
 
-        try {
-            const result = await this.subscriptionService.addSubscription(
-                user.id,
-                feedUrl,
-                feedTitle,
-            )
-            return buildResponse('Subscription added', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.subscriptionService.addSubscription(userId, feedUrl, feedTitle)
+        return buildResponse('Subscription added', result)
     }
 
     // @async
@@ -168,18 +159,11 @@ export class FeedController {
     @ApiBadRequestResponse({ description: '取得失敗' })
     @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async fetchSubscription(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) subscriptionId: number,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            const result = await this.feedUseCase.fetchFeedItems(subscriptionId, user.id)
-            return buildResponse('Feed fetched successfully', result)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.feedUseCase.fetchFeedItems(subscriptionId, userId)
+        return buildResponse('Feed fetched successfully', result)
     }
 
     // @async
@@ -197,29 +181,32 @@ export class FeedController {
     @ApiOperation({ summary: '購読のフィードアイテム一覧を取得' })
     @ApiOkResponse({ description: 'フィードアイテム一覧取得成功' })
     @ApiParam({ name: 'id', type: Number, description: '購読ID' })
-    @ApiQuery({ name: 'page', required: false, type: Number, description: 'ページ番号' })
-    @ApiQuery({ name: 'limit', required: false, type: Number, description: '1ページあたりの件数' })
+    @ApiQuery({
+        name: 'page',
+        required: false,
+        type: Number,
+        description: 'ページ番号',
+    })
+    @ApiQuery({
+        name: 'limit',
+        required: false,
+        type: Number,
+        description: '1ページあたりの件数',
+    })
     @ApiUnauthorizedResponse({ description: '認証エラー' })
     @ApiBadRequestResponse({ description: '取得失敗' })
     @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async getSubscriptionItems(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) subscriptionId: number,
         @Query() query: PaginationQueryDto,
     ): Promise<PaginatedResult<FeedItemRow>> {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            return await this.feedItemService.getFeedItemsPaginated(
-                user.id,
-                subscriptionId,
-                query.page,
-                query.limit,
-            )
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        return await this.feedItemService.getFeedItemsPaginated(
+            userId,
+            subscriptionId,
+            query.page,
+            query.limit,
+        )
     }
 
     // @async
@@ -242,19 +229,12 @@ export class FeedController {
     @ApiBadRequestResponse({ description: '更新失敗' })
     @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async updateSubscription(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateSubscriptionDto,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            const updated = await this.subscriptionService.updateSubscription(user.id, id, dto)
-            return buildResponse('Subscription updated', updated)
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        const updated = await this.subscriptionService.updateSubscription(userId, id, dto)
+        return buildResponse('Subscription updated', updated)
     }
 
     // @async
@@ -275,18 +255,10 @@ export class FeedController {
     @ApiBadRequestResponse({ description: '削除失敗' })
     @ApiNotFoundResponse({ description: '購読が見つかりません' })
     async deleteSubscription(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('id', ParseIntPipe) subscriptionId: number,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-
-        try {
-            await this.subscriptionService.deleteSubscription(user.id, subscriptionId)
-            return buildResponse('Subscription deleted')
-        } catch (error) {
-            throw new HttpException(error.message, HttpStatus.BAD_REQUEST)
-        }
+        await this.subscriptionService.deleteSubscription(userId, subscriptionId)
+        return buildResponse('Subscription deleted')
     }
 }

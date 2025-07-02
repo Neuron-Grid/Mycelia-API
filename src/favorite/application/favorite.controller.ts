@@ -1,21 +1,10 @@
 // @file お気に入り機能のAPIコントローラ
-import {
-    Controller,
-    Delete,
-    Get,
-    HttpException,
-    HttpStatus,
-    Param,
-    ParseIntPipe,
-    Post,
-    UseGuards,
-} from '@nestjs/common'
+import { Controller, Delete, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common'
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from '@supabase/supabase-js'
 import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
-import { SupabaseUser } from 'src/auth/supabase-user.decorator'
+import { UserId } from 'src/auth/user-id.decorator'
 import { FavoriteService } from './favorite.service'
 import { buildResponse } from './response.util'
 
@@ -44,16 +33,9 @@ export class FavoriteController {
     // await favoriteController.getUserFavorites(user)
     // @see FavoriteService.getUserFavorites
     @Get()
-    async getUserFavorites(@SupabaseUser() user: User) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            const favorites = await this.favoriteService.getUserFavorites(user.id)
-            return buildResponse('Favorites fetched', favorites)
-        } catch (err) {
-            throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
-        }
+    async getUserFavorites(@UserId() userId: string) {
+        const favorites = await this.favoriteService.getUserFavorites(userId)
+        return buildResponse('Favorites fetched', favorites)
     }
 
     // @async
@@ -68,18 +50,11 @@ export class FavoriteController {
     // @see FavoriteService.isFavorited
     @Get(':feedItemId/is-favorited')
     async checkFavorite(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('feedItemId', ParseIntPipe) feedItemId: number,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            const isFav = await this.favoriteService.isFavorited(user.id, feedItemId)
-            return buildResponse('Favorite check', { favorited: isFav })
-        } catch (err) {
-            throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
-        }
+        const isFav = await this.favoriteService.isFavorited(userId, feedItemId)
+        return buildResponse('Favorite check', { favorited: isFav })
     }
 
     // @async
@@ -94,18 +69,11 @@ export class FavoriteController {
     // @see FavoriteService.favoriteFeedItem
     @Post(':feedItemId')
     async favoriteItem(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('feedItemId', ParseIntPipe) feedItemId: number,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            const result = await this.favoriteService.favoriteFeedItem(user.id, feedItemId)
-            return buildResponse('Feed item favorited', result)
-        } catch (err) {
-            throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
-        }
+        const result = await this.favoriteService.favoriteFeedItem(userId, feedItemId)
+        return buildResponse('Feed item favorited', result)
     }
 
     // @async
@@ -120,17 +88,10 @@ export class FavoriteController {
     // @see FavoriteService.unfavoriteFeedItem
     @Delete(':feedItemId')
     async unfavoriteItem(
-        @SupabaseUser() user: User,
+        @UserId() userId: string,
         @Param('feedItemId', ParseIntPipe) feedItemId: number,
     ) {
-        if (!user?.id) {
-            throw new HttpException('No authenticated user ID', HttpStatus.UNAUTHORIZED)
-        }
-        try {
-            await this.favoriteService.unfavoriteFeedItem(user.id, feedItemId)
-            return buildResponse('Feed item unfavorited')
-        } catch (err) {
-            throw new HttpException(err.message, HttpStatus.BAD_REQUEST)
-        }
+        await this.favoriteService.unfavoriteFeedItem(userId, feedItemId)
+        return buildResponse('Feed item unfavorited')
     }
 }

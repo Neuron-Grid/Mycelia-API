@@ -6,7 +6,11 @@
       "Bash(rg:*)",
       "Bash(find:*)",
       "Bash(biome check:*)",
-      "Bash(similarity-ts .)"
+      "Bash(similarity-ts .)",
+      "Bash(pnpm run:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(rm:*)"
     ]
   },
   "enableAllProjectMcpServers": false

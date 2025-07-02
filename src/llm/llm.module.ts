@@ -2,19 +2,19 @@ import { HttpModule, HttpService } from '@nestjs/axios'
 import { BullModule } from '@nestjs/bullmq'
 import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { SupabaseRequestModule } from 'src/supabase-request.module' // SupabaseRequestModule をインポート
-import { GeminiFlashClient } from './gemini-flash.client'
-import { DailySummaryRepository } from './infrastructure/daily-summary.repository'
-import { LLM_SERVICE } from './llm.service'
-import { MockLlmService } from './mock-llm.service'
-import { ScriptWorker } from './script.worker'
+import { SupabaseRequestModule } from 'src/supabase-request.module'
+import { SummaryController } from './application/controllers/summary.controller'
+import { LLM_SERVICE } from './application/services/llm.service'
 import {
     SCRIPT_GENERATE_QUEUE,
     SUMMARY_GENERATE_QUEUE,
     SummaryScriptService,
-} from './summary-script.service'
-import { SummaryController } from './summary.controller'
-import { SummaryWorker } from './summary.worker'
+} from './application/services/summary-script.service'
+import { GeminiFlashClient } from './infrastructure/clients/gemini-flash.client'
+import { MockLlmService } from './infrastructure/clients/mock-llm.service'
+import { DailySummaryRepository } from './infrastructure/repositories/daily-summary.repository'
+import { ScriptWorker } from './infrastructure/workers/script.worker'
+import { SummaryWorker } from './infrastructure/workers/summary.worker'
 
 @Module({
     imports: [

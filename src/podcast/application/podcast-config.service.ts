@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { PodcastConfig, PodcastConfigInput } from '../domain/podcast-config.entity'
+import { PodcastConfigInput } from '../domain/podcast-config.entity'
 import { PodcastConfigRepository } from '../infrastructure/podcast-config.repository'
 import { PodcastConfigResponseDto } from './dto/podcast-config.dto'
 import { PodcastConfigMapper } from './podcast-config.mapper'

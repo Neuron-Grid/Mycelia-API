@@ -1,16 +1,17 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq'
 import { Injectable, Logger } from '@nestjs/common'
 import { Job } from 'bullmq'
-import { DailySummaryRepository } from '../../llm/infrastructure/daily-summary.repository'
+import { validateDto } from 'src/common/utils/validation'
+import { DailySummaryRepository } from '../../llm/infrastructure/repositories/daily-summary.repository'
 import { EmbeddingService } from '../../search/embedding.service'
 import { CloudflareR2Service, PodcastMetadata } from '../cloudflare-r2.service'
 import { PodcastEpisodeRepository } from '../infrastructure/podcast-episode.repository'
 import { PodcastTtsService } from '../podcast-tts.service'
-
-export interface PodcastGenerationJobData {
-    userId: string
-    summaryId: number
-}
+import {
+    AudioEnhancementJobDto,
+    PodcastCleanupJobDto,
+    PodcastGenerationJobDto,
+} from './dto/podcast-generation-job.dto'
 
 @Processor('podcastQueue')
 @Injectable()
@@ -28,7 +29,9 @@ export class PodcastQueueProcessor extends WorkerHost {
     }
 
     @Processor('generatePodcast')
-    async processPodcastGeneration(job: Job<PodcastGenerationJobData>) {
+    async processPodcastGeneration(job: Job<PodcastGenerationJobDto>) {
+        // DTO バリデーション – 破損データを早期検出
+        await validateDto(PodcastGenerationJobDto, job.data)
         const { userId, summaryId } = job.data
         this.logger.log(`Processing podcast generation for user ${userId}, summary ${summaryId}`)
 
@@ -149,7 +152,9 @@ export class PodcastQueueProcessor extends WorkerHost {
 
     // 音声品質向上処理（オプション）
     @Processor('enhanceAudio')
-    async processAudioEnhancement(job: Job<{ episodeId: number; userId: string }>) {
+    async processAudioEnhancement(job: Job<AudioEnhancementJobDto>) {
+        // DTO バリデーション – 破損データを早期検出
+        await validateDto(AudioEnhancementJobDto, job.data)
         const { episodeId, userId } = job.data
         this.logger.log(`Processing audio enhancement for episode ${episodeId}`)
 
@@ -174,7 +179,9 @@ export class PodcastQueueProcessor extends WorkerHost {
 
     // 古いポッドキャストファイルの削除処理
     @Processor('cleanupOldPodcasts')
-    async processOldPodcastCleanup(job: Job<{ userId: string; daysOld: number }>) {
+    async processOldPodcastCleanup(job: Job<PodcastCleanupJobDto>) {
+        // DTO バリデーション – 破損データを早期検出
+        await validateDto(PodcastCleanupJobDto, job.data)
         const { userId, daysOld } = job.data
         this.logger.log(`Cleaning up podcasts older than ${daysOld} days for user ${userId}`)
 

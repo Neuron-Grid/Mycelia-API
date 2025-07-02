@@ -3,7 +3,7 @@ import { Inject, Injectable, Scope } from '@nestjs/common'
 // @see https://docs.nestjs.com/providers#injection-scopes
 import { REQUEST } from '@nestjs/core'
 // @see https://supabase.com/docs/reference/javascript/create-client
-import { SupabaseClient, createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 // @see https://expressjs.com/
 import { Request } from 'express'
 // @see ./types/schema

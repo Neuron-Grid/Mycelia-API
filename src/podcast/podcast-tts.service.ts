@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import textToSpeech, { TextToSpeechClient, protos } from '@google-cloud/text-to-speech'
+import { protos, TextToSpeechClient } from '@google-cloud/text-to-speech'
 import { Injectable, Logger } from '@nestjs/common'
 import { v4 as uuidv4 } from 'uuid'
 import { CloudflareR2Service } from './cloudflare-r2.service'

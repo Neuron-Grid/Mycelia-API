@@ -2,7 +2,8 @@ import { InjectQueue } from '@nestjs/bullmq'
 import { Injectable, Logger } from '@nestjs/common'
 import { Queue } from 'bullmq'
 import { EmbeddingBatchDataService } from '../services/embedding-batch-data.service'
-import { BatchProgress, TableType, VectorUpdateJobData } from '../types/embedding-batch.types'
+import { BatchProgress, TableType } from '../types/embedding-batch.types'
+import { VectorUpdateJobDto } from './dto/vector-update-job.dto'
 
 @Injectable()
 export class EmbeddingQueueService {
@@ -33,7 +34,7 @@ export class EmbeddingQueueService {
                             tableType,
                             batchSize: 50,
                             totalEstimate: missingCount,
-                        } as VectorUpdateJobData,
+                        } as VectorUpdateJobDto,
                         {
                             priority: 5,
                             removeOnComplete: 5,
@@ -103,7 +104,7 @@ export class EmbeddingQueueService {
 
     async addGlobalEmbeddingUpdateJob(): Promise<void> {
         try {
-            await this.embeddingQueue.add('global-update', {} as VectorUpdateJobData, {
+            await this.embeddingQueue.add('global-update', {} as VectorUpdateJobDto, {
                 priority: 1,
             })
 
