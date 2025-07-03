@@ -8,11 +8,11 @@ export class EmbeddingService implements IEmbeddingService {
 
     constructor(private readonly openAIClient: OpenAIEmbeddingClient) {}
 
-    async generateEmbedding(text: string): Promise<number[]> {
+    generateEmbedding(text: string): Promise<number[]> {
         return this.openAIClient.generateEmbedding(text)
     }
 
-    async generateEmbeddings(texts: string[]): Promise<number[][]> {
+    generateEmbeddings(texts: string[]): Promise<number[][]> {
         return this.openAIClient.generateEmbeddings(texts)
     }
 

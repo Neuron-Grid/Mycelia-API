@@ -26,7 +26,7 @@ export class GeminiService {
         try {
             const res = await firstValueFrom(
                 this.http.post(
-                    `${this.apiUrl}?key=${this.apiKey}`,
+                    this.apiUrl,
                     {
                         contents: [{ role: 'user', parts: [{ text: prompt }] }],
                         generationConfig: {
@@ -35,7 +35,10 @@ export class GeminiService {
                             topP: 0.95,
                         },
                     },
-                    { timeout: 30000 },
+                    {
+                        headers: { 'x-goog-api-key': this.apiKey },
+                        timeout: 30000,
+                    },
                 ),
             )
 

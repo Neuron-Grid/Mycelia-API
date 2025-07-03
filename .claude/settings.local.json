@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(grep:*)",
-      "Bash(git add:*)",
       "Bash(rg:*)",
       "Bash(find:*)",
       "Bash(biome check:*)",
@@ -10,7 +9,6 @@
       "Bash(pnpm run:*)",
       "Bash(mkdir:*)",
       "Bash(mv:*)",
-      "Bash(rm:*)"
     ]
   },
   "enableAllProjectMcpServers": false

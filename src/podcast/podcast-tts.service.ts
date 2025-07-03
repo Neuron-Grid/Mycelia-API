@@ -76,4 +76,9 @@ export class PodcastTtsService {
         this.logger.log(`音声ファイル生成: ${filePath}`)
         return filePath
     }
+
+    // 音声を生成し、バッファとして返す
+    async generateSpeech(text: string, language: 'ja-JP' | 'en-US' = 'ja-JP'): Promise<Buffer> {
+        return await this.synthesizeNewsVoice(text, language)
+    }
 }

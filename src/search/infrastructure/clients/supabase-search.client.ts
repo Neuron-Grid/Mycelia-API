@@ -7,7 +7,7 @@ export interface SupabaseSearchResult {
     content: string
     similarity: number
     type: 'feed_item' | 'summary' | 'podcast'
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>
 }
 
 @Injectable()
@@ -26,7 +26,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc('search_feed_items_by_vector', {
-                    query_embedding: queryEmbedding,
+                    query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
@@ -37,11 +37,11 @@ export class SupabaseSearchClient {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.title,
-                content: item.description || '',
-                similarity: item.similarity,
+            return data.map((item: Record<string, unknown>) => ({
+                id: item.id as number,
+                title: item.title as string,
+                content: (item.description as string) || '',
+                similarity: item.similarity as number,
                 type: 'feed_item' as const,
                 metadata: {
                     link: item.link,
@@ -65,7 +65,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc('search_summaries_by_vector', {
-                    query_embedding: queryEmbedding,
+                    query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
@@ -76,11 +76,11 @@ export class SupabaseSearchClient {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.summary_title || 'No Title',
-                content: item.markdown || '',
-                similarity: item.similarity,
+            return data.map((item: Record<string, unknown>) => ({
+                id: item.id as number,
+                title: (item.summary_title as string) || 'No Title',
+                content: (item.markdown as string) || '',
+                similarity: item.similarity as number,
                 type: 'summary' as const,
                 metadata: {
                     summary_date: item.summary_date,
@@ -103,7 +103,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc('search_podcast_episodes_by_vector', {
-                    query_embedding: queryEmbedding,
+                    query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
@@ -114,11 +114,11 @@ export class SupabaseSearchClient {
                 throw error
             }
 
-            return data.map((item: any) => ({
-                id: item.id,
-                title: item.title || 'No Title',
-                content: item.title || '',
-                similarity: item.similarity,
+            return data.map((item: Record<string, unknown>) => ({
+                id: item.id as number,
+                title: (item.title as string) || 'No Title',
+                content: (item.title as string) || '',
+                similarity: item.similarity as number,
                 type: 'podcast' as const,
                 metadata: {
                     audio_url: item.audio_url,
@@ -141,7 +141,7 @@ export class SupabaseSearchClient {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('feed_items')
-                .update({ title_embedding: embedding })
+                .update({ title_embedding: JSON.stringify(embedding) } as Record<string, unknown>)
                 .eq('id', feedItemId)
                 .eq('user_id', userId)
 
@@ -163,7 +163,7 @@ export class SupabaseSearchClient {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('daily_summaries')
-                .update({ summary_embedding: embedding })
+                .update({ summary_emb: JSON.stringify(embedding) })
                 .eq('id', summaryId)
                 .eq('user_id', userId)
 
@@ -185,7 +185,7 @@ export class SupabaseSearchClient {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from('podcast_episodes')
-                .update({ title_embedding: embedding })
+                .update({ title_emb: JSON.stringify(embedding) })
                 .eq('id', episodeId)
                 .eq('user_id', userId)
 

@@ -18,34 +18,28 @@ export class SearchService {
         private readonly searchRepository: SearchRepository,
     ) {}
 
-    async searchAll(userId: string, searchData: SearchCriteriaData): Promise<SearchResultEntity[]> {
+    searchAll(userId: string, searchData: SearchCriteriaData): Promise<SearchResultEntity[]> {
         const criteria = new SearchCriteria(searchData)
         this.logger.log(`Searching all content for user ${userId} with query: "${criteria.query}"`)
 
         return this.searchRepository.searchAll(userId, criteria)
     }
 
-    async searchFeedItems(
-        userId: string,
-        searchData: SearchCriteriaData,
-    ): Promise<SearchResultEntity[]> {
+    searchFeedItems(userId: string, searchData: SearchCriteriaData): Promise<SearchResultEntity[]> {
         const criteria = new SearchCriteria(searchData)
         this.logger.log(`Searching feed items for user ${userId} with query: "${criteria.query}"`)
 
         return this.searchRepository.searchFeedItems(userId, criteria)
     }
 
-    async searchSummaries(
-        userId: string,
-        searchData: SearchCriteriaData,
-    ): Promise<SearchResultEntity[]> {
+    searchSummaries(userId: string, searchData: SearchCriteriaData): Promise<SearchResultEntity[]> {
         const criteria = new SearchCriteria(searchData)
         this.logger.log(`Searching summaries for user ${userId} with query: "${criteria.query}"`)
 
         return this.searchRepository.searchSummaries(userId, criteria)
     }
 
-    async searchPodcastEpisodes(
+    searchPodcastEpisodes(
         userId: string,
         searchData: SearchCriteriaData,
     ): Promise<SearchResultEntity[]> {
@@ -57,7 +51,7 @@ export class SearchService {
         return this.searchRepository.searchPodcastEpisodes(userId, criteria)
     }
 
-    async updateFeedItemEmbedding(
+    updateFeedItemEmbedding(
         feedItemId: number,
         userId: string,
         title: string,
@@ -68,21 +62,13 @@ export class SearchService {
         return this.searchRepository.updateFeedItemEmbedding(feedItemId, userId, title, description)
     }
 
-    async updateSummaryEmbedding(
-        summaryId: number,
-        userId: string,
-        content: string,
-    ): Promise<void> {
+    updateSummaryEmbedding(summaryId: number, userId: string, content: string): Promise<void> {
         this.logger.log(`Updating embedding for summary ${summaryId}`)
 
         return this.searchRepository.updateSummaryEmbedding(summaryId, userId, content)
     }
 
-    async updatePodcastEpisodeEmbedding(
-        episodeId: number,
-        userId: string,
-        title: string,
-    ): Promise<void> {
+    updatePodcastEpisodeEmbedding(episodeId: number, userId: string, title: string): Promise<void> {
         this.logger.log(`Updating embedding for podcast episode ${episodeId}`)
 
         return this.searchRepository.updatePodcastEpisodeEmbedding(episodeId, userId, title)
