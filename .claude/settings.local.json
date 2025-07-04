@@ -1,15 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep:*)",
-      "Bash(rg:*)",
-      "Bash(find:*)",
-      "Bash(biome check:*)",
-      "Bash(similarity-ts .)",
-      "Bash(pnpm run:*)",
-      "Bash(mkdir:*)",
-      "Bash(mv:*)",
-    ]
-  },
-  "enableAllProjectMcpServers": false
+      "Bash(biome check:*)"
+    ],
+    "deny": []
+  }
 }

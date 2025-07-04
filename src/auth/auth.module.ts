@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { DomainConfigModule } from 'src/domain-config/domain-config.module'
+import { DistributedLockModule } from 'src/shared/lock/distributed-lock.module'
 import { SupabaseRequestModule } from 'src/supabase-request.module'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
@@ -9,7 +10,7 @@ import { SupabaseAuthRepository } from './infrastructure/supabase-auth.repositor
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 
 @Module({
-    imports: [SupabaseRequestModule, ConfigModule, DomainConfigModule],
+    imports: [SupabaseRequestModule, ConfigModule, DomainConfigModule, DistributedLockModule],
     controllers: [AuthController],
     providers: [
         AuthService,
