@@ -1,6 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
+import { createClient } from '@supabase/supabase-js'
 import { Request } from 'express'
 import { SupabaseRequestService } from 'src/supabase-request.service'
+import { Database } from 'src/types/schema'
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
@@ -19,9 +21,36 @@ export class SupabaseAuthGuard implements CanActivate {
             throw new UnauthorizedException('Empty token after Bearer prefix')
         }
 
-        // Supabase Client でトークンを検証
-        const supabase = this.supabaseRequestService.getClient()
-        const { data, error } = await supabase.auth.getUser()
+        // 新しいクライアントインスタンスを毎回作成（完全キャッシュ回避）
+        const freshClient = createClient<Database>(
+            process.env.SUPABASE_URL!,
+            process.env.SUPABASE_ANON_KEY!,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false, // URL からのセッション検出も無効化
+                },
+                global: {
+                    headers: { Authorization: `Bearer ${token}` },
+                    // fetch オプションでキャッシュを無効化
+                    fetch: (url, options) => {
+                        return fetch(url, {
+                            ...options,
+                            cache: 'no-cache',
+                            headers: {
+                                ...options?.headers,
+                                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                                Pragma: 'no-cache',
+                                Expires: '0',
+                            },
+                        })
+                    },
+                },
+            },
+        )
+
+        const { data, error } = await freshClient.auth.getUser(token)
 
         // 返却メッセージの細分化
         // "expired" を含むかどうかで分岐し、

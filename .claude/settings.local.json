@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(biome check:*)"
+      "Bash(biome check:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }
