@@ -6,7 +6,11 @@
       "Bash(grep:*)",
       "Bash(npm run test:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "WebFetch(domain:feeds.bbci.co.uk)",
+      "WebFetch(domain:developer.mozilla.org)"
     ],
     "deny": []
   }

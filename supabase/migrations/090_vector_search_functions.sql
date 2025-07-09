@@ -13,6 +13,9 @@ CREATE OR REPLACE FUNCTION search_feed_items_by_vector(query_embedding vector(15
     LANGUAGE plpgsql
     AS $$
 BEGIN
+    IF target_user_id <> auth.uid() THEN
+        RAISE EXCEPTION 'User ID mismatch';
+    END IF;
     RETURN QUERY
     SELECT
         fi.id,
@@ -48,6 +51,9 @@ CREATE OR REPLACE FUNCTION search_summaries_by_vector(query_embedding vector(153
     LANGUAGE plpgsql
     AS $$
 BEGIN
+    IF target_user_id <> auth.uid() THEN
+        RAISE EXCEPTION 'User ID mismatch';
+    END IF;
     RETURN QUERY
     SELECT
         ds.id,
@@ -80,6 +86,9 @@ CREATE OR REPLACE FUNCTION search_podcast_episodes_by_vector(query_embedding vec
     LANGUAGE plpgsql
     AS $$
 BEGIN
+    IF target_user_id <> auth.uid() THEN
+        RAISE EXCEPTION 'User ID mismatch';
+    END IF;
     RETURN QUERY
     SELECT
         pe.id,
@@ -110,6 +119,9 @@ CREATE OR REPLACE FUNCTION search_tags_by_vector(query_embedding vector(1536), m
     LANGUAGE plpgsql
     AS $$
 BEGIN
+    IF target_user_id <> auth.uid() THEN
+        RAISE EXCEPTION 'User ID mismatch';
+    END IF;
     RETURN QUERY
     SELECT
         t.id,
@@ -140,6 +152,9 @@ CREATE OR REPLACE FUNCTION search_all_content_by_vector(query_embedding vector(1
     LANGUAGE plpgsql
     AS $$
 BEGIN
+    IF target_user_id <> auth.uid() THEN
+        RAISE EXCEPTION 'User ID mismatch';
+    END IF;
     RETURN QUERY
     -- フィードアイテム
     SELECT
@@ -206,4 +221,3 @@ WHERE
 CREATE INDEX IF NOT EXISTS idx_podcast_episodes_title_emb_hnsw ON podcast_episodes USING hnsw(title_emb vector_cosine_ops)
 WHERE
     title_emb IS NOT NULL;
-
