@@ -16,12 +16,17 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "scan:npm": "npm audit --production --audit-level=high --json",
+    "scan:semgrep": "npx semgrep --config p/owasp-top-ten --error",
+    "scan:trivy": "trivy fs --scanners vuln,secret,config .",
+    "scan:gitleaks": "gitleaks detect -v --source .",
+    "scan:all": "npm run scan:npm && npm run scan:semgrep && npm run scan:trivy && npm run scan:gitleaks"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.837.0",
-    "@aws-sdk/s3-request-presigner": "^3.837.0",
-    "@google-cloud/text-to-speech": "6.1.0",
+    "@aws-sdk/client-s3": "^3.844.0",
+    "@aws-sdk/s3-request-presigner": "^3.844.0",
+    "@google-cloud/text-to-speech": "6.2.0",
     "@google/generative-ai": "^0.24.1",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/bullmq": "^11.0.2",
@@ -32,11 +37,11 @@
     "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
-    "@supabase/supabase-js": "^2.50.2",
+    "@supabase/supabase-js": "^2.50.4",
     "@types/feedparser": "^2.2.8",
     "@types/uuid": "^10.0.0",
     "axios": "^1.10.0",
-    "bullmq": "^5.56.0",
+    "bullmq": "^5.56.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
@@ -56,17 +61,17 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.7",
     "@nestjs/testing": "^11.1.3",
-    "@swc/cli": "^0.7.7",
-    "@swc/core": "^1.12.7",
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.12.11",
     "@types/axios": "^0.14.4",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.0.6",
+    "@types/node": "^24.0.12",
     "@types/node-fetch": "^2.6.12",
     "@types/supertest": "^6.0.3",
-    "jest": "^30.0.3",
-    "supertest": "^7.1.1",
+    "jest": "^30.0.4",
+    "supertest": "^7.1.3",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
@@ -91,5 +96,5 @@
       "^src/(.*)$": "<rootDir>/$1"
     }
   },
-  "packageManager": "pnpm@10.12.4"
+  "packageManager": "pnpm@10.13.1"
 }
