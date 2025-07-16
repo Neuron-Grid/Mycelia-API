@@ -1,9 +1,9 @@
 // @file 認証・ユーザー管理のサービス層
-import { Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common';
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from '@supabase/supabase-js'
-import { DomainConfigService } from 'src/domain-config/domain-config.service'
-import { AuthRepositoryPort } from './domain/auth.repository'
+import { User } from '@supabase/supabase-js';
+import { DomainConfigService } from 'src/domain-config/domain-config.service';
+import { AuthRepositoryPort } from './domain/auth.repository';
 
 @Injectable()
 // @public
@@ -30,7 +30,7 @@ export class AuthService {
     // await authService.signUp('a@example.com', 'pw', 'user')
     // @see AuthRepositoryPort.signUp
     async signUp(email: string, password: string, username: string) {
-        return await this.authRepo.signUp(email, password, username)
+        return await this.authRepo.signUp(email, password, username);
     }
 
     // @async
@@ -44,7 +44,7 @@ export class AuthService {
     // await authService.signIn('a@example.com', 'pw')
     // @see AuthRepositoryPort.signIn
     async signIn(email: string, password: string) {
-        return await this.authRepo.signIn(email, password)
+        return await this.authRepo.signIn(email, password);
     }
 
     // @async
@@ -56,7 +56,7 @@ export class AuthService {
     // await authService.signOut()
     // @see AuthRepositoryPort.signOut
     async signOut() {
-        return await this.authRepo.signOut()
+        return await this.authRepo.signOut();
     }
 
     // @async
@@ -69,7 +69,7 @@ export class AuthService {
     // await authService.deleteAccount('user-id')
     // @see AuthRepositoryPort.deleteAccount
     async deleteAccount(userId: string) {
-        return await this.authRepo.deleteAccount(userId)
+        return await this.authRepo.deleteAccount(userId);
     }
 
     // @async
@@ -83,7 +83,7 @@ export class AuthService {
     // await authService.updateEmail(user, 'new@example.com')
     // @see AuthRepositoryPort.updateEmail
     async updateEmail(user: User, newEmail: string) {
-        return await this.authRepo.updateEmail(user.id, newEmail)
+        return await this.authRepo.updateEmail(user.id, newEmail);
     }
 
     // @async
@@ -97,7 +97,7 @@ export class AuthService {
     // await authService.updateUsername(user, 'newname')
     // @see AuthRepositoryPort.updateUsername
     async updateUsername(user: User, newUsername: string) {
-        return await this.authRepo.updateUsername(user.id, newUsername)
+        return await this.authRepo.updateUsername(user.id, newUsername);
     }
 
     // @async
@@ -112,7 +112,7 @@ export class AuthService {
     // await authService.updatePassword(user, 'old', 'new')
     // @see AuthRepositoryPort.updatePassword
     async updatePassword(user: User, oldPw: string, newPw: string) {
-        return await this.authRepo.updatePassword(user.id, user.email ?? '', oldPw, newPw)
+        return await this.authRepo.updatePassword(user.id, user.email ?? '', oldPw, newPw);
     }
 
     // @async
@@ -125,7 +125,7 @@ export class AuthService {
     // await authService.forgotPassword('a@example.com')
     // @see AuthRepositoryPort.forgotPassword
     async forgotPassword(email: string) {
-        return await this.authRepo.forgotPassword(email, this.domainCfg.getResetPasswordUrl())
+        return await this.authRepo.forgotPassword(email, this.domainCfg.getResetPasswordUrl());
     }
 
     // @async
@@ -139,7 +139,7 @@ export class AuthService {
     // await authService.resetPassword('token', 'newpw')
     // @see AuthRepositoryPort.resetPassword
     async resetPassword(accessToken: string, newPw: string) {
-        return await this.authRepo.resetPassword(accessToken, newPw)
+        return await this.authRepo.resetPassword(accessToken, newPw);
     }
 
     // @async
@@ -153,7 +153,7 @@ export class AuthService {
     // await authService.verifyEmail('a@example.com', 'token')
     // @see AuthRepositoryPort.verifyEmail
     async verifyEmail(email: string, token: string) {
-        return await this.authRepo.verifyEmail(email, token)
+        return await this.authRepo.verifyEmail(email, token);
     }
 
     // @async
@@ -167,6 +167,6 @@ export class AuthService {
     // await authService.verifyTotp('factorId', '123456')
     // @see AuthRepositoryPort.verifyTotp
     async verifyTotp(factorId: string, code: string) {
-        return await this.authRepo.verifyTotp(factorId, code)
+        return await this.authRepo.verifyTotp(factorId, code);
     }
 }

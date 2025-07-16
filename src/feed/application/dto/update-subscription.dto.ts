@@ -1,5 +1,5 @@
-import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsOptional, IsString, MaxLength } from 'class-validator'
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateSubscriptionDto {
     @ApiPropertyOptional({
@@ -9,5 +9,5 @@ export class UpdateSubscriptionDto {
     @IsOptional()
     @IsString()
     @MaxLength(100)
-    feed_title?: string
+    feed_title?: string;
 }

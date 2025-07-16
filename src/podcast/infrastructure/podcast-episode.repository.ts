@@ -1,10 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common'
-import { SupabaseRequestService } from '../../supabase-request.service'
-import { PodcastEpisodeEntity } from '../domain/podcast-episode.entity'
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { SupabaseRequestService } from '../../supabase-request.service';
+import { PodcastEpisodeEntity } from '../domain/podcast-episode.entity';
 
 @Injectable()
 export class PodcastEpisodeRepository {
-    private readonly logger = new Logger(PodcastEpisodeRepository.name)
+    private readonly logger = new Logger(PodcastEpisodeRepository.name);
 
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
@@ -18,19 +18,19 @@ export class PodcastEpisodeRepository {
                 .eq('user_id', userId)
                 .eq('summary_id', summaryId)
                 .eq('soft_deleted', false)
-                .single()
+                .single();
 
             if (error) {
                 if (error.code === 'PGRST116') {
-                    return null
+                    return null;
                 }
-                throw error
+                throw error;
             }
 
-            return new PodcastEpisodeEntity(data)
+            return new PodcastEpisodeEntity(data);
         } catch (error) {
-            this.logger.error(`Failed to find podcast episode by summary ID: ${error.message}`)
-            return null
+            this.logger.error(`Failed to find podcast episode by summary ID: ${error.message}`);
+            return null;
         }
     }
 
@@ -39,9 +39,9 @@ export class PodcastEpisodeRepository {
         userId: string,
         summaryId: number,
         data: {
-            title?: string
-            title_embedding?: number[]
-            audio_url?: string
+            title?: string;
+            title_embedding?: number[];
+            audio_url?: string;
         },
     ): Promise<PodcastEpisodeEntity> {
         try {
@@ -57,13 +57,13 @@ export class PodcastEpisodeRepository {
                     soft_deleted: false,
                 })
                 .select()
-                .single()
+                .single();
 
-            if (error) throw error
-            return new PodcastEpisodeEntity(result)
+            if (error) throw error;
+            return new PodcastEpisodeEntity(result);
         } catch (error) {
-            this.logger.error(`Failed to create podcast episode: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to create podcast episode: ${error.message}`);
+            throw error;
         }
     }
 
@@ -72,9 +72,9 @@ export class PodcastEpisodeRepository {
         id: number,
         userId: string,
         data: {
-            title?: string
-            title_embedding?: number[]
-            audio_url?: string
+            title?: string;
+            title_embedding?: number[];
+            audio_url?: string;
         },
     ): Promise<PodcastEpisodeEntity> {
         try {
@@ -89,17 +89,17 @@ export class PodcastEpisodeRepository {
                 .eq('user_id', userId) // ユーザー分離の保証
                 .eq('soft_deleted', false)
                 .select()
-                .single()
+                .single();
 
-            if (error) throw error
+            if (error) throw error;
             if (!result) {
-                throw new NotFoundException('Podcast episode not found or access denied')
+                throw new NotFoundException('Podcast episode not found or access denied');
             }
 
-            return new PodcastEpisodeEntity(result)
+            return new PodcastEpisodeEntity(result);
         } catch (error) {
-            this.logger.error(`Failed to update podcast episode: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update podcast episode: ${error.message}`);
+            throw error;
         }
     }
 
@@ -109,8 +109,8 @@ export class PodcastEpisodeRepository {
         limit = 20,
         offset = 0,
     ): Promise<{
-        episodes: PodcastEpisodeEntity[]
-        total: number
+        episodes: PodcastEpisodeEntity[];
+        total: number;
     }> {
         try {
             // 総数を取得
@@ -119,9 +119,9 @@ export class PodcastEpisodeRepository {
                 .from('podcast_episodes')
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', userId)
-                .eq('soft_deleted', false)
+                .eq('soft_deleted', false);
 
-            if (countError) throw countError
+            if (countError) throw countError;
 
             // データを取得
             const { data, error } = await this.supabaseRequestService
@@ -131,17 +131,17 @@ export class PodcastEpisodeRepository {
                 .eq('user_id', userId)
                 .eq('soft_deleted', false)
                 .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1)
+                .range(offset, offset + limit - 1);
 
-            if (error) throw error
+            if (error) throw error;
 
             return {
                 episodes: data.map((item) => new PodcastEpisodeEntity(item)),
                 total: count || 0,
-            }
+            };
         } catch (error) {
-            this.logger.error(`Failed to find podcast episodes: ${error.message}`)
-            return { episodes: [], total: 0 }
+            this.logger.error(`Failed to find podcast episodes: ${error.message}`);
+            return { episodes: [], total: 0 };
         }
     }
 
@@ -155,25 +155,25 @@ export class PodcastEpisodeRepository {
                 .eq('id', id)
                 .eq('user_id', userId) // ユーザー分離の保証
                 .eq('soft_deleted', false)
-                .single()
+                .single();
 
             if (error) {
                 if (error.code === 'PGRST116') {
-                    return null
+                    return null;
                 }
-                throw error
+                throw error;
             }
 
-            return new PodcastEpisodeEntity(data)
+            return new PodcastEpisodeEntity(data);
         } catch (error) {
-            this.logger.error(`Failed to find podcast episode by ID: ${error.message}`)
-            return null
+            this.logger.error(`Failed to find podcast episode by ID: ${error.message}`);
+            return null;
         }
     }
 
     // 音声URLを更新（Cloudflare R2アップロード後）
     updateAudioUrl(id: number, userId: string, audioUrl: string): Promise<PodcastEpisodeEntity> {
-        return this.update(id, userId, { audio_url: audioUrl })
+        return this.update(id, userId, { audio_url: audioUrl });
     }
 
     // タイトルと埋め込みベクトルを更新
@@ -186,7 +186,7 @@ export class PodcastEpisodeRepository {
         return this.update(id, userId, {
             title,
             title_embedding: titleEmb || null,
-        })
+        });
     }
 
     // ソフト削除
@@ -200,20 +200,20 @@ export class PodcastEpisodeRepository {
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', id)
-                .eq('user_id', userId) // ユーザー分離の保証
+                .eq('user_id', userId); // ユーザー分離の保証
 
-            if (error) throw error
+            if (error) throw error;
         } catch (error) {
-            this.logger.error(`Failed to soft delete podcast episode: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to soft delete podcast episode: ${error.message}`);
+            throw error;
         }
     }
 
     // 古いエピソードの取得（クリーンアップ用）
     async findOldEpisodes(userId: string, daysOld: number): Promise<PodcastEpisodeEntity[]> {
         try {
-            const cutoffDate = new Date()
-            cutoffDate.setDate(cutoffDate.getDate() - daysOld)
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
             const { data, error } = await this.supabaseRequestService
                 .getClient()
@@ -221,13 +221,13 @@ export class PodcastEpisodeRepository {
                 .select('*')
                 .eq('user_id', userId)
                 .eq('soft_deleted', false)
-                .lt('created_at', cutoffDate.toISOString())
+                .lt('created_at', cutoffDate.toISOString());
 
-            if (error) throw error
-            return data.map((item) => new PodcastEpisodeEntity(item))
+            if (error) throw error;
+            return data.map((item) => new PodcastEpisodeEntity(item));
         } catch (error) {
-            this.logger.error(`Failed to find old podcast episodes: ${error.message}`)
-            return []
+            this.logger.error(`Failed to find old podcast episodes: ${error.message}`);
+            return [];
         }
     }
 }

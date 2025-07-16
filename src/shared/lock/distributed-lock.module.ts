@@ -1,7 +1,7 @@
 // src/shared/lock/distributed-lock.module.ts
-import { Module } from '@nestjs/common'
-import { RedisModule } from '../redis/redis.module'
-import { DistributedLockService } from './distributed-lock.service'
+import { Module } from '@nestjs/common';
+import { RedisModule } from '../redis/redis.module';
+import { DistributedLockService } from './distributed-lock.service';
 
 @Module({
     imports: [RedisModule],

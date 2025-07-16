@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsBoolean, IsEnum, IsOptional, IsString, Matches } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsEnum, IsOptional, IsString, Matches } from 'class-validator';
 
 //  ポッドキャスト設定更新DTO
 //  @description クライアントからのポッドキャスト設定更新リクエスト用DTO
@@ -13,7 +13,7 @@ export class UpdatePodcastConfigDto {
     })
     @IsBoolean()
     @IsOptional()
-    podcast_enabled?: boolean
+    podcast_enabled?: boolean;
 
     //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
     //  @type {string}
@@ -27,7 +27,7 @@ export class UpdatePodcastConfigDto {
     @Matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, {
         message: 'スケジュール時刻はHH:MM形式で指定してください（例: 07:30）',
     })
-    podcast_schedule_time?: string
+    podcast_schedule_time?: string;
 
     //  ポッドキャスト言語
     //  @type {'ja-JP' | 'en-US'}
@@ -41,7 +41,7 @@ export class UpdatePodcastConfigDto {
         message: '言語は ja-JP または en-US のいずれかを指定してください',
     })
     @IsOptional()
-    podcast_language?: 'ja-JP' | 'en-US'
+    podcast_language?: 'ja-JP' | 'en-US';
 }
 
 //  ポッドキャスト設定レスポンスDTO
@@ -53,7 +53,7 @@ export class PodcastConfigResponseDto {
         description: 'ポッドキャスト機能の有効/無効',
         example: true,
     })
-    podcast_enabled: boolean
+    podcast_enabled: boolean;
 
     //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
     //  @type {string | null}
@@ -62,7 +62,7 @@ export class PodcastConfigResponseDto {
         example: '07:30',
         nullable: true,
     })
-    podcast_schedule_time: string | null
+    podcast_schedule_time: string | null;
 
     //  ポッドキャスト言語
     //  @type {'ja-JP' | 'en-US'}
@@ -71,7 +71,7 @@ export class PodcastConfigResponseDto {
         example: 'ja-JP',
         enum: ['ja-JP', 'en-US'],
     })
-    podcast_language: 'ja-JP' | 'en-US'
+    podcast_language: 'ja-JP' | 'en-US';
 
     //  最終更新日時
     //  @type {string}
@@ -79,5 +79,5 @@ export class PodcastConfigResponseDto {
         description: '最終更新日時',
         example: '2025-05-13T07:30:00.000Z',
     })
-    updated_at: string
+    updated_at: string;
 }

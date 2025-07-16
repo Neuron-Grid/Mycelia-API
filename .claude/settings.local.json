@@ -10,7 +10,8 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "WebFetch(domain:feeds.bbci.co.uk)",
-      "WebFetch(domain:developer.mozilla.org)"
+      "WebFetch(domain:developer.mozilla.org)",
+      "Bash(npm test:*)"
     ],
     "deny": []
   }

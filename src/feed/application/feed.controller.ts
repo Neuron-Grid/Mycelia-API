@@ -12,7 +12,7 @@ import {
     Post,
     Query,
     UseGuards,
-} from '@nestjs/common'
+} from '@nestjs/common';
 // @see https://docs.nestjs.com/openapi/introduction
 import {
     ApiAcceptedResponse,
@@ -27,24 +27,24 @@ import {
     ApiQuery,
     ApiTags,
     ApiUnauthorizedResponse,
-} from '@nestjs/swagger'
+} from '@nestjs/swagger';
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard'
-import { UserId } from 'src/auth/user-id.decorator'
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto'
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
-import { Database } from '../../types/schema'
-import { AddSubscriptionDto } from './dto/add-subscription.dto'
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto'
-import { FeedItemService } from './feed-item.service'
-import { FeedUseCaseService } from './feed-usecase.service'
-import { buildResponse } from './response.util'
-import { SubscriptionService } from './subscription.service'
+import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard';
+import { UserId } from 'src/auth/user-id.decorator';
+import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
+import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
+import { Database } from '../../types/schema';
+import { AddSubscriptionDto } from './dto/add-subscription.dto';
+import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import { FeedItemService } from './feed-item.service';
+import { FeedUseCaseService } from './feed-usecase.service';
+import { buildResponse } from './response.util';
+import { SubscriptionService } from './subscription.service';
 
 // @typedef {Database['public']['Tables']['feed_items']['Row']} FeedItemRow - フィードアイテムの型
-type FeedItemRow = Database['public']['Tables']['feed_items']['Row']
+type FeedItemRow = Database['public']['Tables']['feed_items']['Row'];
 // @typedef {Database['public']['Tables']['user_subscriptions']['Row']} SubscriptionRow - 購読の型
-type SubscriptionRow = Database['public']['Tables']['user_subscriptions']['Row']
+type SubscriptionRow = Database['public']['Tables']['user_subscriptions']['Row'];
 
 @ApiTags('Feed')
 @ApiBearerAuth()
@@ -102,7 +102,7 @@ export class FeedController {
             userId,
             query.page,
             query.limit,
-        )
+        );
     }
 
     // @async
@@ -122,23 +122,23 @@ export class FeedController {
     @ApiUnauthorizedResponse({ description: '認証エラー' })
     @ApiBadRequestResponse({ description: '追加失敗' })
     async addSubscription(@UserId() userId: string, @Body() dto: AddSubscriptionDto) {
-        const { feedUrl } = dto
+        const { feedUrl } = dto;
         if (!feedUrl) {
-            throw new HttpException('feedUrl is required', HttpStatus.BAD_REQUEST)
+            throw new HttpException('feedUrl is required', HttpStatus.BAD_REQUEST);
         }
 
         // RSSタイトルの取得（パース失敗時は空文字でもOK）
-        let feedTitle = ''
+        let feedTitle = '';
         try {
-            const feedData = await this.feedUseCase.fetchFeedMeta(feedUrl)
-            feedTitle = (feedData.meta.title ?? '').substring(0, 100)
+            const feedData = await this.feedUseCase.fetchFeedMeta(feedUrl);
+            feedTitle = (feedData.meta.title ?? '').substring(0, 100);
         } catch {
             // パース失敗しても購読は続行
-            feedTitle = ''
+            feedTitle = '';
         }
 
-        const result = await this.subscriptionService.addSubscription(userId, feedUrl, feedTitle)
-        return buildResponse('Subscription added', result)
+        const result = await this.subscriptionService.addSubscription(userId, feedUrl, feedTitle);
+        return buildResponse('Subscription added', result);
     }
 
     // @async
@@ -162,8 +162,8 @@ export class FeedController {
         @UserId() userId: string,
         @Param('id', ParseIntPipe) subscriptionId: number,
     ) {
-        const result = await this.feedUseCase.fetchFeedItems(subscriptionId, userId)
-        return buildResponse('Feed fetched successfully', result)
+        const result = await this.feedUseCase.fetchFeedItems(subscriptionId, userId);
+        return buildResponse('Feed fetched successfully', result);
     }
 
     // @async
@@ -206,7 +206,7 @@ export class FeedController {
             subscriptionId,
             query.page,
             query.limit,
-        )
+        );
     }
 
     // @async
@@ -233,8 +233,8 @@ export class FeedController {
         @Param('id', ParseIntPipe) id: number,
         @Body() dto: UpdateSubscriptionDto,
     ) {
-        const updated = await this.subscriptionService.updateSubscription(userId, id, dto)
-        return buildResponse('Subscription updated', updated)
+        const updated = await this.subscriptionService.updateSubscription(userId, id, dto);
+        return buildResponse('Subscription updated', updated);
     }
 
     // @async
@@ -258,7 +258,7 @@ export class FeedController {
         @UserId() userId: string,
         @Param('id', ParseIntPipe) subscriptionId: number,
     ) {
-        await this.subscriptionService.deleteSubscription(userId, subscriptionId)
-        return buildResponse('Subscription deleted')
+        await this.subscriptionService.deleteSubscription(userId, subscriptionId);
+        return buildResponse('Subscription deleted');
     }
 }

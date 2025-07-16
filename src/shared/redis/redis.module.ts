@@ -1,6 +1,6 @@
-import { Global, Module } from '@nestjs/common'
-import { ConfigModule, ConfigService } from '@nestjs/config'
-import { RedisService } from './redis.service'
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RedisService } from './redis.service';
 
 // どのModuleからも使えるようにGlobalにする
 @Global()
@@ -17,11 +17,11 @@ import { RedisService } from './redis.service'
                     config.get<string>('REDIS_URL') ||
                     Object.entries(process.env).find(
                         ([k]) => k.startsWith('HEROKU_REDIS') && k.endsWith('_URL'),
-                    )?.[1]
+                    )?.[1];
 
-                if (!url) throw new Error('REDIS_URL is required')
+                if (!url) throw new Error('REDIS_URL is required');
 
-                const u = new URL(url)
+                const u = new URL(url);
 
                 // Heroku Redisは自己署名証明書
                 const tls =
@@ -29,7 +29,7 @@ import { RedisService } from './redis.service'
                         ? {
                               rejectUnauthorized: false,
                           }
-                        : undefined
+                        : undefined;
 
                 return {
                     host: u.hostname,
@@ -37,7 +37,7 @@ import { RedisService } from './redis.service'
                     password: u.password || undefined,
                     db: u.pathname ? Number(u.pathname.slice(1) || 0) : 0,
                     tls,
-                }
+                };
             },
             inject: [ConfigService],
         },

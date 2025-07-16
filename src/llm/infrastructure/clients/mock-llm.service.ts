@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common';
 import {
     GeminiScriptRequest,
     GeminiScriptResponse,
     GeminiSummaryRequest,
     GeminiSummaryResponse,
     LlmService,
-} from './llm.service'
+} from './llm.service';
 
 @Injectable()
 export class MockLlmService implements LlmService {
-    private readonly logger = new Logger(MockLlmService.name)
+    private readonly logger = new Logger(MockLlmService.name);
 
     // 要約を生成するモック実装
     // @param request GeminiSummaryRequest (旧 SummaryRequestDto)
@@ -18,7 +18,7 @@ export class MockLlmService implements LlmService {
         // request.articles を使って何かログ出力やダミーロジックを入れることも可能
         this.logger.debug(
             `Generating mock summary for articles count: ${request.articles.length}, target language: ${request.targetLanguage || 'auto'}`,
-        )
+        );
         return await Promise.resolve({
             // GeminiSummaryResponse に合わせる
             content:
@@ -29,7 +29,7 @@ export class MockLlmService implements LlmService {
             // charLength: 80,
             // tokenCount: 20,
             // truncated: false,
-        })
+        });
     }
 
     // 台本を生成するモック実装
@@ -39,9 +39,9 @@ export class MockLlmService implements LlmService {
         // request.summaryText や request.articlesForContext を使ってログ出力
         this.logger.debug(
             `Generating mock script based on summary: "${request.summaryText.substring(0, 30)}..."`,
-        )
+        );
         if (request.articlesForContext && request.articlesForContext.length > 0) {
-            this.logger.debug(`Using ${request.articlesForContext.length} articles for context.`)
+            this.logger.debug(`Using ${request.articlesForContext.length} articles for context.`);
         }
         return await Promise.resolve({
             // GeminiScriptResponse に合わせる
@@ -50,6 +50,6 @@ export class MockLlmService implements LlmService {
             // charLength: 70,
             // wordCount: 15,
             // truncated: false,
-        })
+        });
     }
 }

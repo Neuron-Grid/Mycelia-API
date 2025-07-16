@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { SupabaseRequestService } from '../supabase-request.service'
-import { CloudflareR2Service } from './cloudflare-r2.service'
+import { Injectable, Logger } from '@nestjs/common';
+import { SupabaseRequestService } from '../supabase-request.service';
+import { CloudflareR2Service } from './cloudflare-r2.service';
 
 @Injectable()
 export class PodcastUploadService {
-    private readonly logger = new Logger(PodcastUploadService.name)
+    private readonly logger = new Logger(PodcastUploadService.name);
 
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
@@ -23,11 +23,11 @@ export class PodcastUploadService {
         userId: string,
         title?: string,
     ): Promise<{ publicUrl: string }> {
-        const bucket = this.getPodcastBucketName()
-        const key = this.buildPodcastObjectKey(userId, filename)
-        const contentType = 'audio/ogg' // Opus形式のContent-Type
+        const bucket = this.getPodcastBucketName();
+        const key = this.buildPodcastObjectKey(userId, filename);
+        const contentType = 'audio/ogg'; // Opus形式のContent-Type
 
-        const metadata = this.buildPodcastMetadata(userId, title)
+        const metadata = this.buildPodcastMetadata(userId, title);
 
         const { publicUrl } = await this.cloudflareR2Service.uploadFile(
             bucket,
@@ -35,9 +35,9 @@ export class PodcastUploadService {
             fileBuffer,
             contentType,
             metadata,
-        )
-        this.logger.log(`音声ファイルをR2にアップロード: ${publicUrl}`)
-        return { publicUrl }
+        );
+        this.logger.log(`音声ファイルをR2にアップロード: ${publicUrl}`);
+        return { publicUrl };
     }
 
     // レガシー: ポッドキャスト音声ファイルをSupabase Storageにアップロード
@@ -47,30 +47,30 @@ export class PodcastUploadService {
         filename: string,
         userId: string,
     ): Promise<{ publicUrl: string }> {
-        const bucket = this.getPodcastBucketName()
-        const path = this.buildPodcastObjectKey(userId, filename)
-        const contentType = 'audio/mpeg'
+        const bucket = this.getPodcastBucketName();
+        const path = this.buildPodcastObjectKey(userId, filename);
+        const contentType = 'audio/mpeg';
 
         const { publicUrl } = await this.supabaseRequestService.uploadToStorage(
             bucket,
             path,
             fileBuffer,
             contentType,
-        )
-        this.logger.log(`音声ファイルをSupabaseにアップロード: ${publicUrl}`)
-        return { publicUrl }
+        );
+        this.logger.log(`音声ファイルをSupabaseにアップロード: ${publicUrl}`);
+        return { publicUrl };
     }
 
     //  ポッドキャスト用バケット名を返す
     private getPodcastBucketName(): string {
-        return 'podcasts'
+        return 'podcasts';
     }
 
     //  オブジェクトキー（パス）を生成
     //  @param userId ユーザーID
     //  @param filename ファイル名
     private buildPodcastObjectKey(userId: string, filename: string): string {
-        return `${userId}/${filename}`
+        return `${userId}/${filename}`;
     }
 
     //  メタデータを生成
@@ -80,10 +80,10 @@ export class PodcastUploadService {
         const metadata: Record<string, string> = {
             userId,
             createdAt: new Date().toISOString(),
-        }
+        };
         if (title) {
-            metadata.title = title
+            metadata.title = title;
         }
-        return metadata
+        return metadata;
     }
 }

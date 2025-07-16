@@ -1,8 +1,8 @@
-import { InjectQueue } from '@nestjs/bullmq'
-import { Injectable } from '@nestjs/common'
-import { Queue } from 'bullmq'
-import { validateDto } from 'src/common/utils/validation'
-import { FeedFetchJobDto } from './dto/feed-fetch-job.dto'
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { validateDto } from 'src/common/utils/validation';
+import { FeedFetchJobDto } from './dto/feed-fetch-job.dto';
 
 @Injectable()
 export class FeedQueueService {
@@ -23,7 +23,7 @@ export class FeedQueueService {
             userId,
             feedUrl,
             feedTitle,
-        })
+        });
 
         await this.feedQueue.add('default', dto, {
             removeOnComplete: true,
@@ -31,6 +31,6 @@ export class FeedQueueService {
             attempts: 5,
             backoff: { type: 'fixed', delay: 60_000 },
             jobId: `feed-${dto.subscriptionId}`,
-        })
+        });
     }
 }

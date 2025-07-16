@@ -1,13 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common'
-import Redis, { RedisOptions } from 'ioredis'
+import { Inject, Injectable } from '@nestjs/common';
+import Redis, { RedisOptions } from 'ioredis';
 
 type ConnOpts = {
-    host: string
-    port: number
-    password?: string
-    db?: number
-    tls?: RedisOptions['tls']
-}
+    host: string;
+    port: number;
+    password?: string;
+    db?: number;
+    tls?: RedisOptions['tls'];
+};
 
 @Injectable()
 export class RedisService {
@@ -27,12 +27,12 @@ export class RedisService {
             // BullMQ推奨設定を追加
             maxRetriesPerRequest: null,
             enableReadyCheck: false,
-        }
+        };
     }
 
     // HealthControllerなどが使うメイン接続
     createMainClient(): Redis {
-        return new Redis(this.base())
+        return new Redis(this.base());
     }
 
     // Bull用クライアント
@@ -40,14 +40,14 @@ export class RedisService {
     createBullClient(type: 'client' | 'subscriber' | 'bclient' = 'client'): Redis {
         switch (type) {
             case 'client':
-                return new Redis(this.base())
+                return new Redis(this.base());
 
             default:
                 return new Redis({
                     ...this.base(),
                     enableReadyCheck: false,
                     maxRetriesPerRequest: null,
-                })
+                });
         }
     }
 }

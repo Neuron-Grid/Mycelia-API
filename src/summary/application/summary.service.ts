@@ -1,16 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common'
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
     LlmService,
-} from '../../llm/application/services/llm.service'
-import { CloudflareR2Service } from '../../podcast/cloudflare-r2.service'
-import { CreateSummaryDto } from '../dto/create-summary.dto'
-import { SummaryRepository } from '../infrastructure/summary.repository'
+} from '../../llm/application/services/llm.service';
+import { CloudflareR2Service } from '../../podcast/cloudflare-r2.service';
+import { CreateSummaryDto } from '../dto/create-summary.dto';
+import { SummaryRepository } from '../infrastructure/summary.repository';
 
 @Injectable()
 export class SummaryService {
-    private readonly logger = new Logger(SummaryService.name)
+    private readonly logger = new Logger(SummaryService.name);
 
     constructor(
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
@@ -22,67 +22,67 @@ export class SummaryService {
         userId: string,
         createSummaryDto: CreateSummaryDto,
     ): Promise<{ summary: string; id?: number }> {
-        const { text, fileRef, save } = createSummaryDto
+        const { text, fileRef, save } = createSummaryDto;
 
-        let contentToSummarize = ''
-        let sourceName = 'text_input'
+        let contentToSummarize = '';
+        let sourceName = 'text_input';
 
         // fileRefが指定された場合、Cloudflare R2からコンテンツを取得
         if (fileRef) {
             try {
-                this.logger.log(`Fetching content from fileRef: ${fileRef}`)
+                this.logger.log(`Fetching content from fileRef: ${fileRef}`);
 
                 // fileRefがURLの場合はキーを抽出、そうでなければそのままキーとして使用
                 const objectKey = fileRef.startsWith('http')
                     ? this.cloudflareR2Service.extractKeyFromUrl(fileRef)
-                    : fileRef
+                    : fileRef;
 
                 if (!objectKey) {
-                    throw new Error(`Invalid fileRef format: ${fileRef}`)
+                    throw new Error(`Invalid fileRef format: ${fileRef}`);
                 }
 
                 // セキュリティチェック: ユーザーが自分のファイルにのみアクセス可能かチェック
                 // ただし、要約機能では他のユーザーのファイルも参照する可能性があるため、
                 // 実際の運用では適切なアクセス制御を実装する必要があります
-                const fileContent = await this.cloudflareR2Service.getObject(objectKey)
+                const fileContent = await this.cloudflareR2Service.getObject(objectKey);
 
                 // ファイルサイズ制限（1MB以下に制限）
-                const maxSize = 1024 * 1024 // 1MB
+                const maxSize = 1024 * 1024; // 1MB
                 if (fileContent.length > maxSize) {
                     this.logger.warn(
                         `File too large for processing: ${fileContent.length} bytes, max: ${maxSize} bytes`,
-                    )
-                    throw new Error('File too large for processing (max 1MB)')
+                    );
+                    throw new Error('File too large for processing (max 1MB)');
                 }
 
-                contentToSummarize = fileContent
-                sourceName = objectKey
+                contentToSummarize = fileContent;
+                sourceName = objectKey;
                 this.logger.log(
                     `Successfully retrieved ${fileContent.length} characters from ${objectKey}`,
-                )
+                );
             } catch (error) {
-                this.logger.warn(`Failed to fetch fileRef: ${fileRef}`, error.message)
+                this.logger.warn(`Failed to fetch fileRef: ${fileRef}`, error.message);
 
                 // フォールバック: textがある場合はそれを使用、なければエラー
                 if (text) {
-                    this.logger.log('Falling back to provided text content')
-                    contentToSummarize = text
-                    sourceName = 'text_input_fallback'
+                    this.logger.log('Falling back to provided text content');
+                    contentToSummarize = text;
+                    sourceName = 'text_input_fallback';
                 } else {
                     throw new Error(
                         `Failed to retrieve content from fileRef and no text provided: ${error.message}`,
-                    )
+                    );
                 }
             }
         } else if (text) {
-            contentToSummarize = text
-            sourceName = 'text_input'
+            contentToSummarize = text;
+            sourceName = 'text_input';
         } else {
-            throw new Error('Either text or fileRef must be provided')
+            throw new Error('Either text or fileRef must be provided');
         }
 
         if (!contentToSummarize.trim()) {
-            throw new Error('Content to summarize is empty')
+            throw new Error('Content to summarize is empty');
         }
 
         const llmRequest: GeminiSummaryRequest = {
@@ -96,18 +96,18 @@ export class SummaryService {
                 },
             ],
             targetLanguage: 'ja',
-        }
+        };
 
-        const { content: summary } = await this.llmService.generateSummary(llmRequest)
+        const { content: summary } = await this.llmService.generateSummary(llmRequest);
 
         if (save) {
             const id = await this.summaryRepository.save(userId, {
                 sourceName: sourceName,
                 summaryMd: summary,
-            })
-            return { summary, id }
+            });
+            return { summary, id };
         }
 
-        return { summary }
+        return { summary };
     }
 }

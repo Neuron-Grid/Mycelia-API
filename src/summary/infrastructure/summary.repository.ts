@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { SupabaseRequestService } from '../../supabase-request.service'
-import type { Database } from '../../types/schema'
+import { Injectable } from '@nestjs/common';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseRequestService } from '../../supabase-request.service';
+import type { Database } from '../../types/schema';
 
 @Injectable()
 export class SummaryRepository {
@@ -9,7 +9,7 @@ export class SummaryRepository {
 
     async save(userId: string, dto: { sourceName: string; summaryMd: string }): Promise<number> {
         const supabase =
-            this.supabaseRequestService.getClient() as unknown as SupabaseClient<Database>
+            this.supabaseRequestService.getClient() as unknown as SupabaseClient<Database>;
 
         const { data, error } = await supabase
             .from('daily_summaries')
@@ -20,12 +20,12 @@ export class SummaryRepository {
                 summary_date: new Date().toISOString().split('T')[0],
             })
             .select('id')
-            .single()
+            .single();
 
         if (error || !data) {
-            throw new Error(error?.message ?? 'insert failed')
+            throw new Error(error?.message ?? 'insert failed');
         }
 
-        return data.id
+        return data.id;
     }
 }

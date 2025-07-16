@@ -9,5 +9,5 @@
 // const res = buildResponse('OK', { id: 1 })
 // @see https://www.typescriptlang.org/docs/handbook/2/generics.html
 export function buildResponse<T>(message: string, data: T) {
-    return { message, data }
+    return { message, data };
 }

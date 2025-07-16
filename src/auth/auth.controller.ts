@@ -1,23 +1,23 @@
 // @file 認証・ユーザー管理APIのコントローラ
-import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/common';
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from '@supabase/supabase-js'
-import { AuthService } from './auth.service'
-import { ForgotPasswordDto } from './dto/forgot-password.dto'
-import { ResetPasswordDto } from './dto/reset-password.dto'
-import { SignInDto } from './dto/sign-in.dto'
-import { SignUpDto } from './dto/sign-up.dto'
-import { UpdateEmailDto } from './dto/update-email.dto'
-import { UpdatePasswordDto } from './dto/update-password.dto'
-import { UpdateUsernameDto } from './dto/update-username.dto'
-import { VerifyEmailDto } from './dto/verify-email.dto'
-import { VerifyTotpDto } from './dto/verify-totp.dto'
-import { buildResponse } from './response.util'
-import { SupabaseAuthGuard } from './supabase-auth.guard'
-import { SupabaseUser } from './supabase-user.decorator'
-import { UserId } from './user-id.decorator'
+import { User } from '@supabase/supabase-js';
+import { AuthService } from './auth.service';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { SignInDto } from './dto/sign-in.dto';
+import { SignUpDto } from './dto/sign-up.dto';
+import { UpdateEmailDto } from './dto/update-email.dto';
+import { UpdatePasswordDto } from './dto/update-password.dto';
+import { UpdateUsernameDto } from './dto/update-username.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { VerifyTotpDto } from './dto/verify-totp.dto';
+import { buildResponse } from './response.util';
+import { SupabaseAuthGuard } from './supabase-auth.guard';
+import { SupabaseUser } from './supabase-user.decorator';
+import { UserId } from './user-id.decorator';
 
 @ApiTags('Authentication')
 @Controller({
@@ -43,9 +43,9 @@ export class AuthController {
     // @see AuthService.signUp
     @Post('signup')
     async signUp(@Body() signUpDto: SignUpDto) {
-        const { email, password, username } = signUpDto
-        const result = await this.authService.signUp(email, password, username)
-        return buildResponse('Signup successful', result)
+        const { email, password, username } = signUpDto;
+        const result = await this.authService.signUp(email, password, username);
+        return buildResponse('Signup successful', result);
     }
 
     // @async
@@ -59,9 +59,9 @@ export class AuthController {
     // @see AuthService.signIn
     @Post('login')
     async signIn(@Body() signInDto: SignInDto) {
-        const { email, password } = signInDto
-        const result = await this.authService.signIn(email, password)
-        return buildResponse('Login successful', result)
+        const { email, password } = signInDto;
+        const result = await this.authService.signIn(email, password);
+        return buildResponse('Login successful', result);
     }
 
     // @async
@@ -75,9 +75,9 @@ export class AuthController {
     // @see AuthService.forgotPassword
     @Post('forgot-password')
     async forgotPassword(@Body() dto: ForgotPasswordDto) {
-        const { email } = dto
-        const result = await this.authService.forgotPassword(email)
-        return buildResponse('Password reset email sent', result)
+        const { email } = dto;
+        const result = await this.authService.forgotPassword(email);
+        return buildResponse('Password reset email sent', result);
     }
 
     // @async
@@ -91,9 +91,9 @@ export class AuthController {
     // @see AuthService.resetPassword
     @Post('reset-password')
     async resetPassword(@Body() dto: ResetPasswordDto) {
-        const { accessToken, newPassword } = dto
-        const result = await this.authService.resetPassword(accessToken, newPassword)
-        return buildResponse('Password has been reset', result)
+        const { accessToken, newPassword } = dto;
+        const result = await this.authService.resetPassword(accessToken, newPassword);
+        return buildResponse('Password has been reset', result);
     }
 
     // @async
@@ -107,9 +107,9 @@ export class AuthController {
     // @see AuthService.verifyEmail
     @Post('verify-email')
     async verifyEmail(@Body() dto: VerifyEmailDto) {
-        const { email, token } = dto
-        const result = await this.authService.verifyEmail(email, token)
-        return buildResponse('Email verified successfully', result)
+        const { email, token } = dto;
+        const result = await this.authService.verifyEmail(email, token);
+        return buildResponse('Email verified successfully', result);
     }
 
     // @async
@@ -124,8 +124,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async signOut() {
-        const result = await this.authService.signOut()
-        return buildResponse('Logout successful', result)
+        const result = await this.authService.signOut();
+        return buildResponse('Logout successful', result);
     }
 
     // @async
@@ -141,8 +141,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async deleteAccount(@UserId() userId: string) {
-        const result = await this.authService.deleteAccount(userId)
-        return buildResponse('Account deleted', result)
+        const result = await this.authService.deleteAccount(userId);
+        return buildResponse('Account deleted', result);
     }
 
     // @async
@@ -159,8 +159,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
-        const result = await this.authService.updateEmail(user, dto.newEmail)
-        return buildResponse('Email updated successfully', result)
+        const result = await this.authService.updateEmail(user, dto.newEmail);
+        return buildResponse('Email updated successfully', result);
     }
 
     // @async
@@ -177,8 +177,8 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updateUsername(@SupabaseUser() user: User, @Body() dto: UpdateUsernameDto) {
-        const result = await this.authService.updateUsername(user, dto.newUsername)
-        return buildResponse('Username updated successfully', result)
+        const result = await this.authService.updateUsername(user, dto.newUsername);
+        return buildResponse('Username updated successfully', result);
     }
 
     // @async
@@ -195,9 +195,9 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     async updatePassword(@SupabaseUser() user: User, @Body() dto: UpdatePasswordDto) {
-        const { oldPassword, newPassword } = dto
-        const result = await this.authService.updatePassword(user, oldPassword, newPassword)
-        return buildResponse('Password updated successfully', result)
+        const { oldPassword, newPassword } = dto;
+        const result = await this.authService.updatePassword(user, oldPassword, newPassword);
+        return buildResponse('Password updated successfully', result);
     }
 
     // @public
@@ -210,7 +210,7 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     getProfile(@SupabaseUser() user: User): { message: string; data: User } {
-        return buildResponse('User profile fetched successfully', user)
+        return buildResponse('User profile fetched successfully', user);
     }
 
     // @async
@@ -225,8 +225,8 @@ export class AuthController {
     @Post('verify-totp')
     async verifyTotp(@Body() dto: VerifyTotpDto) {
         // dto内に factorId, code がある想定
-        const { factorId, code } = dto
-        const result = await this.authService.verifyTotp(factorId, code)
-        return buildResponse('TOTP verified successfully', result)
+        const { factorId, code } = dto;
+        const result = await this.authService.verifyTotp(factorId, code);
+        return buildResponse('TOTP verified successfully', result);
     }
 }

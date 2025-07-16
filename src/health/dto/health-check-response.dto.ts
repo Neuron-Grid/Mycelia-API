@@ -1,5 +1,5 @@
 // @file ヘルスチェックAPIのレスポンスDTO定義
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty } from "@nestjs/swagger";
 
 // @class JobCountsDto
 // @public
@@ -9,31 +9,31 @@ export class JobCountsDto {
     // @type {number}
     // @example 0
     @ApiProperty({ example: 0 })
-    waiting: number
+    waiting: number;
 
     // @property
     // @type {number}
     // @example 0
     @ApiProperty({ example: 0 })
-    active: number
+    active: number;
 
     // @property
     // @type {number}
     // @example 10
     @ApiProperty({ example: 10 })
-    completed: number
+    completed: number;
 
     // @property
     // @type {number}
     // @example 0
     @ApiProperty({ example: 0 })
-    failed: number
+    failed: number;
 
     // @property
     // @type {number}
     // @example 0
     @ApiProperty({ example: 0 })
-    delayed: number
+    delayed: number;
 }
 
 // @class BullQueueDto
@@ -43,14 +43,14 @@ export class BullQueueDto {
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: 'OK' })
-    status: string
+    @ApiProperty({ example: "OK" })
+    status: string;
 
     // @property
     // @type {JobCountsDto}
     // @see JobCountsDto
     @ApiProperty({ type: JobCountsDto })
-    jobCounts: JobCountsDto
+    jobCounts: JobCountsDto;
 }
 
 // @class HealthCheckResponseDto
@@ -60,27 +60,27 @@ export class HealthCheckResponseDto {
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: 'OK', description: 'Overall system status' })
-    status: string
+    @ApiProperty({ example: "OK", description: "Overall system status" })
+    status: string;
 
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: 'OK', description: 'DB connection status' })
-    db: string
+    @ApiProperty({ example: "OK", description: "DB connection status" })
+    db: string;
 
     // @property
     // @type {BullQueueDto}
     // @see BullQueueDto
     @ApiProperty({ type: BullQueueDto })
-    bullQueue: BullQueueDto
+    bullQueue: BullQueueDto;
 
     // @property
     // @type {string}
     // @example 'OK'
     @ApiProperty({
-        example: 'OK',
-        description: 'Status of Redis connectivity (OK or NG: <error-message>)',
+        example: "OK",
+        description: "Status of Redis connectivity (OK or NG: <error-message>)",
     })
-    redis: string
+    redis: string;
 }

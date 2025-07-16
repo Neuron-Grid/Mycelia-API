@@ -1,9 +1,9 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
-import { SupabaseAuthGuard } from '../../../auth/supabase-auth.guard'
-import { UserId } from '../../../auth/user-id.decorator'
-import { SearchResponseDto } from '../dto/search-response.dto'
-import { SearchService } from '../services/search.service'
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { SupabaseAuthGuard } from '../../../auth/supabase-auth.guard';
+import { UserId } from '../../../auth/user-id.decorator';
+import { SearchResponseDto } from '../dto/search-response.dto';
+import { SearchService } from '../services/search.service';
 
 @ApiTags('Search')
 @Controller('search')
@@ -59,9 +59,9 @@ export class SearchController {
                       | 'podcast'
                   )[])
                 : undefined,
-        }
+        };
 
-        const results = await this.searchService.searchAll(userId, searchData)
+        const results = await this.searchService.searchAll(userId, searchData);
 
         return {
             message: 'Search completed successfully',
@@ -73,7 +73,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        }
+        };
     }
 
     @Get('feed-items')
@@ -106,9 +106,9 @@ export class SearchController {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
             threshold: threshold ? Number.parseFloat(threshold) : undefined,
-        }
+        };
 
-        const results = await this.searchService.searchFeedItems(userId, searchData)
+        const results = await this.searchService.searchFeedItems(userId, searchData);
 
         return {
             message: 'Feed item search completed successfully',
@@ -120,7 +120,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        }
+        };
     }
 
     @Get('summaries')
@@ -153,9 +153,9 @@ export class SearchController {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
             threshold: threshold ? Number.parseFloat(threshold) : undefined,
-        }
+        };
 
-        const results = await this.searchService.searchSummaries(userId, searchData)
+        const results = await this.searchService.searchSummaries(userId, searchData);
 
         return {
             message: 'Summary search completed successfully',
@@ -167,7 +167,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        }
+        };
     }
 
     @Get('podcasts')
@@ -200,9 +200,9 @@ export class SearchController {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
             threshold: threshold ? Number.parseFloat(threshold) : undefined,
-        }
+        };
 
-        const results = await this.searchService.searchPodcastEpisodes(userId, searchData)
+        const results = await this.searchService.searchPodcastEpisodes(userId, searchData);
 
         return {
             message: 'Podcast search completed successfully',
@@ -214,6 +214,6 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        }
+        };
     }
 }

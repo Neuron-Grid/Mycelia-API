@@ -13,7 +13,7 @@ import {
     Put,
     Query,
     UseGuards,
-} from '@nestjs/common'
+} from '@nestjs/common';
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -21,12 +21,12 @@ import {
     ApiQuery,
     ApiResponse,
     ApiTags,
-} from '@nestjs/swagger'
-import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard'
-import { UserId } from '../../auth/user-id.decorator'
-import { DailySummaryRepository } from '../../llm/infrastructure/repositories/daily-summary.repository'
-import { PodcastEpisodeRepository } from '../infrastructure/podcast-episode.repository'
-import { PodcastQueueService } from '../queue/podcast-queue.service'
+} from '@nestjs/swagger';
+import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard';
+import { UserId } from '../../auth/user-id.decorator';
+import { DailySummaryRepository } from '../../llm/infrastructure/repositories/daily-summary.repository';
+import { PodcastEpisodeRepository } from '../infrastructure/podcast-episode.repository';
+import { PodcastQueueService } from '../queue/podcast-queue.service';
 import {
     CreatePodcastEpisodeDto,
     GeneratePodcastEpisodeDto,
@@ -34,15 +34,15 @@ import {
     PodcastEpisodeResponseDto,
     PodcastGenerationJobResponseDto,
     UpdatePodcastEpisodeDto,
-} from './dto/podcast-episode.dto'
-import { PodcastEpisodeMapper } from './podcast-episode.mapper'
+} from './dto/podcast-episode.dto';
+import { PodcastEpisodeMapper } from './podcast-episode.mapper';
 
 @ApiTags('Podcast Episodes')
 @Controller('api/v1/podcast-episodes')
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class PodcastEpisodeController {
-    private readonly logger = new Logger(PodcastEpisodeController.name)
+    private readonly logger = new Logger(PodcastEpisodeController.name);
 
     constructor(
         private readonly podcastEpisodeRepository: PodcastEpisodeRepository,
@@ -78,21 +78,21 @@ export class PodcastEpisodeController {
         @Query('limit') limit = 20,
     ): Promise<PodcastEpisodeListResponseDto> {
         // パラメータの検証
-        const validPage = Math.max(1, Number(page))
-        const validLimit = Math.min(Math.max(1, Number(limit)), 100) // 最大100件
-        const offset = (validPage - 1) * validLimit
+        const validPage = Math.max(1, Number(page));
+        const validLimit = Math.min(Math.max(1, Number(limit)), 100); // 最大100件
+        const offset = (validPage - 1) * validLimit;
 
         this.logger.log(
             `User ${userId} requesting episodes: page=${validPage}, limit=${validLimit}`,
-        )
+        );
 
         const { episodes, total } = await this.podcastEpisodeRepository.findByUser(
             userId,
             validLimit,
             offset,
-        )
+        );
 
-        const totalPages = Math.ceil(total / validLimit)
+        const totalPages = Math.ceil(total / validLimit);
 
         return {
             episodes: episodes.map((episode) => this.podcastEpisodeMapper.toResponseDto(episode)),
@@ -100,7 +100,7 @@ export class PodcastEpisodeController {
             page: validPage,
             limit: validLimit,
             total_pages: totalPages,
-        }
+        };
     }
 
     @Get(':id')
@@ -123,18 +123,18 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @Param('id', ParseIntPipe) episodeId: number,
     ): Promise<PodcastEpisodeResponseDto> {
-        this.logger.log(`User ${userId} requesting episode ${episodeId}`)
+        this.logger.log(`User ${userId} requesting episode ${episodeId}`);
 
-        const episode = await this.podcastEpisodeRepository.findById(episodeId, userId)
+        const episode = await this.podcastEpisodeRepository.findById(episodeId, userId);
 
         if (!episode) {
             throw new HttpException(
                 'Podcast episode not found or access denied',
                 HttpStatus.NOT_FOUND,
-            )
+            );
         }
 
-        return this.podcastEpisodeMapper.toResponseDto(episode)
+        return this.podcastEpisodeMapper.toResponseDto(episode);
     }
 
     @Post()
@@ -156,35 +156,35 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @Body() createDto: CreatePodcastEpisodeDto,
     ): Promise<PodcastEpisodeResponseDto> {
-        this.logger.log(`User ${userId} creating episode for summary ${createDto.summary_id}`)
+        this.logger.log(`User ${userId} creating episode for summary ${createDto.summary_id}`);
 
         // 要約の所有者チェック
-        const summary = await this.dailySummaryRepository.findById(createDto.summary_id, userId)
+        const summary = await this.dailySummaryRepository.findById(createDto.summary_id, userId);
         if (!summary) {
             throw new HttpException(
                 'Related summary not found or access denied',
                 HttpStatus.NOT_FOUND,
-            )
+            );
         }
 
         // 既存のエピソードがないかチェック
         const existingEpisode = await this.podcastEpisodeRepository.findBySummaryId(
             userId,
             createDto.summary_id,
-        )
+        );
         if (existingEpisode) {
             throw new HttpException(
                 'Podcast episode already exists for this summary',
                 HttpStatus.CONFLICT,
-            )
+            );
         }
 
         const episode = await this.podcastEpisodeRepository.create(userId, createDto.summary_id, {
             title: createDto.title,
-        })
+        });
 
-        this.logger.log(`Episode ${episode.id} created for user ${userId}`)
-        return this.podcastEpisodeMapper.toResponseDto(episode)
+        this.logger.log(`Episode ${episode.id} created for user ${userId}`);
+        return this.podcastEpisodeMapper.toResponseDto(episode);
     }
 
     @Put(':id')
@@ -208,25 +208,25 @@ export class PodcastEpisodeController {
         @Param('id', ParseIntPipe) episodeId: number,
         @Body() updateDto: UpdatePodcastEpisodeDto,
     ): Promise<PodcastEpisodeResponseDto> {
-        this.logger.log(`User ${userId} updating episode ${episodeId}`)
+        this.logger.log(`User ${userId} updating episode ${episodeId}`);
 
         // 所有者チェック
-        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId)
+        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId);
         if (!existingEpisode) {
             throw new HttpException(
                 'Podcast episode not found or access denied',
                 HttpStatus.NOT_FOUND,
-            )
+            );
         }
 
         const updatedEpisode = await this.podcastEpisodeRepository.update(
             episodeId,
             userId,
             updateDto,
-        )
+        );
 
-        this.logger.log(`Episode ${episodeId} updated by user ${userId}`)
-        return this.podcastEpisodeMapper.toResponseDto(updatedEpisode)
+        this.logger.log(`Episode ${episodeId} updated by user ${userId}`);
+        return this.podcastEpisodeMapper.toResponseDto(updatedEpisode);
     }
 
     @Delete(':id')
@@ -248,19 +248,19 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @Param('id', ParseIntPipe) episodeId: number,
     ): Promise<void> {
-        this.logger.log(`User ${userId} deleting episode ${episodeId}`)
+        this.logger.log(`User ${userId} deleting episode ${episodeId}`);
 
         // 所有者チェック
-        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId)
+        const existingEpisode = await this.podcastEpisodeRepository.findById(episodeId, userId);
         if (!existingEpisode) {
             throw new HttpException(
                 'Podcast episode not found or access denied',
                 HttpStatus.NOT_FOUND,
-            )
+            );
         }
 
-        await this.podcastEpisodeRepository.softDelete(episodeId, userId)
-        this.logger.log(`Episode ${episodeId} deleted by user ${userId}`)
+        await this.podcastEpisodeRepository.softDelete(episodeId, userId);
+        this.logger.log(`Episode ${episodeId} deleted by user ${userId}`);
     }
 
     @Post('generate')
@@ -284,15 +284,15 @@ export class PodcastEpisodeController {
     ): Promise<PodcastGenerationJobResponseDto> {
         this.logger.log(
             `User ${userId} requesting podcast generation for summary ${generateDto.summary_id}`,
-        )
+        );
 
         // 要約の所有者チェック
-        const summary = await this.dailySummaryRepository.findById(generateDto.summary_id, userId)
+        const summary = await this.dailySummaryRepository.findById(generateDto.summary_id, userId);
         if (!summary) {
             throw new HttpException(
                 'Related summary not found or access denied',
                 HttpStatus.NOT_FOUND,
-            )
+            );
         }
 
         // 要約にスクリプトが存在するかチェック
@@ -300,27 +300,27 @@ export class PodcastEpisodeController {
             throw new HttpException(
                 'Summary script is required for podcast generation',
                 HttpStatus.BAD_REQUEST,
-            )
+            );
         }
 
         // 既存のエピソードがあるかチェックし、なければ作成
         let episode = await this.podcastEpisodeRepository.findBySummaryId(
             userId,
             generateDto.summary_id,
-        )
+        );
 
         if (!episode) {
             episode = await this.podcastEpisodeRepository.create(userId, generateDto.summary_id, {
                 title: summary.summary_title || `Podcast Episode - ${summary.summary_date}`,
-            })
+            });
             this.logger.log(
                 `Created new episode ${episode.id} for summary ${generateDto.summary_id}`,
-            )
+            );
         }
 
         // script_textの存在チェック
         if (!summary.script_text) {
-            throw new BadRequestException('Script text is required for podcast generation')
+            throw new BadRequestException('Script text is required for podcast generation');
         }
 
         // ポッドキャスト生成ジョブをキューに追加
@@ -330,15 +330,15 @@ export class PodcastEpisodeController {
             'ja-JP', // デフォルト言語
             `episode-${episode.id}-${Date.now()}.opus`,
             episode.title || undefined,
-        )
+        );
 
-        const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`
-        this.logger.log(message)
+        const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`;
+        this.logger.log(message);
 
         return {
             message,
             job_id: result.filename, // ファイル名をジョブIDとして使用
             episode_id: episode.id,
-        }
+        };
     }
 }

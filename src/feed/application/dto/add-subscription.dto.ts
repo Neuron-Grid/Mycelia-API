@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsUrl } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsUrl } from 'class-validator';
 
 export class AddSubscriptionDto {
     @ApiProperty({
@@ -7,5 +7,5 @@ export class AddSubscriptionDto {
         description: 'URL of the RSS feed to subscribe to',
     })
     @IsUrl()
-    feedUrl: string
+    feedUrl: string;
 }

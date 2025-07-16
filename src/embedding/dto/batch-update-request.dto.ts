@@ -1,6 +1,6 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsArray, IsEnum, IsOptional } from 'class-validator'
-import { TableType } from '../types/embedding-batch.types'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsArray, IsEnum, IsOptional } from 'class-validator';
+import { TableType } from '../types/embedding-batch.types';
 
 export class BatchUpdateRequestDto {
     @ApiProperty({
@@ -13,5 +13,5 @@ export class BatchUpdateRequestDto {
     @IsOptional()
     @IsArray()
     @IsEnum(['feed_items', 'daily_summaries', 'podcast_episodes', 'tags'], { each: true })
-    tableTypes?: TableType[]
+    tableTypes?: TableType[];
 }

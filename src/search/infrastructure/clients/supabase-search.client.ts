@@ -1,18 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { SupabaseRequestService } from '../../../supabase-request.service'
+import { Injectable, Logger } from '@nestjs/common';
+import { SupabaseRequestService } from '../../../supabase-request.service';
 
 export interface SupabaseSearchResult {
-    id: number
-    title: string
-    content: string
-    similarity: number
-    type: 'feed_item' | 'summary' | 'podcast'
-    metadata: Record<string, unknown>
+    id: number;
+    title: string;
+    content: string;
+    similarity: number;
+    type: 'feed_item' | 'summary' | 'podcast';
+    metadata: Record<string, unknown>;
 }
 
 @Injectable()
 export class SupabaseSearchClient {
-    private readonly logger = new Logger(SupabaseSearchClient.name)
+    private readonly logger = new Logger(SupabaseSearchClient.name);
 
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
@@ -30,11 +30,11 @@ export class SupabaseSearchClient {
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
-                })
+                });
 
             if (error) {
-                this.logger.error(`Feed items vector search error: ${error.message}`)
-                throw error
+                this.logger.error(`Feed items vector search error: ${error.message}`);
+                throw error;
             }
 
             return data.map((item: Record<string, unknown>) => ({
@@ -48,10 +48,10 @@ export class SupabaseSearchClient {
                     published_at: item.published_at,
                     feed_title: item.feed_title,
                 },
-            }))
+            }));
         } catch (error) {
-            this.logger.error(`Failed to search feed items: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to search feed items: ${error.message}`);
+            throw error;
         }
     }
 
@@ -69,11 +69,11 @@ export class SupabaseSearchClient {
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
-                })
+                });
 
             if (error) {
-                this.logger.error(`Summaries vector search error: ${error.message}`)
-                throw error
+                this.logger.error(`Summaries vector search error: ${error.message}`);
+                throw error;
             }
 
             return data.map((item: Record<string, unknown>) => ({
@@ -86,10 +86,10 @@ export class SupabaseSearchClient {
                     summary_date: item.summary_date,
                     has_script: !!item.script_text,
                 },
-            }))
+            }));
         } catch (error) {
-            this.logger.error(`Failed to search summaries: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to search summaries: ${error.message}`);
+            throw error;
         }
     }
 
@@ -107,11 +107,11 @@ export class SupabaseSearchClient {
                     match_threshold: threshold,
                     match_count: limit,
                     target_user_id: userId,
-                })
+                });
 
             if (error) {
-                this.logger.error(`Podcast episodes vector search error: ${error.message}`)
-                throw error
+                this.logger.error(`Podcast episodes vector search error: ${error.message}`);
+                throw error;
             }
 
             return data.map((item: Record<string, unknown>) => ({
@@ -125,10 +125,10 @@ export class SupabaseSearchClient {
                     summary_id: item.summary_id,
                     created_at: item.created_at,
                 },
-            }))
+            }));
         } catch (error) {
-            this.logger.error(`Failed to search podcast episodes: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to search podcast episodes: ${error.message}`);
+            throw error;
         }
     }
 
@@ -143,14 +143,14 @@ export class SupabaseSearchClient {
                 .from('feed_items')
                 .update({ title_embedding: JSON.stringify(embedding) } as Record<string, unknown>)
                 .eq('id', feedItemId)
-                .eq('user_id', userId)
+                .eq('user_id', userId);
 
-            if (error) throw error
+            if (error) throw error;
 
-            this.logger.debug(`Updated embedding for feed item ${feedItemId}`)
+            this.logger.debug(`Updated embedding for feed item ${feedItemId}`);
         } catch (error) {
-            this.logger.error(`Failed to update feed item embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update feed item embedding: ${error.message}`);
+            throw error;
         }
     }
 
@@ -165,14 +165,14 @@ export class SupabaseSearchClient {
                 .from('daily_summaries')
                 .update({ summary_emb: JSON.stringify(embedding) })
                 .eq('id', summaryId)
-                .eq('user_id', userId)
+                .eq('user_id', userId);
 
-            if (error) throw error
+            if (error) throw error;
 
-            this.logger.debug(`Updated embedding for summary ${summaryId}`)
+            this.logger.debug(`Updated embedding for summary ${summaryId}`);
         } catch (error) {
-            this.logger.error(`Failed to update summary embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update summary embedding: ${error.message}`);
+            throw error;
         }
     }
 
@@ -187,14 +187,14 @@ export class SupabaseSearchClient {
                 .from('podcast_episodes')
                 .update({ title_emb: JSON.stringify(embedding) })
                 .eq('id', episodeId)
-                .eq('user_id', userId)
+                .eq('user_id', userId);
 
-            if (error) throw error
+            if (error) throw error;
 
-            this.logger.debug(`Updated embedding for podcast episode ${episodeId}`)
+            this.logger.debug(`Updated embedding for podcast episode ${episodeId}`);
         } catch (error) {
-            this.logger.error(`Failed to update podcast episode embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update podcast episode embedding: ${error.message}`);
+            throw error;
         }
     }
 }

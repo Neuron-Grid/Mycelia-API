@@ -1,17 +1,17 @@
 export interface EmbeddingBatchConfig {
-    defaultBatchSize: number
-    maxBatchSize: number
+    defaultBatchSize: number;
+    maxBatchSize: number;
     openaiRateLimit: {
-        batchSize: number
-        delayMs: number
-        maxRetries: number
-    }
+        batchSize: number;
+        delayMs: number;
+        maxRetries: number;
+    };
     queue: {
-        removeOnComplete: number
-        removeOnFail: number
-        attempts: number
-        backoffDelay: number
-    }
+        removeOnComplete: number;
+        removeOnFail: number;
+        attempts: number;
+        backoffDelay: number;
+    };
 }
 
 export const EMBEDDING_BATCH_CONFIG: EmbeddingBatchConfig = {
@@ -28,4 +28,4 @@ export const EMBEDDING_BATCH_CONFIG: EmbeddingBatchConfig = {
         attempts: 3,
         backoffDelay: 30000, // 30 seconds
     },
-} as const
+} as const;

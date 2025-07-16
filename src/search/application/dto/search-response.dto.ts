@@ -1,23 +1,23 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty } from '@nestjs/swagger';
 
 export class SearchResultDto {
     @ApiProperty({
         description: 'Content ID',
         example: 123,
     })
-    id: number
+    id: number;
 
     @ApiProperty({
         description: 'Content title',
         example: 'AI Breakthrough in Medical Research',
     })
-    title: string
+    title: string;
 
     @ApiProperty({
         description: 'Content text',
         example: 'A new AI system has been developed...',
     })
-    content: string
+    content: string;
 
     @ApiProperty({
         description: 'Similarity score (0.0-1.0)',
@@ -25,21 +25,21 @@ export class SearchResultDto {
         maximum: 1,
         example: 0.85,
     })
-    similarity: number
+    similarity: number;
 
     @ApiProperty({
         description: 'Content type',
         enum: ['feed_item', 'summary', 'podcast'],
         example: 'feed_item',
     })
-    type: 'feed_item' | 'summary' | 'podcast'
+    type: 'feed_item' | 'summary' | 'podcast';
 
     @ApiProperty({
         description: 'Additional metadata',
         required: false,
         example: { link: 'https://example.com', published_at: '2024-01-01' },
     })
-    metadata?: Record<string, string | number | boolean | null>
+    metadata?: Record<string, string | number | boolean | null>;
 }
 
 export class SearchResponseDto {
@@ -47,11 +47,11 @@ export class SearchResponseDto {
         description: 'Response message',
         example: 'Search completed successfully',
     })
-    message: string
+    message: string;
 
     @ApiProperty({
         description: 'Search results',
         type: [SearchResultDto],
     })
-    data: SearchResultDto[]
+    data: SearchResultDto[];
 }

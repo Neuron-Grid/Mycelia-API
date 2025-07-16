@@ -1,11 +1,11 @@
 // @file RSSフィードの取得とパースを行うサービス
-import { Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common';
 // @see https://www.npmjs.com/package/feedparser
-import * as FeedParser from 'feedparser'
+import * as FeedParser from 'feedparser';
 // @see https://www.npmjs.com/package/feedparser
-import { Item as FeedparserItem, Meta } from 'feedparser'
+import { Item as FeedparserItem, Meta } from 'feedparser';
 // @see https://www.npmjs.com/package/node-fetch
-import fetch, { Response } from 'node-fetch'
+import fetch, { Response } from 'node-fetch';
 
 @Injectable()
 // @public
@@ -15,7 +15,7 @@ export class FeedFetchService {
     // @readonly
     // @private
     // @default new Logger(FeedFetchService.name)
-    private readonly logger = new Logger(FeedFetchService.name)
+    private readonly logger = new Logger(FeedFetchService.name);
 
     // @async
     // @public
@@ -27,49 +27,49 @@ export class FeedFetchService {
     // const { meta, items } = await feedFetchService.parseFeed('https://example.com/rss')
     // @see FeedParser
     parseFeed(feedUrl: string): Promise<{ meta: Meta; items: FeedparserItem[] }> {
-        const feedparser = new FeedParser({ normalize: true })
-        const items: FeedparserItem[] = []
-        let meta: Meta = {} as Meta
+        const feedparser = new FeedParser({ normalize: true });
+        const items: FeedparserItem[] = [];
+        let meta: Meta = {} as Meta;
 
         return new Promise((resolve, reject) => {
             fetch(feedUrl)
                 .then((res: Response) => {
                     if (res.status !== 200) {
-                        reject(new Error(`Bad status code: ${res.status}`))
-                        return
+                        reject(new Error(`Bad status code: ${res.status}`));
+                        return;
                     }
                     if (!res.body) {
-                        reject(new Error('Response body is null'))
-                        return
+                        reject(new Error('Response body is null'));
+                        return;
                     }
-                    res.body.pipe(feedparser)
+                    res.body.pipe(feedparser);
                 })
                 .catch((err) => {
-                    reject(err)
-                })
+                    reject(err);
+                });
 
             feedparser.on('error', (error: Error) => {
-                reject(error)
-            })
+                reject(error);
+            });
 
             feedparser.on('meta', function () {
-                meta = this.meta
-            })
+                meta = this.meta;
+            });
 
             feedparser.on('readable', function (this: FeedParser) {
-                let item: FeedparserItem | null
+                let item: FeedparserItem | null;
                 while (true) {
-                    item = this.read()
+                    item = this.read();
                     if (!item) {
-                        break
+                        break;
                     }
-                    items.push(item)
+                    items.push(item);
                 }
-            })
+            });
 
             feedparser.on('end', () => {
-                resolve({ meta, items })
-            })
-        })
+                resolve({ meta, items });
+            });
+        });
     }
 }

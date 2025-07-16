@@ -1,11 +1,11 @@
 export interface GeminiScriptRequest {
-    summaryText: string
+    summaryText: string;
     articlesForContext?: Array<{
-        title: string
-        url: string
-    }>
+        title: string;
+        url: string;
+    }>;
 }
 
 export interface GeminiScriptResponse {
-    script: string
+    script: string;
 }

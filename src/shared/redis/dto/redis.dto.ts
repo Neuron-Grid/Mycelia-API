@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty } from '@nestjs/swagger';
 
 // Redisの設定情報を扱うためのDTO
 export class RedisConfigDto {
@@ -6,20 +6,20 @@ export class RedisConfigDto {
         example: '127.0.0.1',
         description: 'Redisホスト名（またはIPアドレス）',
     })
-    host: string
+    host: string;
 
     @ApiProperty({
         example: 6379,
         description: 'Redisのポート番号',
     })
-    port: number
+    port: number;
 
     @ApiProperty({
         example: '',
         description: 'Redisのパスワード（ない場合は空）',
         required: false,
     })
-    password?: string
+    password?: string;
 }
 
 // RedisへのPING結果など、ヘルスチェック情報を扱うためのDTO
@@ -28,19 +28,19 @@ export class RedisHealthDto {
         example: 'OK',
         description: 'Redis接続ステータス（OK / NGなど）',
     })
-    status: string
+    status: string;
 
     @ApiProperty({
         example: 'PONG',
         description: 'PINGコマンドの結果',
         required: false,
     })
-    pingResult?: string
+    pingResult?: string;
 
     @ApiProperty({
         example: 'Error message if any',
         description: 'Redis接続が失敗した場合などのエラー内容',
         required: false,
     })
-    errorMessage?: string
+    errorMessage?: string;
 }

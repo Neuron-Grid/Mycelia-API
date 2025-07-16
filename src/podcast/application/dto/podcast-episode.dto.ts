@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 // ポッドキャストエピソード更新DTO
 // @description クライアントからのポッドキャストエピソード更新リクエスト用DTO
@@ -13,7 +13,7 @@ export class UpdatePodcastEpisodeDto {
     })
     @IsString()
     @IsOptional()
-    title?: string
+    title?: string;
 }
 
 // ポッドキャストエピソード作成DTO
@@ -27,7 +27,7 @@ export class CreatePodcastEpisodeDto {
     })
     @IsNumber()
     @Min(1)
-    summary_id: number
+    summary_id: number;
 
     // エピソードタイトル（オプション）
     // @type {string}
@@ -38,7 +38,7 @@ export class CreatePodcastEpisodeDto {
     })
     @IsString()
     @IsOptional()
-    title?: string
+    title?: string;
 }
 
 // ポッドキャストエピソードレスポンスDTO
@@ -50,7 +50,7 @@ export class PodcastEpisodeResponseDto {
         description: 'ポッドキャストエピソードのID',
         example: 1,
     })
-    id: number
+    id: number;
 
     // ユーザーID
     // @type {string}
@@ -58,7 +58,7 @@ export class PodcastEpisodeResponseDto {
         description: 'エピソードの所有者ユーザーID',
         example: 'user-uuid-123',
     })
-    user_id: string
+    user_id: string;
 
     // 要約ID
     // @type {number}
@@ -66,7 +66,7 @@ export class PodcastEpisodeResponseDto {
         description: '関連する要約のID',
         example: 123,
     })
-    summary_id: number
+    summary_id: number;
 
     // エピソードタイトル
     // @type {string | null}
@@ -75,7 +75,7 @@ export class PodcastEpisodeResponseDto {
         example: '今日のニュース要約 - 2025年5月13日',
         nullable: true,
     })
-    title: string | null
+    title: string | null;
 
     // 音声ファイルURL
     // @type {string | null}
@@ -84,7 +84,7 @@ export class PodcastEpisodeResponseDto {
         example: 'https://storage.example.com/episodes/episode-123.mp3',
         nullable: true,
     })
-    audio_url: string | null
+    audio_url: string | null;
 
     // ソフト削除フラグ
     // @type {boolean}
@@ -92,7 +92,7 @@ export class PodcastEpisodeResponseDto {
         description: 'ソフト削除されているかどうか',
         example: false,
     })
-    soft_deleted: boolean
+    soft_deleted: boolean;
 
     // 作成日時
     // @type {string}
@@ -100,7 +100,7 @@ export class PodcastEpisodeResponseDto {
         description: '作成日時',
         example: '2025-05-13T07:30:00.000Z',
     })
-    created_at: string
+    created_at: string;
 
     // 最終更新日時
     // @type {string}
@@ -108,7 +108,7 @@ export class PodcastEpisodeResponseDto {
         description: '最終更新日時',
         example: '2025-05-13T07:30:00.000Z',
     })
-    updated_at: string
+    updated_at: string;
 }
 
 // ポッドキャストエピソード一覧レスポンスDTO
@@ -120,7 +120,7 @@ export class PodcastEpisodeListResponseDto {
         description: 'ポッドキャストエピソード一覧',
         type: [PodcastEpisodeResponseDto],
     })
-    episodes: PodcastEpisodeResponseDto[]
+    episodes: PodcastEpisodeResponseDto[];
 
     // 合計件数
     // @type {number}
@@ -128,7 +128,7 @@ export class PodcastEpisodeListResponseDto {
         description: '合計エピソード数',
         example: 50,
     })
-    total: number
+    total: number;
 
     // 現在のページ
     // @type {number}
@@ -136,7 +136,7 @@ export class PodcastEpisodeListResponseDto {
         description: '現在のページ番号（1から開始）',
         example: 1,
     })
-    page: number
+    page: number;
 
     // 1ページあたりの件数
     // @type {number}
@@ -144,7 +144,7 @@ export class PodcastEpisodeListResponseDto {
         description: '1ページあたりの件数',
         example: 20,
     })
-    limit: number
+    limit: number;
 
     // 総ページ数
     // @type {number}
@@ -152,7 +152,7 @@ export class PodcastEpisodeListResponseDto {
         description: '総ページ数',
         example: 3,
     })
-    total_pages: number
+    total_pages: number;
 }
 
 // ポッドキャストエピソード生成リクエストDTO
@@ -166,7 +166,7 @@ export class GeneratePodcastEpisodeDto {
     })
     @IsNumber()
     @Min(1)
-    summary_id: number
+    summary_id: number;
 
     // カスタムプロンプト（オプション）
     // @type {string}
@@ -177,7 +177,7 @@ export class GeneratePodcastEpisodeDto {
     })
     @IsString()
     @IsOptional()
-    prompt?: string
+    prompt?: string;
 }
 
 // ポッドキャストエピソード生成ジョブレスポンスDTO
@@ -189,7 +189,7 @@ export class PodcastGenerationJobResponseDto {
         description: 'ジョブ開始メッセージ',
         example: 'Podcast generation job (ID: job-123) has been queued for summary ID 123.',
     })
-    message: string
+    message: string;
 
     // ジョブID
     // @type {string}
@@ -198,7 +198,7 @@ export class PodcastGenerationJobResponseDto {
         example: 'job-123',
         required: false,
     })
-    job_id?: string
+    job_id?: string;
 
     // エピソードID（すでに存在する場合）
     // @type {number}
@@ -207,5 +207,5 @@ export class PodcastGenerationJobResponseDto {
         example: 456,
         required: false,
     })
-    episode_id?: number
+    episode_id?: number;
 }

@@ -1,17 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common'
-import type { SearchResultEntity } from '../../domain/entities/search-result.entity'
-import { SearchResult } from '../../domain/entities/search-result.entity'
-import type { SearchRepository } from '../../domain/interfaces/search-repository.interface'
+import { Injectable, Logger } from '@nestjs/common';
+import type { SearchResultEntity } from '../../domain/entities/search-result.entity';
+import { SearchResult } from '../../domain/entities/search-result.entity';
+import type { SearchRepository } from '../../domain/interfaces/search-repository.interface';
 import {
     SearchCriteria,
     type SearchCriteria as SearchCriteriaType,
-} from '../../domain/value-objects/search-criteria.vo'
-import { SupabaseSearchClient } from '../clients/supabase-search.client'
-import { EmbeddingService } from '../services/embedding.service'
+} from '../../domain/value-objects/search-criteria.vo';
+import { SupabaseSearchClient } from '../clients/supabase-search.client';
+import { EmbeddingService } from '../services/embedding.service';
 
 @Injectable()
 export class SearchRepositoryImpl implements SearchRepository {
-    private readonly logger = new Logger(SearchRepositoryImpl.name)
+    private readonly logger = new Logger(SearchRepositoryImpl.name);
 
     constructor(
         private readonly embeddingService: EmbeddingService,
@@ -25,14 +25,14 @@ export class SearchRepositoryImpl implements SearchRepository {
         try {
             const queryEmbedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(criteria.query),
-            )
+            );
 
             const results = await this.supabaseClient.searchFeedItems(
                 userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,
-            )
+            );
 
             return results.map(
                 (result) =>
@@ -44,10 +44,10 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.type,
                         result.metadata,
                     ),
-            )
+            );
         } catch (error) {
-            this.logger.error(`Failed to search feed items: ${error.message}`)
-            return []
+            this.logger.error(`Failed to search feed items: ${error.message}`);
+            return [];
         }
     }
 
@@ -58,14 +58,14 @@ export class SearchRepositoryImpl implements SearchRepository {
         try {
             const queryEmbedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(criteria.query),
-            )
+            );
 
             const results = await this.supabaseClient.searchSummaries(
                 userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,
-            )
+            );
 
             return results.map(
                 (result) =>
@@ -77,10 +77,10 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.type,
                         result.metadata,
                     ),
-            )
+            );
         } catch (error) {
-            this.logger.error(`Failed to search summaries: ${error.message}`)
-            return []
+            this.logger.error(`Failed to search summaries: ${error.message}`);
+            return [];
         }
     }
 
@@ -91,14 +91,14 @@ export class SearchRepositoryImpl implements SearchRepository {
         try {
             const queryEmbedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(criteria.query),
-            )
+            );
 
             const results = await this.supabaseClient.searchPodcastEpisodes(
                 userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,
-            )
+            );
 
             return results.map(
                 (result) =>
@@ -110,19 +110,19 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.type,
                         result.metadata,
                     ),
-            )
+            );
         } catch (error) {
-            this.logger.error(`Failed to search podcast episodes: ${error.message}`)
-            return []
+            this.logger.error(`Failed to search podcast episodes: ${error.message}`);
+            return [];
         }
     }
 
     async searchAll(userId: string, criteria: SearchCriteriaType): Promise<SearchResultEntity[]> {
-        const results: SearchResultEntity[] = []
-        const limitPerType = criteria.getLimitPerType()
+        const results: SearchResultEntity[] = [];
+        const limitPerType = criteria.getLimitPerType();
 
         try {
-            const promises = []
+            const promises = [];
 
             if (criteria.shouldIncludeFeedItems()) {
                 promises.push(
@@ -133,7 +133,7 @@ export class SearchRepositoryImpl implements SearchRepository {
                             limit: limitPerType,
                         }),
                     ),
-                )
+                );
             }
 
             if (criteria.shouldIncludeSummaries()) {
@@ -145,7 +145,7 @@ export class SearchRepositoryImpl implements SearchRepository {
                             limit: limitPerType,
                         }),
                     ),
-                )
+                );
             }
 
             if (criteria.shouldIncludePodcasts()) {
@@ -157,19 +157,19 @@ export class SearchRepositoryImpl implements SearchRepository {
                             limit: limitPerType,
                         }),
                     ),
-                )
+                );
             }
 
-            const searchResults = await Promise.all(promises)
+            const searchResults = await Promise.all(promises);
 
             for (const result of searchResults) {
-                results.push(...result)
+                results.push(...result);
             }
 
-            return results.sort((a, b) => b.similarity - a.similarity).slice(0, criteria.limit)
+            return results.sort((a, b) => b.similarity - a.similarity).slice(0, criteria.limit);
         } catch (error) {
-            this.logger.error(`Failed to perform unified search: ${error.message}`)
-            return []
+            this.logger.error(`Failed to perform unified search: ${error.message}`);
+            return [];
         }
     }
 
@@ -180,15 +180,15 @@ export class SearchRepositoryImpl implements SearchRepository {
         description?: string,
     ): Promise<void> {
         try {
-            const content = `${title} ${description || ''}`.trim()
+            const content = `${title} ${description || ''}`.trim();
             const embedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(content),
-            )
+            );
 
-            await this.supabaseClient.updateFeedItemEmbedding(feedItemId, userId, embedding)
+            await this.supabaseClient.updateFeedItemEmbedding(feedItemId, userId, embedding);
         } catch (error) {
-            this.logger.error(`Failed to update feed item embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update feed item embedding: ${error.message}`);
+            throw error;
         }
     }
 
@@ -200,12 +200,12 @@ export class SearchRepositoryImpl implements SearchRepository {
         try {
             const embedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(content),
-            )
+            );
 
-            await this.supabaseClient.updateSummaryEmbedding(summaryId, userId, embedding)
+            await this.supabaseClient.updateSummaryEmbedding(summaryId, userId, embedding);
         } catch (error) {
-            this.logger.error(`Failed to update summary embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update summary embedding: ${error.message}`);
+            throw error;
         }
     }
 
@@ -217,12 +217,12 @@ export class SearchRepositoryImpl implements SearchRepository {
         try {
             const embedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(title),
-            )
+            );
 
-            await this.supabaseClient.updatePodcastEpisodeEmbedding(episodeId, userId, embedding)
+            await this.supabaseClient.updatePodcastEpisodeEmbedding(episodeId, userId, embedding);
         } catch (error) {
-            this.logger.error(`Failed to update podcast episode embedding: ${error.message}`)
-            throw error
+            this.logger.error(`Failed to update podcast episode embedding: ${error.message}`);
+            throw error;
         }
     }
 }

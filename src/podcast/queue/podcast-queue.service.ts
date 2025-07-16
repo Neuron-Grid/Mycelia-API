@@ -1,10 +1,10 @@
-import { InjectQueue } from '@nestjs/bullmq'
-import { Injectable, Logger } from '@nestjs/common'
-import { Queue } from 'bullmq'
+import { InjectQueue } from '@nestjs/bullmq';
+import { Injectable, Logger } from '@nestjs/common';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class PodcastQueueService {
-    private readonly logger = new Logger(PodcastQueueService.name)
+    private readonly logger = new Logger(PodcastQueueService.name);
 
     constructor(@InjectQueue('podcastQueue') private readonly podcastQueue: Queue) {}
 
@@ -23,11 +23,11 @@ export class PodcastQueueService {
     ) {
         // ファイル名が指定されていない場合は日付ベースで自動生成
         const actualFilename =
-            filename || `podcast-${new Date().toISOString().slice(0, 10)}-${Date.now()}.opus`
+            filename || `podcast-${new Date().toISOString().slice(0, 10)}-${Date.now()}.opus`;
 
         this.logger.log(
             `ポッドキャスト生成ジョブをキューに追加: userId=${userId}, filename=${actualFilename}`,
-        )
+        );
 
         await this.podcastQueue.add(
             // job name
@@ -48,8 +48,8 @@ export class PodcastQueueService {
                 // 30秒後にリトライ
                 backoff: { type: 'fixed', delay: 30_000 },
             },
-        )
+        );
 
-        return { filename: actualFilename }
+        return { filename: actualFilename };
     }
 }

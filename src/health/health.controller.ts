@@ -1,18 +1,18 @@
 // @file システムヘルスチェックAPIのコントローラ
-import { InjectQueue } from '@nestjs/bullmq'
-import { Controller, Get } from '@nestjs/common'
+import { InjectQueue } from '@nestjs/bullmq';
+import { Controller, Get } from '@nestjs/common';
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiTags } from '@nestjs/swagger'
+import { ApiTags } from '@nestjs/swagger';
 // @see https://docs.bullmq.io/
-import { Queue } from 'bullmq'
-import { RedisService } from 'src/shared/redis/redis.service'
-import { SupabaseRequestService } from 'src/supabase-request.service'
-import { HealthCheckResponseDto, JobCountsDto } from './dto/health-check-response.dto'
+import { Queue } from 'bullmq';
+import { RedisService } from 'src/shared/redis/redis.service';
+import { SupabaseRequestService } from 'src/supabase-request.service';
+import { HealthCheckResponseDto, JobCountsDto } from './dto/health-check-response.dto';
 
 // BullMQ の戻り値用
 // Swagger DTOとは別物
 // @typedef {Awaited<ReturnType<Queue['getJobCounts']>>} RawJobCounts - BullMQジョブカウント型
-type RawJobCounts = Awaited<ReturnType<Queue['getJobCounts']>>
+type RawJobCounts = Awaited<ReturnType<Queue['getJobCounts']>>;
 
 @ApiTags('Health')
 @Controller('health')
@@ -23,7 +23,7 @@ export class HealthController {
     // @readonly
     // @private
     // @default 5000
-    private readonly TIMEOUT_MS = 5000
+    private readonly TIMEOUT_MS = 5000;
 
     // @param {SupabaseRequestService} supabaseRequestService - Supabaseリクエストサービス
     // @param {Queue} feedQueue - BullMQキュー
@@ -47,9 +47,9 @@ export class HealthController {
     @Get()
     @Get()
     async checkHealth(): Promise<HealthCheckResponseDto> {
-        await this.checkDatabaseWithTimeout()
-        await this.checkRedisWithTimeout()
-        const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout()
+        await this.checkDatabaseWithTimeout();
+        await this.checkRedisWithTimeout();
+        const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout();
 
         return {
             status: 'OK',
@@ -59,7 +59,7 @@ export class HealthController {
                 jobCounts,
             },
             redis: 'OK',
-        }
+        };
     }
     // @async
     // @private
@@ -70,17 +70,17 @@ export class HealthController {
     // await healthController['checkDatabaseWithTimeout']()
     // @see SupabaseRequestService.getClient
     private async checkDatabaseWithTimeout(): Promise<void> {
-        const supabase = this.supabaseRequestService.getClient()
+        const supabase = this.supabaseRequestService.getClient();
 
         await this.withTimeout(
             (async () => {
-                const { error } = await supabase.from('users').select('id').limit(1)
+                const { error } = await supabase.from('users').select('id').limit(1);
                 if (error) {
-                    throw new Error(`Database check failed: ${error.message}`)
+                    throw new Error(`Database check failed: ${error.message}`);
                 }
             })(),
             this.TIMEOUT_MS,
-        )
+        );
     }
 
     // @async
@@ -94,14 +94,14 @@ export class HealthController {
     private async checkRedisWithTimeout(): Promise<void> {
         await this.withTimeout(
             (async () => {
-                const redisClient = this.redisService.createMainClient()
-                const pingResult = await redisClient.ping()
+                const redisClient = this.redisService.createMainClient();
+                const pingResult = await redisClient.ping();
                 if (pingResult !== 'PONG') {
-                    throw new Error(`Unexpected PING result: ${pingResult}`)
+                    throw new Error(`Unexpected PING result: ${pingResult}`);
                 }
             })(),
             this.TIMEOUT_MS,
-        )
+        );
     }
 
     // @async
@@ -113,8 +113,8 @@ export class HealthController {
     // await healthController['checkBullQueueWithTimeout']()
     // @see Queue.getJobCounts
     private async checkBullQueueWithTimeout(): Promise<{
-        bullStatus: string
-        jobCounts: JobCountsDto
+        bullStatus: string;
+        jobCounts: JobCountsDto;
     }> {
         // DTOと同じキーを持つ初期値
         let jobCounts: JobCountsDto = {
@@ -123,12 +123,12 @@ export class HealthController {
             completed: 0,
             failed: 0,
             delayed: 0,
-        }
+        };
 
         await this.withTimeout(
             (async () => {
-                await this.feedQueue.waitUntilReady()
-                const counts: RawJobCounts = await this.feedQueue.getJobCounts()
+                await this.feedQueue.waitUntilReady();
+                const counts: RawJobCounts = await this.feedQueue.getJobCounts();
 
                 jobCounts = {
                     waiting: counts.waiting ?? 0,
@@ -136,15 +136,15 @@ export class HealthController {
                     completed: counts.completed ?? 0,
                     failed: counts.failed ?? 0,
                     delayed: counts.delayed ?? 0,
-                }
+                };
             })(),
             this.TIMEOUT_MS,
-        )
+        );
 
         return {
             bullStatus: 'OK',
             jobCounts,
-        }
+        };
     }
 
     // @async
@@ -159,17 +159,17 @@ export class HealthController {
     // await healthController['withTimeout'](Promise.resolve(1), 1000)
     private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
         return new Promise<T>((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms)
+            const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
 
             promise
                 .then((res) => {
-                    clearTimeout(timer)
-                    resolve(res)
+                    clearTimeout(timer);
+                    resolve(res);
                 })
                 .catch((err) => {
-                    clearTimeout(timer)
-                    reject(err)
-                })
-        })
+                    clearTimeout(timer);
+                    reject(err);
+                });
+        });
     }
 }

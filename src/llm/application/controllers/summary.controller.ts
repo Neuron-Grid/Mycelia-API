@@ -7,18 +7,18 @@ import {
     Param,
     Post,
     UseGuards,
-} from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger'
-import { User as SupabaseUserType } from '@supabase/supabase-js'
-import { SupabaseAuthGuard } from '../../../auth/supabase-auth.guard'
-import { SupabaseUser } from '../../../auth/supabase-user.decorator'
-import { DailySummaryRepository } from '../../infrastructure/repositories/daily-summary.repository'
-import { SummaryScriptService } from '../services/summary-script.service'
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { User as SupabaseUserType } from '@supabase/supabase-js';
+import { SupabaseAuthGuard } from '../../../auth/supabase-auth.guard';
+import { SupabaseUser } from '../../../auth/supabase-user.decorator';
+import { DailySummaryRepository } from '../../infrastructure/repositories/daily-summary.repository';
+import { SummaryScriptService } from '../services/summary-script.service';
 
 @ApiTags('Summary & Script Regeneration')
 @Controller('api/v1') // ベースパス
 export class SummaryController {
-    private readonly logger = new Logger(SummaryController.name) // Loggerインスタンス
+    private readonly logger = new Logger(SummaryController.name); // Loggerインスタンス
 
     constructor(
         private readonly summaryScriptService: SummaryScriptService,
@@ -44,17 +44,17 @@ export class SummaryController {
         // 戻り値の型を明確化
         this.logger.log(
             `User ${requestingUser.id} requesting summary regeneration for user ${targetUserId}`,
-        )
+        );
 
         // 管理者ユーザーは不要なので、リクエスト発行者が対象ユーザーと一致する場合のみ許可
         if (requestingUser.id !== targetUserId) {
             this.logger.warn(
                 `Forbidden: User ${requestingUser.id} attempted to regenerate summary for ${targetUserId}`,
-            )
+            );
             throw new HttpException(
                 'Forbidden: You can only regenerate your own summaries.',
                 HttpStatus.FORBIDDEN,
-            )
+            );
         }
 
         try {
@@ -63,20 +63,20 @@ export class SummaryController {
             const result = await this.summaryScriptService.requestSummaryGeneration(
                 targetUserId,
                 body?.prompt,
-            ) // await を追加
-            const message = `Summary regeneration job (ID: ${result.jobId}) has been queued for user ${targetUserId} (date: ${body?.date || 'today'}).`
-            this.logger.log(message)
-            return { message, jobId: result.jobId }
+            ); // await を追加
+            const message = `Summary regeneration job (ID: ${result.jobId}) has been queued for user ${targetUserId} (date: ${body?.date || 'today'}).`;
+            this.logger.log(message);
+            return { message, jobId: result.jobId };
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             this.logger.error(
                 `Failed to queue summary regeneration for user ${targetUserId}: ${errorMessage}`,
                 error instanceof Error ? error.stack : undefined,
-            )
+            );
             throw new HttpException(
                 'Failed to queue summary regeneration.',
                 HttpStatus.INTERNAL_SERVER_ERROR,
-            )
+            );
         }
     }
 
@@ -95,45 +95,45 @@ export class SummaryController {
         @Body() body?: { prompt?: string },
     ): Promise<{ message: string; jobId?: string }> {
         // 戻り値の型を明確化
-        const summaryId = Number.parseInt(summaryIdParam, 10)
+        const summaryId = Number.parseInt(summaryIdParam, 10);
         if (Number.isNaN(summaryId)) {
-            throw new HttpException('Invalid summary ID format', HttpStatus.BAD_REQUEST)
+            throw new HttpException('Invalid summary ID format', HttpStatus.BAD_REQUEST);
         }
 
         this.logger.log(
             `User ${user.id} requesting script regeneration for summary ID ${summaryId}`,
-        )
+        );
 
         // 所有者チェック：このsummaryIdがリクエスト発行ユーザー (user.id) に属しているかどうかのチェック
-        const summary = await this.dailySummaryRepository.findById(summaryId, user.id)
+        const summary = await this.dailySummaryRepository.findById(summaryId, user.id);
 
         if (!summary) {
             this.logger.warn(
                 `Summary not found or access denied: User ${user.id} attempted to access summary ${summaryId}`,
-            )
-            throw new HttpException('Summary not found or access denied.', HttpStatus.NOT_FOUND)
+            );
+            throw new HttpException('Summary not found or access denied.', HttpStatus.NOT_FOUND);
         }
 
-        this.logger.log(`Ownership verified: User ${user.id} owns summary ${summaryId}`)
+        this.logger.log(`Ownership verified: User ${user.id} owns summary ${summaryId}`);
 
         try {
             const result = await this.summaryScriptService.requestScriptGeneration(
                 summaryId,
                 body?.prompt,
-            ) // await を追加
-            const message = `Script regeneration job (ID: ${result.jobId}) has been queued for summary ID ${summaryId}.`
-            this.logger.log(message)
-            return { message, jobId: result.jobId }
+            ); // await を追加
+            const message = `Script regeneration job (ID: ${result.jobId}) has been queued for summary ID ${summaryId}.`;
+            this.logger.log(message);
+            return { message, jobId: result.jobId };
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             this.logger.error(
                 `Failed to queue script regeneration for summary ID ${summaryId}: ${errorMessage}`,
                 error instanceof Error ? error.stack : undefined,
-            )
+            );
             throw new HttpException(
                 'Failed to queue script regeneration.',
                 HttpStatus.INTERNAL_SERVER_ERROR,
-            )
+            );
         }
     }
 }

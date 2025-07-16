@@ -1,7 +1,7 @@
 // @file アプリケーションのルートコントローラ
-import { Controller, Get } from '@nestjs/common'
+import { Controller, Get } from '@nestjs/common';
 // @see ./app.service
-import { AppService } from './app.service'
+import { AppService } from './app.service';
 
 @Controller()
 // @public
@@ -20,6 +20,6 @@ export class AppController {
     // @see AppService.getHello
     @Get()
     getHello(): string {
-        return this.appService.getHello()
+        return this.appService.getHello();
     }
 }

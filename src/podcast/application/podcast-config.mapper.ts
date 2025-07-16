@@ -1,5 +1,5 @@
-import { PodcastConfig } from '../domain/podcast-config.entity'
-import { PodcastConfigResponseDto } from './dto/podcast-config.dto'
+import { PodcastConfig } from '../domain/podcast-config.entity';
+import { PodcastConfigResponseDto } from './dto/podcast-config.dto';
 
 //  PodcastConfigエンティティとDTOの変換を担うマッパー関数群
 export const PodcastConfigMapper = {
@@ -12,7 +12,7 @@ export const PodcastConfigMapper = {
             podcast_schedule_time: config.podcast_schedule_time,
             podcast_language: config.podcast_language,
             updated_at: config.updated_at,
-        }
+        };
     },
 
     //  デフォルトのPodcastConfigResponseDtoを生成
@@ -23,6 +23,6 @@ export const PodcastConfigMapper = {
             podcast_schedule_time: null,
             podcast_language: 'ja-JP',
             updated_at: new Date().toISOString(),
-        }
+        };
     },
-}
+};

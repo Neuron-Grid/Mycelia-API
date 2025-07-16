@@ -1,16 +1,16 @@
-import { IsInt, IsPositive, IsString, IsUrl } from 'class-validator'
+import { IsInt, IsPositive, IsString, IsUrl } from 'class-validator';
 
 export class FeedFetchJobDto {
     @IsInt()
     @IsPositive()
-    subscriptionId!: number
+    subscriptionId!: number;
 
     @IsString()
-    userId!: string
+    userId!: string;
 
     @IsUrl()
-    feedUrl!: string
+    feedUrl!: string;
 
     @IsString()
-    feedTitle!: string
+    feedTitle!: string;
 }

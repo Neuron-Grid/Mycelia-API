@@ -1,10 +1,10 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
-import { User } from '@supabase/supabase-js'
-import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard'
-import { SupabaseUser } from '../../auth/supabase-user.decorator'
-import { CreateSummaryDto } from '../dto/create-summary.dto'
-import { SummaryService } from './summary.service'
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { User } from '@supabase/supabase-js';
+import { SupabaseAuthGuard } from '../../auth/supabase-auth.guard';
+import { SupabaseUser } from '../../auth/supabase-user.decorator';
+import { CreateSummaryDto } from '../dto/create-summary.dto';
+import { SummaryService } from './summary.service';
 
 @ApiTags('Summary')
 @ApiBearerAuth()
@@ -26,7 +26,7 @@ export class SummaryController {
         @SupabaseUser() user: User,
         @Body() createSummaryDto: CreateSummaryDto,
     ): Promise<{ summary: string; id?: number }> {
-        const result = await this.summaryService.createSummary(user.id, createSummaryDto)
-        return result
+        const result = await this.summaryService.createSummary(user.id, createSummaryDto);
+        return result;
     }
 }

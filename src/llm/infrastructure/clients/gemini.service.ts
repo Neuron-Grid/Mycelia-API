@@ -1,16 +1,16 @@
-import { HttpService } from '@nestjs/axios'
-import { Injectable, Logger } from '@nestjs/common'
-import { firstValueFrom } from 'rxjs'
+import { HttpService } from '@nestjs/axios';
+import { Injectable, Logger } from '@nestjs/common';
+import { firstValueFrom } from 'rxjs';
 
 // Gemini 2.5 Flash Preview API クライアントサービス
 // - script_text, summary_text 生成用
 @Injectable()
 export class GeminiService {
-    private readonly logger = new Logger(GeminiService.name)
+    private readonly logger = new Logger(GeminiService.name);
     private readonly apiUrl =
         process.env.GEMINI_API_URL ||
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent'
-    private readonly apiKey = process.env.GEMINI_API_KEY
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent';
+    private readonly apiKey = process.env.GEMINI_API_KEY;
 
     constructor(private readonly http: HttpService) {}
 
@@ -20,7 +20,7 @@ export class GeminiService {
     // @returns script_text
     async generateScriptText(prompt: string, maxTokens = 2048): Promise<string> {
         if (!this.apiKey) {
-            throw new Error('GEMINI_API_KEY is not set')
+            throw new Error('GEMINI_API_KEY is not set');
         }
 
         try {
@@ -40,18 +40,18 @@ export class GeminiService {
                         timeout: 30000,
                     },
                 ),
-            )
+            );
 
             // Gemini API レスポンスから script_text を抽出
-            const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text
+            const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!text) {
-                throw new Error('Gemini API response missing script_text')
+                throw new Error('Gemini API response missing script_text');
             }
 
-            return text
+            return text;
         } catch (err) {
-            this.logger.error(`Gemini script_text generation failed: ${err}`)
-            throw err
+            this.logger.error(`Gemini script_text generation failed: ${err}`);
+            throw err;
         }
     }
 }

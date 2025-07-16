@@ -1,5 +1,5 @@
 // @file アプリケーションのサービス層
-import { Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 // @public
@@ -11,6 +11,6 @@ export class AppService {
     // @example
     // const msg = appService.getHello()
     getHello(): string {
-        return 'Hello World!'
+        return 'Hello World!';
     }
 }

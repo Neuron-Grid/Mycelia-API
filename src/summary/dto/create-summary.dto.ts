@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 
 export class CreateSummaryDto {
     @ApiProperty({
@@ -10,7 +10,7 @@ export class CreateSummaryDto {
     @IsOptional()
     @ValidateIf((o) => !o.fileRef)
     @IsNotEmpty()
-    text?: string
+    text?: string;
 
     @ApiProperty({
         description: 'The file reference to summarize. Either text or fileRef must be provided.',
@@ -20,7 +20,7 @@ export class CreateSummaryDto {
     @IsOptional()
     @ValidateIf((o) => !o.text)
     @IsNotEmpty()
-    fileRef?: string
+    fileRef?: string;
 
     @ApiProperty({
         description: 'If true, the summary will be saved to the database.',
@@ -29,5 +29,5 @@ export class CreateSummaryDto {
     })
     @IsBoolean()
     @IsOptional()
-    save?: boolean = false
+    save?: boolean = false;
 }

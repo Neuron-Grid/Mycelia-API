@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { SupabaseRequestService } from '../../supabase-request.service'
-import { PodcastConfig, PodcastConfigInput } from '../domain/podcast-config.entity'
+import { Injectable, Logger } from '@nestjs/common';
+import { SupabaseRequestService } from '../../supabase-request.service';
+import { PodcastConfig, PodcastConfigInput } from '../domain/podcast-config.entity';
 
 // ポッドキャスト設定リポジトリ
 // user_settingsテーブルを使用してポッドキャスト設定を管理
 @Injectable()
 export class PodcastConfigRepository {
-    private readonly tableName = 'user_settings'
-    private readonly logger = new Logger(PodcastConfigRepository.name)
+    private readonly tableName = 'user_settings';
+    private readonly logger = new Logger(PodcastConfigRepository.name);
 
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
@@ -21,20 +21,20 @@ export class PodcastConfigRepository {
                 .from(this.tableName)
                 .select('*')
                 .eq('user_id', userId)
-                .single()
+                .single();
 
             if (error) {
                 // データが存在しない場合はnullを返す
                 if (error.code === 'PGRST116') {
-                    return null
+                    return null;
                 }
-                throw error
+                throw error;
             }
 
-            return data as unknown as PodcastConfig
+            return data as unknown as PodcastConfig;
         } catch (error) {
-            this.logger.error(`ポッドキャスト設定の取得に失敗: ${error.message}`)
-            return null
+            this.logger.error(`ポッドキャスト設定の取得に失敗: ${error.message}`);
+            return null;
         }
     }
 
@@ -56,13 +56,13 @@ export class PodcastConfigRepository {
                     { onConflict: 'user_id' },
                 )
                 .select()
-                .single()
+                .single();
 
-            if (error) throw error
-            return data as unknown as PodcastConfig
+            if (error) throw error;
+            return data as unknown as PodcastConfig;
         } catch (error) {
-            this.logger.error(`ポッドキャスト設定の更新に失敗: ${error.message}`)
-            return null
+            this.logger.error(`ポッドキャスト設定の更新に失敗: ${error.message}`);
+            return null;
         }
     }
 
@@ -76,13 +76,13 @@ export class PodcastConfigRepository {
                 .from(this.tableName)
                 .select('*')
                 .eq('podcast_enabled', true)
-                .eq('podcast_schedule_time', scheduleTime)
+                .eq('podcast_schedule_time', scheduleTime);
 
-            if (error) throw error
-            return data as unknown as PodcastConfig[]
+            if (error) throw error;
+            return data as unknown as PodcastConfig[];
         } catch (error) {
-            this.logger.error(`スケジュール時刻のポッドキャスト設定取得に失敗: ${error.message}`)
-            return []
+            this.logger.error(`スケジュール時刻のポッドキャスト設定取得に失敗: ${error.message}`);
+            return [];
         }
     }
 }

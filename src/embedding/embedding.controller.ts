@@ -1,11 +1,11 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger'
-import { User } from '@supabase/supabase-js'
-import { SupabaseAuthGuard } from '../auth/supabase-auth.guard'
-import { SupabaseUser } from '../auth/supabase-user.decorator'
-import { BatchProgressResponseDto } from './dto/batch-progress-response.dto'
-import { BatchUpdateRequestDto } from './dto/batch-update-request.dto'
-import { EmbeddingQueueService } from './queue/embedding-queue.service'
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { User } from '@supabase/supabase-js';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { SupabaseUser } from '../auth/supabase-user.decorator';
+import { BatchProgressResponseDto } from './dto/batch-progress-response.dto';
+import { BatchUpdateRequestDto } from './dto/batch-update-request.dto';
+import { EmbeddingQueueService } from './queue/embedding-queue.service';
 
 @ApiTags('Embeddings')
 @Controller('embeddings')
@@ -37,8 +37,8 @@ export class EmbeddingController {
         @SupabaseUser() user: User,
         @Body() request: BatchUpdateRequestDto,
     ): Promise<{ message: string; userId: string }> {
-        await this.embeddingQueueService.addUserEmbeddingBatchJob(user.id, request.tableTypes)
-        return { message: 'Batch update initiated', userId: user.id }
+        await this.embeddingQueueService.addUserEmbeddingBatchJob(user.id, request.tableTypes);
+        return { message: 'Batch update initiated', userId: user.id };
     }
 
     @Get('progress')
@@ -53,7 +53,7 @@ export class EmbeddingController {
     })
     @ApiResponse({ status: 401, description: 'Unauthorized' })
     async getBatchProgress(@SupabaseUser() user: User): Promise<BatchProgressResponseDto> {
-        const progress = await this.embeddingQueueService.getBatchProgress(user.id)
-        return { message: 'Progress retrieved successfully', data: progress }
+        const progress = await this.embeddingQueueService.getBatchProgress(user.id);
+        return { message: 'Progress retrieved successfully', data: progress };
     }
 }

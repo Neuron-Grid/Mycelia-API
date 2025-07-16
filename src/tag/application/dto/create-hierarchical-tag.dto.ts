@@ -1,6 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { Type } from 'class-transformer'
-import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
 
 export class CreateHierarchicalTagDto {
     @ApiProperty({
@@ -11,7 +11,7 @@ export class CreateHierarchicalTagDto {
     })
     @IsString()
     @Length(1, 100)
-    tag_name!: string
+    tag_name!: string;
 
     @ApiPropertyOptional({
         description: '親タグのID（ルートタグの場合はnull）',
@@ -21,7 +21,7 @@ export class CreateHierarchicalTagDto {
     @Type(() => Number)
     @IsInt()
     @Min(1)
-    parent_tag_id?: number
+    parent_tag_id?: number;
 
     @ApiPropertyOptional({
         description: 'タグの説明',
@@ -31,7 +31,7 @@ export class CreateHierarchicalTagDto {
     @IsOptional()
     @IsString()
     @Length(0, 500)
-    description?: string
+    description?: string;
 
     @ApiPropertyOptional({
         description: 'タグの色（Hex形式）',
@@ -40,5 +40,5 @@ export class CreateHierarchicalTagDto {
     })
     @IsOptional()
     @IsString()
-    color?: string
+    color?: string;
 }

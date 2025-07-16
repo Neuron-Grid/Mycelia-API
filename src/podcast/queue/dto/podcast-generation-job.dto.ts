@@ -1,28 +1,28 @@
-import { IsInt, IsPositive, IsString } from 'class-validator'
+import { IsInt, IsPositive, IsString } from 'class-validator';
 
 export class PodcastGenerationJobDto {
     @IsString()
-    userId!: string
+    userId!: string;
 
     @IsInt()
     @IsPositive()
-    summaryId!: number
+    summaryId!: number;
 }
 
 export class AudioEnhancementJobDto {
     @IsInt()
     @IsPositive()
-    episodeId!: number
+    episodeId!: number;
 
     @IsString()
-    userId!: string
+    userId!: string;
 }
 
 export class PodcastCleanupJobDto {
     @IsString()
-    userId!: string
+    userId!: string;
 
     @IsInt()
     @IsPositive()
-    daysOld!: number
+    daysOld!: number;
 }

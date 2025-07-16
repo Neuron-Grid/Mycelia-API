@@ -1,11 +1,11 @@
 export interface PaginatedResult<T> {
-    data: T[]
+    data: T[];
     // 全件数
-    total: number
+    total: number;
     // 現在ページ (1-origin)
-    page: number
+    page: number;
     // 1ページあたり件数
-    limit: number
+    limit: number;
     // 次ページが存在するか
-    hasNext: boolean
+    hasNext: boolean;
 }

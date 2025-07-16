@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common'
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface'
-import { SupabaseRequestService } from 'src/supabase-request.service'
-import { Database } from 'src/types/schema'
+import { Injectable, Logger } from '@nestjs/common';
+import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
+import { SupabaseRequestService } from 'src/supabase-request.service';
+import { Database } from 'src/types/schema';
 
-type Row = Database['public']['Tables']['feed_items']['Row']
+type Row = Database['public']['Tables']['feed_items']['Row'];
 
 @Injectable()
 export class FeedItemRepository {
-    private readonly logger = new Logger(FeedItemRepository.name)
+    private readonly logger = new Logger(FeedItemRepository.name);
 
     constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
 
@@ -18,8 +18,8 @@ export class FeedItemRepository {
         page: number,
         limit: number,
     ): Promise<PaginatedResult<Row>> {
-        const supabase = this.supabaseRequestService.getClient()
-        const offset = (page - 1) * limit
+        const supabase = this.supabaseRequestService.getClient();
+        const offset = (page - 1) * limit;
 
         const { data, error, count } = await supabase
             .from('feed_items')
@@ -27,15 +27,15 @@ export class FeedItemRepository {
             .eq('user_subscription_id', subscriptionId)
             .eq('user_id', userId)
             .order('published_at', { ascending: false })
-            .range(offset, offset + limit - 1)
+            .range(offset, offset + limit - 1);
 
         if (error) {
-            this.logger.error(`findBySubscriptionIdPaginated: ${error.message}`, error)
-            throw error
+            this.logger.error(`findBySubscriptionIdPaginated: ${error.message}`, error);
+            throw error;
         }
 
-        const retrieved = data ?? []
-        const total = count ?? 0
+        const retrieved = data ?? [];
+        const total = count ?? 0;
 
         return {
             data: retrieved,
@@ -43,24 +43,24 @@ export class FeedItemRepository {
             page,
             limit,
             hasNext: total > offset + retrieved.length,
-        }
+        };
     }
 
     // アイテムを追加
     async insertFeedItem(item: {
-        user_subscription_id: number
-        user_id: string
-        title: string
-        link: string
-        description: string
-        published_at: Date | null
+        user_subscription_id: number;
+        user_id: string;
+        title: string;
+        link: string;
+        description: string;
+        published_at: Date | null;
     }) {
-        const supabase = this.supabaseRequestService.getClient()
+        const supabase = this.supabaseRequestService.getClient();
         const { error } = await supabase.from('feed_items').insert({
             ...item,
             published_at: item.published_at ? item.published_at.toISOString() : null,
-        })
+        });
 
-        return error
+        return error;
     }
 }

@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsArray, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator'
+import { ApiProperty } from '@nestjs/swagger';
+import { IsArray, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class SearchRequestDto {
     @ApiProperty({
@@ -7,7 +7,7 @@ export class SearchRequestDto {
         example: 'artificial intelligence',
     })
     @IsString()
-    query: string
+    query: string;
 
     @ApiProperty({
         description: 'Maximum number of results (1-100)',
@@ -20,7 +20,7 @@ export class SearchRequestDto {
     @IsNumber()
     @Min(1)
     @Max(100)
-    limit?: number
+    limit?: number;
 
     @ApiProperty({
         description: 'Similarity threshold (0.0-1.0)',
@@ -33,7 +33,7 @@ export class SearchRequestDto {
     @IsNumber()
     @Min(0)
     @Max(1)
-    threshold?: number
+    threshold?: number;
 
     @ApiProperty({
         description: 'Content types to search',
@@ -44,5 +44,5 @@ export class SearchRequestDto {
     })
     @IsOptional()
     @IsArray()
-    includeTypes?: ('feed_item' | 'summary' | 'podcast')[]
+    includeTypes?: ('feed_item' | 'summary' | 'podcast')[];
 }

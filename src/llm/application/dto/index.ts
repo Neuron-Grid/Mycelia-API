@@ -1,2 +1,2 @@
-export * from './gemini-script.dto'
-export * from './gemini-summary.dto'
+export * from './gemini-script.dto';
+export * from './gemini-summary.dto';
