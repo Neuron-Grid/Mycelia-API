@@ -1,5 +1,5 @@
-import { PodcastConfig } from '../domain/podcast-config.entity';
-import { PodcastConfigResponseDto } from './dto/podcast-config.dto';
+import { PodcastConfig } from "../domain/podcast-config.entity";
+import { PodcastConfigResponseDto } from "./dto/podcast-config.dto";
 
 //  PodcastConfigエンティティとDTOの変換を担うマッパー関数群
 export const PodcastConfigMapper = {
@@ -21,7 +21,7 @@ export const PodcastConfigMapper = {
         return {
             podcast_enabled: false,
             podcast_schedule_time: null,
-            podcast_language: 'ja-JP',
+            podcast_language: "ja-JP",
             updated_at: new Date().toISOString(),
         };
     },

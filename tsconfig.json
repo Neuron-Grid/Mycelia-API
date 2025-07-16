@@ -23,9 +23,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "src/**/*.d.ts",
-  ]
+  "include": ["src/**/*.ts", "test/**/*.ts", "src/**/*.d.ts"]
 }

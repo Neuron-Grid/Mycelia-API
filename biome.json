@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
   "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": true },
   "files": { "ignoreUnknown": false },
   "formatter": {
@@ -9,7 +9,7 @@
     "indentStyle": "space",
     "indentWidth": 4,
     "lineEnding": "lf",
-    "lineWidth": 100,
+    "lineWidth": 80,
     "attributePosition": "auto",
     "bracketSpacing": true
   },
@@ -99,7 +99,7 @@
       "semicolons": "always",
       "arrowParentheses": "always",
       "bracketSameLine": false,
-      "quoteStyle": "single",
+      "quoteStyle": "double",
       "attributePosition": "auto",
       "bracketSpacing": true
     },
@@ -170,7 +170,14 @@
       }
     },
     {
-      "includes": ["**/*.css", "**/*.scss", "**/*.json", "**/*.yml", "**/*.yaml", "**/*.md"],
+      "includes": [
+        "**/*.css",
+        "**/*.scss",
+        "**/*.json",
+        "**/*.yml",
+        "**/*.yaml",
+        "**/*.md"
+      ],
       "formatter": {
         "indentStyle": "space",
         "indentWidth": 2

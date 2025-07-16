@@ -1,11 +1,19 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
-import { Database } from 'src/types/schema';
-import { SubscriptionRepository } from '../infrastructure/subscription.repository';
-import { IntervalDto, UpdateSubscriptionIntervalDto } from './dto/subscription-interval.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
+import {
+    BadRequestException,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from "@nestjs/common";
+import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { Database } from "src/types/schema";
+import { SubscriptionRepository } from "../infrastructure/subscription.repository";
+import {
+    IntervalDto,
+    UpdateSubscriptionIntervalDto,
+} from "./dto/subscription-interval.dto";
+import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 
-type Row = Database['public']['Tables']['user_subscriptions']['Row'];
+type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];
 
 @Injectable()
 export class SubscriptionService {
@@ -42,13 +50,13 @@ export class SubscriptionService {
     ) {
         // URLの妥当性チェック
         if (!this.isValidFeedUrl(feedUrl)) {
-            throw new BadRequestException('Invalid feed URL format');
+            throw new BadRequestException("Invalid feed URL format");
         }
 
         // 更新間隔の検証
         if (updateInterval && !updateInterval.isValidInterval()) {
             throw new BadRequestException(
-                'Invalid update interval: must be between 5 minutes and 24 hours',
+                "Invalid update interval: must be between 5 minutes and 24 hours",
             );
         }
 
@@ -62,19 +70,31 @@ export class SubscriptionService {
     }
 
     // feed_titleのみ更新
-    async updateSubscription(userId: string, subId: number, dto: UpdateSubscriptionDto) {
+    async updateSubscription(
+        userId: string,
+        subId: number,
+        dto: UpdateSubscriptionDto,
+    ) {
         const sub = await this.repo.findOne(subId, userId);
         if (!sub) {
-            throw new Error(`Subscription not found (id=${subId}, user=${userId})`);
+            throw new Error(
+                `Subscription not found (id=${subId}, user=${userId})`,
+            );
         }
-        return await this.repo.updateSubscriptionTitle(subId, userId, dto.feed_title);
+        return await this.repo.updateSubscriptionTitle(
+            subId,
+            userId,
+            dto.feed_title,
+        );
     }
 
     // 購読を削除
     async deleteSubscription(userId: string, subId: number) {
         const sub = await this.repo.findOne(subId, userId);
         if (!sub) {
-            throw new Error(`Subscription not found (id=${subId}, user=${userId})`);
+            throw new Error(
+                `Subscription not found (id=${subId}, user=${userId})`,
+            );
         }
         await this.repo.deleteSubscription(subId, userId);
     }
@@ -91,7 +111,9 @@ export class SubscriptionService {
 
         const sub = await this.repo.findOne(subId, userId);
         if (!sub) {
-            throw new NotFoundException(`Subscription not found (id=${subId}, user=${userId})`);
+            throw new NotFoundException(
+                `Subscription not found (id=${subId}, user=${userId})`,
+            );
         }
 
         this.logger.log(
@@ -102,22 +124,30 @@ export class SubscriptionService {
         // return await this.repo.updateSubscriptionInterval(subId, userId, intervalDto.interval.toPostgresInterval())
 
         // 暫定的にタイトル更新として実装
-        return await this.repo.updateSubscriptionTitle(subId, userId, sub.feed_title || '');
+        return await this.repo.updateSubscriptionTitle(
+            subId,
+            userId,
+            sub.feed_title || "",
+        );
     }
 
     // フィードの手動更新
     async refreshSubscription(userId: string, subId: number) {
-        this.logger.log(`Manually refreshing subscription ${subId} for user ${userId}`);
+        this.logger.log(
+            `Manually refreshing subscription ${subId} for user ${userId}`,
+        );
 
         const sub = await this.repo.findOne(subId, userId);
         if (!sub) {
-            throw new NotFoundException(`Subscription not found (id=${subId}, user=${userId})`);
+            throw new NotFoundException(
+                `Subscription not found (id=${subId}, user=${userId})`,
+            );
         }
 
         // next_fetch_atを現在時刻に設定して即座に更新対象にする
         // リポジトリにメソッド追加が必要
 
-        return { message: 'Subscription marked for immediate update' };
+        return { message: "Subscription marked for immediate update" };
     }
 
     // ユーザー固有の期限到達サブスクリプション取得
@@ -129,7 +159,7 @@ export class SubscriptionService {
     private isValidFeedUrl(url: string): boolean {
         try {
             const parsedUrl = new URL(url);
-            return ['http:', 'https:'].includes(parsedUrl.protocol);
+            return ["http:", "https:"].includes(parsedUrl.protocol);
         } catch {
             return false;
         }

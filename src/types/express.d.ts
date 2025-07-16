@@ -1,7 +1,7 @@
-import { User } from '@supabase/supabase-js';
+import { User } from "@supabase/supabase-js";
 
 // expressモジュールからインポートする場合のために追加
-declare module 'express' {
+declare module "express" {
     interface Request {
         user?: User;
     }

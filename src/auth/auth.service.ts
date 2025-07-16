@@ -1,9 +1,9 @@
 // @file 認証・ユーザー管理のサービス層
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from '@supabase/supabase-js';
-import { DomainConfigService } from 'src/domain-config/domain-config.service';
-import { AuthRepositoryPort } from './domain/auth.repository';
+import { User } from "@supabase/supabase-js";
+import { DomainConfigService } from "src/domain-config/domain-config.service";
+import { AuthRepositoryPort } from "./domain/auth.repository";
 
 @Injectable()
 // @public
@@ -112,7 +112,12 @@ export class AuthService {
     // await authService.updatePassword(user, 'old', 'new')
     // @see AuthRepositoryPort.updatePassword
     async updatePassword(user: User, oldPw: string, newPw: string) {
-        return await this.authRepo.updatePassword(user.id, user.email ?? '', oldPw, newPw);
+        return await this.authRepo.updatePassword(
+            user.id,
+            user.email ?? "",
+            oldPw,
+            newPw,
+        );
     }
 
     // @async
@@ -125,7 +130,10 @@ export class AuthService {
     // await authService.forgotPassword('a@example.com')
     // @see AuthRepositoryPort.forgotPassword
     async forgotPassword(email: string) {
-        return await this.authRepo.forgotPassword(email, this.domainCfg.getResetPasswordUrl());
+        return await this.authRepo.forgotPassword(
+            email,
+            this.domainCfg.getResetPasswordUrl(),
+        );
     }
 
     // @async

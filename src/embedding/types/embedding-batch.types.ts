@@ -9,7 +9,11 @@ export interface VectorUpdateJobData {
     recordId?: number;
 }
 
-export type TableType = 'feed_items' | 'daily_summaries' | 'podcast_episodes' | 'tags';
+export type TableType =
+    | "feed_items"
+    | "daily_summaries"
+    | "podcast_episodes"
+    | "tags";
 
 export interface BatchItem {
     id: number;
@@ -44,7 +48,7 @@ export interface BatchProcessResult {
 export interface BatchProgress {
     userId: string;
     tableType: TableType;
-    status: 'waiting' | 'running' | 'completed' | 'failed';
+    status: "waiting" | "running" | "completed" | "failed";
     progress: number;
     totalRecords?: number;
     processedRecords?: number;

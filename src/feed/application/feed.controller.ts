@@ -12,7 +12,7 @@ import {
     Post,
     Query,
     UseGuards,
-} from '@nestjs/common';
+} from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import {
     ApiAcceptedResponse,
@@ -27,30 +27,31 @@ import {
     ApiQuery,
     ApiTags,
     ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
+} from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard';
-import { UserId } from 'src/auth/user-id.decorator';
-import { PaginationQueryDto } from 'src/common/dto/pagination-query.dto';
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
-import { Database } from '../../types/schema';
-import { AddSubscriptionDto } from './dto/add-subscription.dto';
-import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
-import { FeedItemService } from './feed-item.service';
-import { FeedUseCaseService } from './feed-usecase.service';
-import { buildResponse } from './response.util';
-import { SubscriptionService } from './subscription.service';
+import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
+import { UserId } from "src/auth/user-id.decorator";
+import { PaginationQueryDto } from "src/common/dto/pagination-query.dto";
+import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { Database } from "../../types/schema";
+import { AddSubscriptionDto } from "./dto/add-subscription.dto";
+import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
+import { FeedItemService } from "./feed-item.service";
+import { FeedUseCaseService } from "./feed-usecase.service";
+import { buildResponse } from "./response.util";
+import { SubscriptionService } from "./subscription.service";
 
 // @typedef {Database['public']['Tables']['feed_items']['Row']} FeedItemRow - フィードアイテムの型
-type FeedItemRow = Database['public']['Tables']['feed_items']['Row'];
+type FeedItemRow = Database["public"]["Tables"]["feed_items"]["Row"];
 // @typedef {Database['public']['Tables']['user_subscriptions']['Row']} SubscriptionRow - 購読の型
-type SubscriptionRow = Database['public']['Tables']['user_subscriptions']['Row'];
+type SubscriptionRow =
+    Database["public"]["Tables"]["user_subscriptions"]["Row"];
 
-@ApiTags('Feed')
+@ApiTags("Feed")
 @ApiBearerAuth()
 @Controller({
-    path: 'feed',
-    version: '1',
+    path: "feed",
+    version: "1",
 })
 @UseGuards(SupabaseAuthGuard)
 // @public
@@ -78,22 +79,22 @@ export class FeedController {
     // const result = await feedController.getSubscriptions(user, { page: 1, limit: 10 })
     // @see SubscriptionService.getSubscriptionsPaginated
     @Get()
-    @ApiOperation({ summary: 'ユーザーの購読一覧を取得' })
-    @ApiOkResponse({ description: '購読一覧取得成功' })
+    @ApiOperation({ summary: "ユーザーの購読一覧を取得" })
+    @ApiOkResponse({ description: "購読一覧取得成功" })
     @ApiQuery({
-        name: 'page',
+        name: "page",
         required: false,
         type: Number,
-        description: 'ページ番号',
+        description: "ページ番号",
     })
     @ApiQuery({
-        name: 'limit',
+        name: "limit",
         required: false,
         type: Number,
-        description: '1ページあたりの件数',
+        description: "1ページあたりの件数",
     })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '取得失敗' })
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "取得失敗" })
     async getSubscriptions(
         @UserId() userId: string,
         @Query() query: PaginationQueryDto,
@@ -116,29 +117,39 @@ export class FeedController {
     // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
     // @see SubscriptionService.addSubscription
     @Post()
-    @ApiOperation({ summary: 'RSS購読を追加' })
-    @ApiCreatedResponse({ description: '購読追加成功' })
+    @ApiOperation({ summary: "RSS購読を追加" })
+    @ApiCreatedResponse({ description: "購読追加成功" })
     @ApiBody({ type: AddSubscriptionDto })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '追加失敗' })
-    async addSubscription(@UserId() userId: string, @Body() dto: AddSubscriptionDto) {
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "追加失敗" })
+    async addSubscription(
+        @UserId() userId: string,
+        @Body() dto: AddSubscriptionDto,
+    ) {
         const { feedUrl } = dto;
         if (!feedUrl) {
-            throw new HttpException('feedUrl is required', HttpStatus.BAD_REQUEST);
+            throw new HttpException(
+                "feedUrl is required",
+                HttpStatus.BAD_REQUEST,
+            );
         }
 
         // RSSタイトルの取得（パース失敗時は空文字でもOK）
-        let feedTitle = '';
+        let feedTitle = "";
         try {
             const feedData = await this.feedUseCase.fetchFeedMeta(feedUrl);
-            feedTitle = (feedData.meta.title ?? '').substring(0, 100);
+            feedTitle = (feedData.meta.title ?? "").substring(0, 100);
         } catch {
             // パース失敗しても購読は続行
-            feedTitle = '';
+            feedTitle = "";
         }
 
-        const result = await this.subscriptionService.addSubscription(userId, feedUrl, feedTitle);
-        return buildResponse('Subscription added', result);
+        const result = await this.subscriptionService.addSubscription(
+            userId,
+            feedUrl,
+            feedTitle,
+        );
+        return buildResponse("Subscription added", result);
     }
 
     // @async
@@ -151,19 +162,22 @@ export class FeedController {
     // @example
     // await feedController.fetchSubscription(user, 123)
     // @see FeedUseCaseService.fetchFeedItems
-    @Post(':id/fetch')
-    @ApiOperation({ summary: '指定した購読のフィードを手動取得' })
-    @ApiAcceptedResponse({ description: 'フィード取得開始' })
-    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '取得失敗' })
-    @ApiNotFoundResponse({ description: '購読が見つかりません' })
+    @Post(":id/fetch")
+    @ApiOperation({ summary: "指定した購読のフィードを手動取得" })
+    @ApiAcceptedResponse({ description: "フィード取得開始" })
+    @ApiParam({ name: "id", type: Number, description: "購読ID" })
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "取得失敗" })
+    @ApiNotFoundResponse({ description: "購読が見つかりません" })
     async fetchSubscription(
         @UserId() userId: string,
-        @Param('id', ParseIntPipe) subscriptionId: number,
+        @Param("id", ParseIntPipe) subscriptionId: number,
     ) {
-        const result = await this.feedUseCase.fetchFeedItems(subscriptionId, userId);
-        return buildResponse('Feed fetched successfully', result);
+        const result = await this.feedUseCase.fetchFeedItems(
+            subscriptionId,
+            userId,
+        );
+        return buildResponse("Feed fetched successfully", result);
     }
 
     // @async
@@ -177,28 +191,28 @@ export class FeedController {
     // @example
     // const items = await feedController.getSubscriptionItems(user, 123, { page: 1, limit: 10 })
     // @see FeedItemService.getFeedItemsPaginated
-    @Get(':id/items')
-    @ApiOperation({ summary: '購読のフィードアイテム一覧を取得' })
-    @ApiOkResponse({ description: 'フィードアイテム一覧取得成功' })
-    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @Get(":id/items")
+    @ApiOperation({ summary: "購読のフィードアイテム一覧を取得" })
+    @ApiOkResponse({ description: "フィードアイテム一覧取得成功" })
+    @ApiParam({ name: "id", type: Number, description: "購読ID" })
     @ApiQuery({
-        name: 'page',
+        name: "page",
         required: false,
         type: Number,
-        description: 'ページ番号',
+        description: "ページ番号",
     })
     @ApiQuery({
-        name: 'limit',
+        name: "limit",
         required: false,
         type: Number,
-        description: '1ページあたりの件数',
+        description: "1ページあたりの件数",
     })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '取得失敗' })
-    @ApiNotFoundResponse({ description: '購読が見つかりません' })
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "取得失敗" })
+    @ApiNotFoundResponse({ description: "購読が見つかりません" })
     async getSubscriptionItems(
         @UserId() userId: string,
-        @Param('id', ParseIntPipe) subscriptionId: number,
+        @Param("id", ParseIntPipe) subscriptionId: number,
         @Query() query: PaginationQueryDto,
     ): Promise<PaginatedResult<FeedItemRow>> {
         return await this.feedItemService.getFeedItemsPaginated(
@@ -220,21 +234,25 @@ export class FeedController {
     // @example
     // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
     // @see SubscriptionService.updateSubscription
-    @Patch(':id')
-    @ApiOperation({ summary: '購読情報を更新' })
-    @ApiOkResponse({ description: '購読更新成功' })
-    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
+    @Patch(":id")
+    @ApiOperation({ summary: "購読情報を更新" })
+    @ApiOkResponse({ description: "購読更新成功" })
+    @ApiParam({ name: "id", type: Number, description: "購読ID" })
     @ApiBody({ type: UpdateSubscriptionDto })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '更新失敗' })
-    @ApiNotFoundResponse({ description: '購読が見つかりません' })
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "更新失敗" })
+    @ApiNotFoundResponse({ description: "購読が見つかりません" })
     async updateSubscription(
         @UserId() userId: string,
-        @Param('id', ParseIntPipe) id: number,
+        @Param("id", ParseIntPipe) id: number,
         @Body() dto: UpdateSubscriptionDto,
     ) {
-        const updated = await this.subscriptionService.updateSubscription(userId, id, dto);
-        return buildResponse('Subscription updated', updated);
+        const updated = await this.subscriptionService.updateSubscription(
+            userId,
+            id,
+            dto,
+        );
+        return buildResponse("Subscription updated", updated);
     }
 
     // @async
@@ -247,18 +265,21 @@ export class FeedController {
     // @example
     // await feedController.deleteSubscription(user, 123)
     // @see SubscriptionService.deleteSubscription
-    @Delete(':id')
-    @ApiOperation({ summary: '購読を削除' })
-    @ApiOkResponse({ description: '購読削除成功' })
-    @ApiParam({ name: 'id', type: Number, description: '購読ID' })
-    @ApiUnauthorizedResponse({ description: '認証エラー' })
-    @ApiBadRequestResponse({ description: '削除失敗' })
-    @ApiNotFoundResponse({ description: '購読が見つかりません' })
+    @Delete(":id")
+    @ApiOperation({ summary: "購読を削除" })
+    @ApiOkResponse({ description: "購読削除成功" })
+    @ApiParam({ name: "id", type: Number, description: "購読ID" })
+    @ApiUnauthorizedResponse({ description: "認証エラー" })
+    @ApiBadRequestResponse({ description: "削除失敗" })
+    @ApiNotFoundResponse({ description: "購読が見つかりません" })
     async deleteSubscription(
         @UserId() userId: string,
-        @Param('id', ParseIntPipe) subscriptionId: number,
+        @Param("id", ParseIntPipe) subscriptionId: number,
     ) {
-        await this.subscriptionService.deleteSubscription(userId, subscriptionId);
-        return buildResponse('Subscription deleted');
+        await this.subscriptionService.deleteSubscription(
+            userId,
+            subscriptionId,
+        );
+        return buildResponse("Subscription deleted");
     }
 }

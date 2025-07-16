@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { SupabaseRequestService } from '../supabase-request.service';
-import { CloudflareR2Service } from './cloudflare-r2.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { SupabaseRequestService } from "../supabase-request.service";
+import { CloudflareR2Service } from "./cloudflare-r2.service";
 
 @Injectable()
 export class PodcastUploadService {
@@ -25,7 +25,7 @@ export class PodcastUploadService {
     ): Promise<{ publicUrl: string }> {
         const bucket = this.getPodcastBucketName();
         const key = this.buildPodcastObjectKey(userId, filename);
-        const contentType = 'audio/ogg'; // Opus形式のContent-Type
+        const contentType = "audio/ogg"; // Opus形式のContent-Type
 
         const metadata = this.buildPodcastMetadata(userId, title);
 
@@ -49,7 +49,7 @@ export class PodcastUploadService {
     ): Promise<{ publicUrl: string }> {
         const bucket = this.getPodcastBucketName();
         const path = this.buildPodcastObjectKey(userId, filename);
-        const contentType = 'audio/mpeg';
+        const contentType = "audio/mpeg";
 
         const { publicUrl } = await this.supabaseRequestService.uploadToStorage(
             bucket,
@@ -63,7 +63,7 @@ export class PodcastUploadService {
 
     //  ポッドキャスト用バケット名を返す
     private getPodcastBucketName(): string {
-        return 'podcasts';
+        return "podcasts";
     }
 
     //  オブジェクトキー（パス）を生成
@@ -76,7 +76,10 @@ export class PodcastUploadService {
     //  メタデータを生成
     //  @param userId ユーザーID
     //  @param title 書名
-    private buildPodcastMetadata(userId: string, title?: string): Record<string, string> {
+    private buildPodcastMetadata(
+        userId: string,
+        title?: string,
+    ): Record<string, string> {
         const metadata: Record<string, string> = {
             userId,
             createdAt: new Date().toISOString(),

@@ -5,4 +5,4 @@ export interface EmbeddingService {
     preprocessText(text: string): string;
 }
 
-export const EMBEDDING_SERVICE = Symbol('EmbeddingService');
+export const EMBEDDING_SERVICE = Symbol("EmbeddingService");

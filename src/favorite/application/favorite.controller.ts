@@ -1,18 +1,26 @@
 // @file お気に入り機能のAPIコントローラ
-import { Controller, Delete, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import {
+    Controller,
+    Delete,
+    Get,
+    Param,
+    ParseIntPipe,
+    Post,
+    UseGuards,
+} from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { SupabaseAuthGuard } from 'src/auth/supabase-auth.guard';
-import { UserId } from 'src/auth/user-id.decorator';
-import { FavoriteService } from './favorite.service';
-import { buildResponse } from './response.util';
+import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
+import { UserId } from "src/auth/user-id.decorator";
+import { FavoriteService } from "./favorite.service";
+import { buildResponse } from "./response.util";
 
-@ApiTags('Favorites')
+@ApiTags("Favorites")
 @ApiBearerAuth()
 @Controller({
-    path: 'favorites',
-    version: '1',
+    path: "favorites",
+    version: "1",
 })
 @UseGuards(SupabaseAuthGuard)
 // @public
@@ -35,7 +43,7 @@ export class FavoriteController {
     @Get()
     async getUserFavorites(@UserId() userId: string) {
         const favorites = await this.favoriteService.getUserFavorites(userId);
-        return buildResponse('Favorites fetched', favorites);
+        return buildResponse("Favorites fetched", favorites);
     }
 
     // @async
@@ -48,13 +56,16 @@ export class FavoriteController {
     // @example
     // await favoriteController.checkFavorite(user, 1)
     // @see FavoriteService.isFavorited
-    @Get(':feedItemId/is-favorited')
+    @Get(":feedItemId/is-favorited")
     async checkFavorite(
         @UserId() userId: string,
-        @Param('feedItemId', ParseIntPipe) feedItemId: number,
+        @Param("feedItemId", ParseIntPipe) feedItemId: number,
     ) {
-        const isFav = await this.favoriteService.isFavorited(userId, feedItemId);
-        return buildResponse('Favorite check', { favorited: isFav });
+        const isFav = await this.favoriteService.isFavorited(
+            userId,
+            feedItemId,
+        );
+        return buildResponse("Favorite check", { favorited: isFav });
     }
 
     // @async
@@ -67,13 +78,16 @@ export class FavoriteController {
     // @example
     // await favoriteController.favoriteItem(user, 1)
     // @see FavoriteService.favoriteFeedItem
-    @Post(':feedItemId')
+    @Post(":feedItemId")
     async favoriteItem(
         @UserId() userId: string,
-        @Param('feedItemId', ParseIntPipe) feedItemId: number,
+        @Param("feedItemId", ParseIntPipe) feedItemId: number,
     ) {
-        const result = await this.favoriteService.favoriteFeedItem(userId, feedItemId);
-        return buildResponse('Feed item favorited', result);
+        const result = await this.favoriteService.favoriteFeedItem(
+            userId,
+            feedItemId,
+        );
+        return buildResponse("Feed item favorited", result);
     }
 
     // @async
@@ -86,12 +100,12 @@ export class FavoriteController {
     // @example
     // await favoriteController.unfavoriteItem(user, 1)
     // @see FavoriteService.unfavoriteFeedItem
-    @Delete(':feedItemId')
+    @Delete(":feedItemId")
     async unfavoriteItem(
         @UserId() userId: string,
-        @Param('feedItemId', ParseIntPipe) feedItemId: number,
+        @Param("feedItemId", ParseIntPipe) feedItemId: number,
     ) {
         await this.favoriteService.unfavoriteFeedItem(userId, feedItemId);
-        return buildResponse('Feed item unfavorited');
+        return buildResponse("Feed item unfavorited");
     }
 }

@@ -1,15 +1,17 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { SupabaseRequestService } from '../../../supabase-request.service';
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { SupabaseRequestService } from "../../../supabase-request.service";
 import {
     DailySummaryEntity,
     DailySummaryItemEntity,
-} from '../../domain/entities/daily-summary.entity';
+} from "../../domain/entities/daily-summary.entity";
 
 @Injectable()
 export class DailySummaryRepository {
     private readonly logger = new Logger(DailySummaryRepository.name);
 
-    constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
+    constructor(
+        private readonly supabaseRequestService: SupabaseRequestService,
+    ) {}
 
     // 指定ユーザーの指定日の要約を取得
     async findByUserAndDate(
@@ -19,15 +21,15 @@ export class DailySummaryRepository {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('summary_date', summaryDate)
-                .eq('soft_deleted', false)
+                .from("daily_summaries")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("summary_date", summaryDate)
+                .eq("soft_deleted", false)
                 .single();
 
             if (error) {
-                if (error.code === 'PGRST116') {
+                if (error.code === "PGRST116") {
                     return null;
                 }
                 throw error;
@@ -53,7 +55,7 @@ export class DailySummaryRepository {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
+                .from("daily_summaries")
                 .insert({
                     user_id: userId,
                     summary_date: summaryDate,
@@ -68,7 +70,9 @@ export class DailySummaryRepository {
             if (error) throw error;
             return new DailySummaryEntity(result);
         } catch (error) {
-            this.logger.error(`Failed to create daily summary: ${error.message}`);
+            this.logger.error(
+                `Failed to create daily summary: ${error.message}`,
+            );
             throw error;
         }
     }
@@ -88,78 +92,93 @@ export class DailySummaryRepository {
         try {
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
+                .from("daily_summaries")
                 .update({
                     ...data,
                     updated_at: new Date().toISOString(),
                 })
-                .eq('id', id)
-                .eq('user_id', userId) // ユーザー分離の保証
-                .eq('soft_deleted', false)
+                .eq("id", id)
+                .eq("user_id", userId) // ユーザー分離の保証
+                .eq("soft_deleted", false)
                 .select()
                 .single();
 
             if (error) throw error;
             if (!result) {
-                throw new NotFoundException('Daily summary not found or access denied');
+                throw new NotFoundException(
+                    "Daily summary not found or access denied",
+                );
             }
 
             return new DailySummaryEntity(result);
         } catch (error) {
-            this.logger.error(`Failed to update daily summary: ${error.message}`);
+            this.logger.error(
+                `Failed to update daily summary: ${error.message}`,
+            );
             throw error;
         }
     }
 
     // 指定ユーザーの要約一覧取得（ページネーション対応）
-    async findByUser(userId: string, limit = 20, offset = 0): Promise<DailySummaryEntity[]> {
+    async findByUser(
+        userId: string,
+        limit = 20,
+        offset = 0,
+    ): Promise<DailySummaryEntity[]> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('soft_deleted', false)
-                .order('summary_date', { ascending: false })
+                .from("daily_summaries")
+                .select("*")
+                .eq("user_id", userId)
+                .eq("soft_deleted", false)
+                .order("summary_date", { ascending: false })
                 .range(offset, offset + limit - 1);
 
             if (error) throw error;
             return data.map((item) => new DailySummaryEntity(item));
         } catch (error) {
-            this.logger.error(`Failed to find daily summaries: ${error.message}`);
+            this.logger.error(
+                `Failed to find daily summaries: ${error.message}`,
+            );
             return [];
         }
     }
 
     // 要約アイテムの追加（ユーザー分離の保証付き）
-    async addSummaryItems(summaryId: number, userId: string, feedItemIds: number[]): Promise<void> {
+    async addSummaryItems(
+        summaryId: number,
+        userId: string,
+        feedItemIds: number[],
+    ): Promise<void> {
         try {
             // まず、summaryIdがこのユーザーのものであることを確認
             const summary = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
-                .select('id')
-                .eq('id', summaryId)
-                .eq('user_id', userId)
+                .from("daily_summaries")
+                .select("id")
+                .eq("id", summaryId)
+                .eq("user_id", userId)
                 .single();
 
             if (summary.error || !summary.data) {
-                throw new Error('Summary not found or access denied');
+                throw new Error("Summary not found or access denied");
             }
 
             // feedItemIdsがこのユーザーのものであることを確認
-            const { data: feedItems, error: feedError } = await this.supabaseRequestService
-                .getClient()
-                .from('feed_items')
-                .select('id')
-                .eq('user_id', userId)
-                .in('id', feedItemIds);
+            const { data: feedItems, error: feedError } =
+                await this.supabaseRequestService
+                    .getClient()
+                    .from("feed_items")
+                    .select("id")
+                    .eq("user_id", userId)
+                    .in("id", feedItemIds);
 
             if (feedError) throw feedError;
 
             const validFeedItemIds = feedItems?.map((item) => item.id) || [];
             if (validFeedItemIds.length !== feedItemIds.length) {
-                throw new Error('Some feed items do not belong to this user');
+                throw new Error("Some feed items do not belong to this user");
             }
 
             const items = validFeedItemIds.map((feedItemId) => ({
@@ -169,7 +188,7 @@ export class DailySummaryRepository {
 
             const { error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summary_items')
+                .from("daily_summary_items")
                 .insert(items);
 
             if (error) throw error;
@@ -180,26 +199,29 @@ export class DailySummaryRepository {
     }
 
     // 要約に含まれるフィードアイテムを取得（ユーザー分離の保証付き）
-    async getSummaryItems(summaryId: number, userId: string): Promise<DailySummaryItemEntity[]> {
+    async getSummaryItems(
+        summaryId: number,
+        userId: string,
+    ): Promise<DailySummaryItemEntity[]> {
         try {
             // まず、summaryIdがこのユーザーのものであることを確認
             const summary = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
-                .select('id')
-                .eq('id', summaryId)
-                .eq('user_id', userId)
+                .from("daily_summaries")
+                .select("id")
+                .eq("id", summaryId)
+                .eq("user_id", userId)
                 .single();
 
             if (summary.error || !summary.data) {
-                throw new Error('Summary not found or access denied');
+                throw new Error("Summary not found or access denied");
             }
 
             const { data, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summary_items')
-                .select('*')
-                .eq('summary_id', summaryId);
+                .from("daily_summary_items")
+                .select("*")
+                .eq("summary_id", summaryId);
 
             if (error) throw error;
             return data.map((item) => new DailySummaryItemEntity(item));
@@ -229,7 +251,7 @@ export class DailySummaryRepository {
 
             const { data, error } = await this.supabaseRequestService
                 .getClient()
-                .from('feed_items')
+                .from("feed_items")
                 .select(`
                     id,
                     title,
@@ -238,33 +260,38 @@ export class DailySummaryRepository {
                     published_at,
                     user_subscriptions!inner(feed_title)
                 `)
-                .eq('user_id', userId)
-                .eq('soft_deleted', false)
-                .gte('published_at', cutoffTime.toISOString())
-                .order('published_at', { ascending: false });
+                .eq("user_id", userId)
+                .eq("soft_deleted", false)
+                .gte("published_at", cutoffTime.toISOString())
+                .order("published_at", { ascending: false });
 
             if (error) throw error;
             return data || [];
         } catch (error) {
-            this.logger.error(`Failed to get recent feed items: ${error.message}`);
+            this.logger.error(
+                `Failed to get recent feed items: ${error.message}`,
+            );
             return [];
         }
     }
 
     // 所有者チェック用：指定されたサマリーIDがユーザーのものかを確認
-    async findById(id: number, userId: string): Promise<DailySummaryEntity | null> {
+    async findById(
+        id: number,
+        userId: string,
+    ): Promise<DailySummaryEntity | null> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
-                .select('*')
-                .eq('id', id)
-                .eq('user_id', userId)
-                .eq('soft_deleted', false)
+                .from("daily_summaries")
+                .select("*")
+                .eq("id", id)
+                .eq("user_id", userId)
+                .eq("soft_deleted", false)
                 .single();
 
             if (error) {
-                if (error.code === 'PGRST116') {
+                if (error.code === "PGRST116") {
                     return null;
                 }
                 throw error;
@@ -272,7 +299,9 @@ export class DailySummaryRepository {
 
             return new DailySummaryEntity(data);
         } catch (error) {
-            this.logger.error(`Failed to find daily summary by ID: ${error.message}`);
+            this.logger.error(
+                `Failed to find daily summary by ID: ${error.message}`,
+            );
             return null;
         }
     }
@@ -282,17 +311,19 @@ export class DailySummaryRepository {
         try {
             const { error } = await this.supabaseRequestService
                 .getClient()
-                .from('daily_summaries')
+                .from("daily_summaries")
                 .update({
                     soft_deleted: true,
                     updated_at: new Date().toISOString(),
                 })
-                .eq('id', id)
-                .eq('user_id', userId); // ユーザー分離の保証
+                .eq("id", id)
+                .eq("user_id", userId); // ユーザー分離の保証
 
             if (error) throw error;
         } catch (error) {
-            this.logger.error(`Failed to soft delete daily summary: ${error.message}`);
+            this.logger.error(
+                `Failed to soft delete daily summary: ${error.message}`,
+            );
             throw error;
         }
     }

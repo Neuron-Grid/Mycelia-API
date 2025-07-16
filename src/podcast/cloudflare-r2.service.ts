@@ -5,10 +5,10 @@ import {
     ListObjectsV2Command,
     PutObjectCommand,
     S3Client,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 
 export interface PodcastMetadata {
     userId: string;
@@ -29,18 +29,31 @@ export class CloudflareR2Service {
 
     constructor(private readonly configService: ConfigService) {
         // Cloudflare R2の接続情報
-        const accountId = this.configService.get<string>('CLOUDFLARE_ACCOUNT_ID');
-        const accessKeyId = this.configService.get<string>('CLOUDFLARE_ACCESS_KEY_ID');
-        const secretAccessKey = this.configService.get<string>('CLOUDFLARE_SECRET_ACCESS_KEY');
-        this.bucketName = this.configService.get<string>('CLOUDFLARE_BUCKET_NAME') || '';
-        this.publicDomain = this.configService.get<string>('CLOUDFLARE_PUBLIC_DOMAIN') || '';
+        const accountId = this.configService.get<string>(
+            "CLOUDFLARE_ACCOUNT_ID",
+        );
+        const accessKeyId = this.configService.get<string>(
+            "CLOUDFLARE_ACCESS_KEY_ID",
+        );
+        const secretAccessKey = this.configService.get<string>(
+            "CLOUDFLARE_SECRET_ACCESS_KEY",
+        );
+        this.bucketName =
+            this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") || "";
+        this.publicDomain =
+            this.configService.get<string>("CLOUDFLARE_PUBLIC_DOMAIN") || "";
 
-        if (!accountId || !accessKeyId || !secretAccessKey || !this.bucketName) {
-            throw new Error('Cloudflare R2の環境変数が設定されていません');
+        if (
+            !accountId ||
+            !accessKeyId ||
+            !secretAccessKey ||
+            !this.bucketName
+        ) {
+            throw new Error("Cloudflare R2の環境変数が設定されていません");
         }
 
         this.s3Client = new S3Client({
-            region: 'auto',
+            region: "auto",
             endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
             credentials: {
                 accessKeyId,
@@ -57,22 +70,26 @@ export class CloudflareR2Service {
     ): Promise<string> {
         try {
             // ユーザー固有のフォルダ構造でキーを生成
-            const key = this.generatePodcastKey(userId, metadata.summaryId, metadata.generatedAt);
+            const key = this.generatePodcastKey(
+                userId,
+                metadata.summaryId,
+                metadata.generatedAt,
+            );
 
             const command = new PutObjectCommand({
                 Bucket: this.bucketName,
                 Key: key,
                 Body: buffer,
-                ContentType: 'audio/mpeg',
+                ContentType: "audio/mpeg",
                 Metadata: {
-                    'user-id': userId,
-                    'summary-id': metadata.summaryId.toString(),
-                    'episode-id': metadata.episodeId?.toString() || '',
+                    "user-id": userId,
+                    "summary-id": metadata.summaryId.toString(),
+                    "episode-id": metadata.episodeId?.toString() || "",
                     title: metadata.title,
-                    duration: metadata.duration?.toString() || '',
+                    duration: metadata.duration?.toString() || "",
                     language: metadata.language,
-                    'generated-at': metadata.generatedAt,
-                    'content-type': 'podcast-audio',
+                    "generated-at": metadata.generatedAt,
+                    "content-type": "podcast-audio",
                 },
             });
 
@@ -80,10 +97,14 @@ export class CloudflareR2Service {
 
             // 公開URLを生成
             const publicUrl = this.getPublicUrl(key);
-            this.logger.log(`Podcast audio uploaded successfully: ${publicUrl}`);
+            this.logger.log(
+                `Podcast audio uploaded successfully: ${publicUrl}`,
+            );
             return publicUrl;
         } catch (error) {
-            this.logger.error(`Failed to upload podcast audio: ${error.message}`);
+            this.logger.error(
+                `Failed to upload podcast audio: ${error.message}`,
+            );
             throw error;
         }
     }
@@ -113,7 +134,10 @@ export class CloudflareR2Service {
             this.logger.log(`ファイルをR2にアップロード: ${key}`);
             return { publicUrl: url };
         } catch (error) {
-            this.logger.error(`R2アップロードエラー: ${error.message}`, error.stack);
+            this.logger.error(
+                `R2アップロードエラー: ${error.message}`,
+                error.stack,
+            );
             throw new Error(`R2アップロードエラー: ${error.message}`);
         }
     }
@@ -123,7 +147,11 @@ export class CloudflareR2Service {
     // @param key オブジェクトキー
     // @param expiresIn 有効期限（秒）
     // @returns 署名付きURL
-    async getSignedUrl(bucket: string, key: string, expiresIn = 3600): Promise<string> {
+    async getSignedUrl(
+        bucket: string,
+        key: string,
+        expiresIn = 3600,
+    ): Promise<string> {
         const command = new GetObjectCommand({
             Bucket: bucket,
             Key: key,
@@ -174,9 +202,9 @@ export class CloudflareR2Service {
 
                 // 2. 削除対象オブジェクトが存在する場合
                 if (listResult.Contents && listResult.Contents.length > 0) {
-                    const objectsToDelete = listResult.Contents.filter((obj) => obj.Key).map(
-                        (obj) => ({ Key: obj.Key as string }),
-                    );
+                    const objectsToDelete = listResult.Contents.filter(
+                        (obj) => obj.Key,
+                    ).map((obj) => ({ Key: obj.Key as string }));
 
                     // 3. バッチ削除実行（最大1000件）
                     if (objectsToDelete.length > 0) {
@@ -188,7 +216,8 @@ export class CloudflareR2Service {
                             },
                         });
 
-                        const deleteResult = await this.s3Client.send(deleteCommand);
+                        const deleteResult =
+                            await this.s3Client.send(deleteCommand);
 
                         // 削除結果の確認
                         if (deleteResult.Deleted) {
@@ -199,7 +228,10 @@ export class CloudflareR2Service {
                         }
 
                         // エラーがあった場合はログ出力
-                        if (deleteResult.Errors && deleteResult.Errors.length > 0) {
+                        if (
+                            deleteResult.Errors &&
+                            deleteResult.Errors.length > 0
+                        ) {
                             this.logger.warn(
                                 `Some files could not be deleted for user ${userId}:`,
                                 deleteResult.Errors,
@@ -216,14 +248,21 @@ export class CloudflareR2Service {
                 `Completed deletion of ${totalDeleted} podcast files for user ${userId}`,
             );
         } catch (error) {
-            this.logger.error(`Failed to delete user podcasts: ${error.message}`, error.stack);
+            this.logger.error(
+                `Failed to delete user podcasts: ${error.message}`,
+                error.stack,
+            );
             throw new Error(`Failed to delete user podcasts: ${error.message}`);
         }
     }
 
     // ポッドキャスト用のキーを生成（ユーザー分離とファイル管理）
-    private generatePodcastKey(userId: string, summaryId: number, generatedAt: string): string {
-        const date = new Date(generatedAt).toISOString().split('T')[0]; // YYYY-MM-DD
+    private generatePodcastKey(
+        userId: string,
+        summaryId: number,
+        generatedAt: string,
+    ): string {
+        const date = new Date(generatedAt).toISOString().split("T")[0]; // YYYY-MM-DD
         const timestamp = Date.now();
         return `podcasts/${userId}/${date}/summary-${summaryId}-${timestamp}.mp3`;
     }
@@ -235,7 +274,9 @@ export class CloudflareR2Service {
         }
 
         // カスタムドメインが設定されていない場合はデフォルトを使用
-        const accountId = this.configService.get<string>('CLOUDFLARE_ACCOUNT_ID');
+        const accountId = this.configService.get<string>(
+            "CLOUDFLARE_ACCOUNT_ID",
+        );
         return `https://${this.bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
     }
 
@@ -264,7 +305,10 @@ export class CloudflareR2Service {
             }
 
             // バイトを文字列に変換
-            const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const totalLength = chunks.reduce(
+                (sum, chunk) => sum + chunk.length,
+                0,
+            );
             const combined = new Uint8Array(totalLength);
             let offset = 0;
             for (const chunk of chunks) {
@@ -272,7 +316,7 @@ export class CloudflareR2Service {
                 offset += chunk.length;
             }
 
-            const content = new TextDecoder('utf-8').decode(combined);
+            const content = new TextDecoder("utf-8").decode(combined);
             this.logger.log(`Successfully retrieved object: ${key}`);
             return content;
         } catch (error) {

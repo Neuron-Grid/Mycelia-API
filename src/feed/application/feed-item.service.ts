@@ -1,14 +1,14 @@
 // @file フィードアイテムの取得・登録を行うサービス
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 // @see src/common/interfaces/paginated-result.interface
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
+import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
 // @see src/types/schema
-import { Database } from 'src/types/schema';
+import { Database } from "src/types/schema";
 // @see ../infrastructure/feed-item.repository
-import { FeedItemRepository } from '../infrastructure/feed-item.repository';
+import { FeedItemRepository } from "../infrastructure/feed-item.repository";
 
 // @typedef {Database['public']['Tables']['feed_items']['Row']} Row - フィードアイテムの型
-type Row = Database['public']['Tables']['feed_items']['Row'];
+type Row = Database["public"]["Tables"]["feed_items"]["Row"];
 
 @Injectable()
 // @public

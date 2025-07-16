@@ -1,21 +1,24 @@
 // @file システムヘルスチェックAPIのコントローラ
-import { InjectQueue } from '@nestjs/bullmq';
-import { Controller, Get } from '@nestjs/common';
+import { InjectQueue } from "@nestjs/bullmq";
+import { Controller, Get } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
-import { Queue } from 'bullmq';
-import { RedisService } from 'src/shared/redis/redis.service';
-import { SupabaseRequestService } from 'src/supabase-request.service';
-import { HealthCheckResponseDto, JobCountsDto } from './dto/health-check-response.dto';
+import { Queue } from "bullmq";
+import { RedisService } from "src/shared/redis/redis.service";
+import { SupabaseRequestService } from "src/supabase-request.service";
+import {
+    HealthCheckResponseDto,
+    JobCountsDto,
+} from "./dto/health-check-response.dto";
 
 // BullMQ の戻り値用
 // Swagger DTOとは別物
 // @typedef {Awaited<ReturnType<Queue['getJobCounts']>>} RawJobCounts - BullMQジョブカウント型
-type RawJobCounts = Awaited<ReturnType<Queue['getJobCounts']>>;
+type RawJobCounts = Awaited<ReturnType<Queue["getJobCounts"]>>;
 
-@ApiTags('Health')
-@Controller('health')
+@ApiTags("Health")
+@Controller("health")
 // @public
 // @since 1.0.0
 export class HealthController {
@@ -32,7 +35,7 @@ export class HealthController {
     // @public
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
-        @InjectQueue('feedQueue') private readonly feedQueue: Queue,
+        @InjectQueue("feedQueue") private readonly feedQueue: Queue,
         private readonly redisService: RedisService,
     ) {}
 
@@ -49,16 +52,17 @@ export class HealthController {
     async checkHealth(): Promise<HealthCheckResponseDto> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();
-        const { bullStatus, jobCounts } = await this.checkBullQueueWithTimeout();
+        const { bullStatus, jobCounts } =
+            await this.checkBullQueueWithTimeout();
 
         return {
-            status: 'OK',
-            db: 'OK',
+            status: "OK",
+            db: "OK",
             bullQueue: {
                 status: bullStatus,
                 jobCounts,
             },
-            redis: 'OK',
+            redis: "OK",
         };
     }
     // @async
@@ -74,7 +78,10 @@ export class HealthController {
 
         await this.withTimeout(
             (async () => {
-                const { error } = await supabase.from('users').select('id').limit(1);
+                const { error } = await supabase
+                    .from("users")
+                    .select("id")
+                    .limit(1);
                 if (error) {
                     throw new Error(`Database check failed: ${error.message}`);
                 }
@@ -96,7 +103,7 @@ export class HealthController {
             (async () => {
                 const redisClient = this.redisService.createMainClient();
                 const pingResult = await redisClient.ping();
-                if (pingResult !== 'PONG') {
+                if (pingResult !== "PONG") {
                     throw new Error(`Unexpected PING result: ${pingResult}`);
                 }
             })(),
@@ -128,7 +135,8 @@ export class HealthController {
         await this.withTimeout(
             (async () => {
                 await this.feedQueue.waitUntilReady();
-                const counts: RawJobCounts = await this.feedQueue.getJobCounts();
+                const counts: RawJobCounts =
+                    await this.feedQueue.getJobCounts();
 
                 jobCounts = {
                     waiting: counts.waiting ?? 0,
@@ -142,7 +150,7 @@ export class HealthController {
         );
 
         return {
-            bullStatus: 'OK',
+            bullStatus: "OK",
             jobCounts,
         };
     }
@@ -159,7 +167,10 @@ export class HealthController {
     // await healthController['withTimeout'](Promise.resolve(1), 1000)
     private withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
         return new Promise<T>((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+            const timer = setTimeout(
+                () => reject(new Error(`Timeout after ${ms}ms`)),
+                ms,
+            );
 
             promise
                 .then((res) => {

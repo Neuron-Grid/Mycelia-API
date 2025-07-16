@@ -1,17 +1,17 @@
-import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config'; // ConfigService をインポート
-import { AxiosError, AxiosResponse } from 'axios';
-import { backOff } from 'exponential-backoff';
-import { firstValueFrom } from 'rxjs';
-import sanitizeMarkdown from 'sanitize-markdown';
+import { HttpService } from "@nestjs/axios";
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config"; // ConfigService をインポート
+import { AxiosError, AxiosResponse } from "axios";
+import { backOff } from "exponential-backoff";
+import { firstValueFrom } from "rxjs";
+import sanitizeMarkdown from "sanitize-markdown";
 import {
     GeminiScriptRequest,
     GeminiScriptResponse,
     GeminiSummaryRequest,
     GeminiSummaryResponse,
     LlmService,
-} from '../../application/services/llm.service';
+} from "../../application/services/llm.service";
 
 interface GeminiApiResponseCandidate {
     content?: {
@@ -33,7 +33,7 @@ interface GeminiApiResponse {
 
 interface GeminiErrorDetail {
     // Gemini APIが返す可能性のあるエラー詳細構造
-    '@type'?: string;
+    "@type"?: string;
     reason?: string; // 例: "API_KEY_INVALID"
     domain?: string;
     metadata?: Record<string, unknown>;
@@ -59,19 +59,23 @@ export class GeminiFlashClient implements LlmService {
         private readonly configService: ConfigService, // ConfigService を注入
     ) {
         this.apiUrl =
-            this.configService.get<string>('GEMINI_API_URL') ||
-            'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent';
-        this.apiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
+            this.configService.get<string>("GEMINI_API_URL") ||
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent";
+        this.apiKey = this.configService.get<string>("GEMINI_API_KEY") || "";
 
         if (!this.apiKey) {
-            this.logger.error('GEMINI_API_KEY is not set');
-            throw new Error('GEMINI_API_KEY is not set in environment variables.');
+            this.logger.error("GEMINI_API_KEY is not set");
+            throw new Error(
+                "GEMINI_API_KEY is not set in environment variables.",
+            );
         }
     }
 
-    private isAxiosError(error: unknown): error is AxiosError<GeminiErrorPayload> {
+    private isAxiosError(
+        error: unknown,
+    ): error is AxiosError<GeminiErrorPayload> {
         return (
-            typeof error === 'object' &&
+            typeof error === "object" &&
             error !== null &&
             (error as AxiosError).isAxiosError === true
         );
@@ -85,9 +89,13 @@ export class GeminiFlashClient implements LlmService {
             async () => {
                 // backOffのコールバックもasyncにする
                 return await firstValueFrom(
-                    this.http.post<TResponse>(`${this.apiUrl}?key=${this.apiKey}`, requestPayload, {
-                        timeout: this.defaultTimeout,
-                    }),
+                    this.http.post<TResponse>(
+                        `${this.apiUrl}?key=${this.apiKey}`,
+                        requestPayload,
+                        {
+                            timeout: this.defaultTimeout,
+                        },
+                    ),
                 );
             },
             {
@@ -96,13 +104,18 @@ export class GeminiFlashClient implements LlmService {
                 timeMultiple: 3,
                 retry: (e: unknown, attemptNumber: number) => {
                     // 修正: e の型を unknown に (lint/suspicious/noExplicitAny 関連)
-                    this.logger.warn(`LLM API call attempt ${attemptNumber} failed.`);
+                    this.logger.warn(
+                        `LLM API call attempt ${attemptNumber} failed.`,
+                    );
                     if (this.isAxiosError(e)) {
                         const status = e.response?.status;
                         // Gemini API のエラーレスポンス内の status フィールドも確認する
                         const geminiErrorStatus = e.response?.data?.status;
 
-                        if (status === 429 || geminiErrorStatus === 'RESOURCE_EXHAUSTED') {
+                        if (
+                            status === 429 ||
+                            geminiErrorStatus === "RESOURCE_EXHAUSTED"
+                        ) {
                             this.logger.warn(
                                 `Retrying due to 429/RESOURCE_EXHAUSTED. Attempt: ${attemptNumber}`,
                             );
@@ -130,24 +143,26 @@ export class GeminiFlashClient implements LlmService {
         ); // 修正: この関数は必ず値を返す (ts(2355) 関連)
     }
 
-    public async generateSummary(request: GeminiSummaryRequest): Promise<GeminiSummaryResponse> {
+    public async generateSummary(
+        request: GeminiSummaryRequest,
+    ): Promise<GeminiSummaryResponse> {
         const articlesString = request.articles
             .map(
                 (article) =>
                     // テンプレートリテラルに変更 (lint/style/useTemplate)
                     `Title: ${sanitizeMarkdown(article.title)}\nContent: ${sanitizeMarkdown(article.content.substring(0, 1000))}...\nURL: ${article.url}\nPublished: ${article.publishedAt}\n---`,
             )
-            .join('\n\n');
+            .join("\n\n");
 
         const langInstruction =
-            request.targetLanguage === 'ja'
-                ? '日本語で記述してください。'
-                : '英語で記述してください。';
+            request.targetLanguage === "ja"
+                ? "日本語で記述してください。"
+                : "英語で記述してください。";
 
         const prompt = `以下のRSS記事群の情報を元に、Markdown形式で簡潔なダイジェストを作成してください。${langInstruction}\n\n${articlesString}`;
 
         const payload = {
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
                 temperature: 0.3,
                 topP: 0.9,
@@ -156,8 +171,11 @@ export class GeminiFlashClient implements LlmService {
         };
 
         try {
-            const res = await this.makeApiCall<object, GeminiApiResponse>(payload);
-            let responseText = res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+            const res = await this.makeApiCall<object, GeminiApiResponse>(
+                payload,
+            );
+            let responseText =
+                res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
             if (responseText.length > 7000) {
                 this.logger.warn(
@@ -168,25 +186,33 @@ export class GeminiFlashClient implements LlmService {
 
             return { content: responseText };
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const errorDetails = this.isAxiosError(error) ? error.response?.data : error;
-            this.logger.error(`Failed to generate summary: ${errorMessage}`, errorDetails);
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            const errorDetails = this.isAxiosError(error)
+                ? error.response?.data
+                : error;
+            this.logger.error(
+                `Failed to generate summary: ${errorMessage}`,
+                errorDetails,
+            );
             throw error;
         }
     }
 
-    public async generateScript(request: GeminiScriptRequest): Promise<GeminiScriptResponse> {
+    public async generateScript(
+        request: GeminiScriptRequest,
+    ): Promise<GeminiScriptResponse> {
         const systemInstruction =
-            'あなたはプロのニュースキャスターです。自然で聞き取りやすい日本語のナレーション原稿を作成してください。';
+            "あなたはプロのニュースキャスターです。自然で聞き取りやすい日本語のナレーション原稿を作成してください。";
         const articlesJsonString = request.articlesForContext
             ? `関連ニュース記事の概要JSON: ${JSON.stringify(request.articlesForContext.map((a) => ({ title: sanitizeMarkdown(a.title), url: a.url })))}`
-            : '';
+            : "";
 
         // ユーザープロンプトにシステム指示を含めるアプローチ
         const userPrompt = `${systemInstruction}\n\n以下の要約文と、もしあれば関連ニュース記事の情報を元に、ニュース番組風の読み上げナレーション原稿を日本語で作成してください。各トピックを簡潔に紹介し、重要な情報を盛り込み、自然な流れで繋げてください。要約文: 「${sanitizeMarkdown(request.summaryText)}」 ${articlesJsonString}`; // 修正: useTemplate
 
         const payload = {
-            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
             // Google AI Studio (Gemini)のAPI Explorerで確認すると、
             // system_instruction をトップレベルで渡せる場合がある。
             // systemInstruction: { role: "system", parts: [{ text: systemInstruction }] },
@@ -200,8 +226,11 @@ export class GeminiFlashClient implements LlmService {
         };
 
         try {
-            const res = await this.makeApiCall<object, GeminiApiResponse>(payload);
-            let responseText = res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+            const res = await this.makeApiCall<object, GeminiApiResponse>(
+                payload,
+            );
+            let responseText =
+                res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
             if (responseText.length < 9000 || responseText.length > 12000) {
                 this.logger.warn(
@@ -214,9 +243,15 @@ export class GeminiFlashClient implements LlmService {
             return { script: responseText };
         } catch (error: unknown) {
             // 修正: noExplicitAny
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            const errorDetails = this.isAxiosError(error) ? error.response?.data : error;
-            this.logger.error(`Failed to generate script: ${errorMessage}`, errorDetails);
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
+            const errorDetails = this.isAxiosError(error)
+                ? error.response?.data
+                : error;
+            this.logger.error(
+                `Failed to generate script: ${errorMessage}`,
+                errorDetails,
+            );
             throw error;
         }
     }

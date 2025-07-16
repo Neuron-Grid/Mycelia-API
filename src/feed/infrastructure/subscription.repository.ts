@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
-import { SupabaseRequestService } from 'src/supabase-request.service';
-import { Database } from 'src/types/schema';
+import { Injectable, Logger } from "@nestjs/common";
+import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { SupabaseRequestService } from "src/supabase-request.service";
+import { Database } from "src/types/schema";
 
-type Row = Database['public']['Tables']['user_subscriptions']['Row'];
-type Update = Database['public']['Tables']['user_subscriptions']['Update'];
+type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];
+type Update = Database["public"]["Tables"]["user_subscriptions"]["Update"];
 
 @Injectable()
 export class SubscriptionRepository {
@@ -21,10 +21,10 @@ export class SubscriptionRepository {
         const offset = (page - 1) * limit;
 
         const { data, error, count } = await sb
-            .from('user_subscriptions')
-            .select('*', { count: 'exact' })
-            .eq('user_id', userId)
-            .order('id', { ascending: true })
+            .from("user_subscriptions")
+            .select("*", { count: "exact" })
+            .eq("user_id", userId)
+            .order("id", { ascending: true })
             .range(offset, offset + limit - 1);
 
         if (error) {
@@ -49,17 +49,17 @@ export class SubscriptionRepository {
     async findOne(subId: number, userId: string): Promise<Row | null> {
         const sb = this.sbReq.getClient();
         const { data, error } = await sb
-            .from('user_subscriptions')
-            .select('*')
-            .eq('id', subId)
-            .eq('user_id', userId)
+            .from("user_subscriptions")
+            .select("*")
+            .eq("id", subId)
+            .eq("user_id", userId)
             .single();
 
-        if (error && error.code !== 'PGRST116') {
+        if (error && error.code !== "PGRST116") {
             this.logger.error(`findOne: ${error.message}`, error);
             throw error;
         }
-        if (error && error.code === 'PGRST116') return null;
+        if (error && error.code === "PGRST116") return null;
         return data;
     }
 
@@ -69,10 +69,10 @@ export class SubscriptionRepository {
     async findDueSubscriptions(cutoff: Date): Promise<Row[]> {
         const sb = this.sbReq.getClient();
         const { data, error } = await sb
-            .from('user_subscriptions')
-            .select('*')
-            .lte('next_fetch_at', cutoff.toISOString())
-            .order('next_fetch_at', { ascending: true });
+            .from("user_subscriptions")
+            .select("*")
+            .lte("next_fetch_at", cutoff.toISOString())
+            .order("next_fetch_at", { ascending: true });
 
         if (error) {
             this.logger.error(`findDueSubscriptions: ${error.message}`, error);
@@ -82,17 +82,23 @@ export class SubscriptionRepository {
     }
 
     // ユーザー固有の期限到達サブスクリプション取得（ユーザー分離版）
-    async findDueSubscriptionsByUser(userId: string, cutoff: Date): Promise<Row[]> {
+    async findDueSubscriptionsByUser(
+        userId: string,
+        cutoff: Date,
+    ): Promise<Row[]> {
         const sb = this.sbReq.getClient();
         const { data, error } = await sb
-            .from('user_subscriptions')
-            .select('*')
-            .eq('user_id', userId) // ユーザー分離の保証
-            .lte('next_fetch_at', cutoff.toISOString())
-            .order('next_fetch_at', { ascending: true });
+            .from("user_subscriptions")
+            .select("*")
+            .eq("user_id", userId) // ユーザー分離の保証
+            .lte("next_fetch_at", cutoff.toISOString())
+            .order("next_fetch_at", { ascending: true });
 
         if (error) {
-            this.logger.error(`findDueSubscriptionsByUser: ${error.message}`, error);
+            this.logger.error(
+                `findDueSubscriptionsByUser: ${error.message}`,
+                error,
+            );
             throw error;
         }
         return data ?? [];
@@ -100,10 +106,14 @@ export class SubscriptionRepository {
 
     // 新しい購読を追加
     // next_fetch_atはDBトリガで自動計算
-    async insertSubscription(userId: string, feedUrl: string, feedTitle: string): Promise<Row> {
+    async insertSubscription(
+        userId: string,
+        feedUrl: string,
+        feedTitle: string,
+    ): Promise<Row> {
         const sb = this.sbReq.getClient();
         const { data, error } = await sb
-            .from('user_subscriptions')
+            .from("user_subscriptions")
             .insert({
                 user_id: userId,
                 feed_url: feedUrl,
@@ -121,15 +131,19 @@ export class SubscriptionRepository {
 
     // last_fetched_atのみ更新
     // next_fetch_at は trigger で再計算
-    async updateLastFetched(subId: number, userId: string, lastFetchedAt: Date): Promise<void> {
+    async updateLastFetched(
+        subId: number,
+        userId: string,
+        lastFetchedAt: Date,
+    ): Promise<void> {
         const sb = this.sbReq.getClient();
         const patch: Update = { last_fetched_at: lastFetchedAt.toISOString() };
 
         const { error } = await sb
-            .from('user_subscriptions')
+            .from("user_subscriptions")
             .update(patch)
-            .eq('id', subId)
-            .eq('user_id', userId);
+            .eq("id", subId)
+            .eq("user_id", userId);
 
         if (error) {
             this.logger.error(`updateLastFetched: ${error.message}`, error);
@@ -138,21 +152,28 @@ export class SubscriptionRepository {
     }
 
     // feed_titleを部分更新
-    async updateSubscriptionTitle(subId: number, userId: string, newTitle?: string): Promise<Row> {
+    async updateSubscriptionTitle(
+        subId: number,
+        userId: string,
+        newTitle?: string,
+    ): Promise<Row> {
         const sb = this.sbReq.getClient();
         const updateData: Update = {};
-        if (typeof newTitle !== 'undefined') updateData.feed_title = newTitle;
+        if (typeof newTitle !== "undefined") updateData.feed_title = newTitle;
 
         const { data, error } = await sb
-            .from('user_subscriptions')
+            .from("user_subscriptions")
             .update(updateData)
-            .eq('id', subId)
-            .eq('user_id', userId)
+            .eq("id", subId)
+            .eq("user_id", userId)
             .select()
             .single();
 
         if (error) {
-            this.logger.error(`updateSubscriptionTitle: ${error.message}`, error);
+            this.logger.error(
+                `updateSubscriptionTitle: ${error.message}`,
+                error,
+            );
             throw error;
         }
         return data;
@@ -162,10 +183,10 @@ export class SubscriptionRepository {
     async deleteSubscription(subId: number, userId: string): Promise<void> {
         const sb = this.sbReq.getClient();
         const { error } = await sb
-            .from('user_subscriptions')
+            .from("user_subscriptions")
             .delete()
-            .eq('id', subId)
-            .eq('user_id', userId);
+            .eq("id", subId)
+            .eq("user_id", userId);
 
         if (error) {
             this.logger.error(`deleteSubscription: ${error.message}`, error);

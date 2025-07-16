@@ -1,18 +1,18 @@
-import { Inject, Injectable } from '@nestjs/common';
-import Redis, { RedisOptions } from 'ioredis';
+import { Inject, Injectable } from "@nestjs/common";
+import Redis, { RedisOptions } from "ioredis";
 
 type ConnOpts = {
     host: string;
     port: number;
     password?: string;
     db?: number;
-    tls?: RedisOptions['tls'];
+    tls?: RedisOptions["tls"];
 };
 
 @Injectable()
 export class RedisService {
     constructor(
-        @Inject('REDIS_CONNECTION_OPTIONS')
+        @Inject("REDIS_CONNECTION_OPTIONS")
         private readonly opts: ConnOpts,
     ) {}
 
@@ -37,9 +37,11 @@ export class RedisService {
 
     // Bull用クライアント
     // type毎に細かな違いを吸収
-    createBullClient(type: 'client' | 'subscriber' | 'bclient' = 'client'): Redis {
+    createBullClient(
+        type: "client" | "subscriber" | "bclient" = "client",
+    ): Redis {
         switch (type) {
-            case 'client':
+            case "client":
                 return new Redis(this.base());
 
             default:

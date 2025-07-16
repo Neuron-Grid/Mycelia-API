@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+    | string
+    | number
+    | boolean
+    | null
+    | { [key: string]: Json | undefined }
+    | Json[];
 
 export type Database = {
     graphql_public: {
@@ -70,11 +76,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'daily_summaries_user_id_fkey';
-                        columns: ['user_id'];
+                        foreignKeyName: "daily_summaries_user_id_fkey";
+                        columns: ["user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'users';
-                        referencedColumns: ['id'];
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -93,18 +99,18 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'daily_summary_items_feed_item_id_fkey';
-                        columns: ['feed_item_id'];
+                        foreignKeyName: "daily_summary_items_feed_item_id_fkey";
+                        columns: ["feed_item_id"];
                         isOneToOne: false;
-                        referencedRelation: 'feed_items';
-                        referencedColumns: ['id'];
+                        referencedRelation: "feed_items";
+                        referencedColumns: ["id"];
                     },
                     {
-                        foreignKeyName: 'daily_summary_items_summary_id_fkey';
-                        columns: ['summary_id'];
+                        foreignKeyName: "daily_summary_items_summary_id_fkey";
+                        columns: ["summary_id"];
                         isOneToOne: false;
-                        referencedRelation: 'daily_summaries';
-                        referencedColumns: ['id'];
+                        referencedRelation: "daily_summaries";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -135,11 +141,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'feed_item_favorites_feed_item_id_user_id_fkey';
-                        columns: ['feed_item_id', 'user_id'];
+                        foreignKeyName: "feed_item_favorites_feed_item_id_user_id_fkey";
+                        columns: ["feed_item_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'feed_items';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "feed_items";
+                        referencedColumns: ["id", "user_id"];
                     },
                 ];
             };
@@ -173,18 +179,18 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'feed_item_tags_feed_item_id_user_id_fkey';
-                        columns: ['feed_item_id', 'user_id'];
+                        foreignKeyName: "feed_item_tags_feed_item_id_user_id_fkey";
+                        columns: ["feed_item_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'feed_items';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "feed_items";
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
-                        foreignKeyName: 'feed_item_tags_tag_id_user_id_fkey';
-                        columns: ['tag_id', 'user_id'];
+                        foreignKeyName: "feed_item_tags_tag_id_user_id_fkey";
+                        columns: ["tag_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'tags';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "tags";
+                        referencedColumns: ["id", "user_id"];
                     },
                 ];
             };
@@ -233,11 +239,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'feed_items_user_subscription_id_user_id_fkey';
-                        columns: ['user_subscription_id', 'user_id'];
+                        foreignKeyName: "feed_items_user_subscription_id_user_id_fkey";
+                        columns: ["user_subscription_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'user_subscriptions';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "user_subscriptions";
+                        referencedColumns: ["id", "user_id"];
                     },
                 ];
             };
@@ -277,18 +283,18 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'podcast_episodes_summary_id_fkey';
-                        columns: ['summary_id'];
+                        foreignKeyName: "podcast_episodes_summary_id_fkey";
+                        columns: ["summary_id"];
                         isOneToOne: true;
-                        referencedRelation: 'daily_summaries';
-                        referencedColumns: ['id'];
+                        referencedRelation: "daily_summaries";
+                        referencedColumns: ["id"];
                     },
                     {
-                        foreignKeyName: 'podcast_episodes_user_id_fkey';
-                        columns: ['user_id'];
+                        foreignKeyName: "podcast_episodes_user_id_fkey";
+                        columns: ["user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'users';
-                        referencedColumns: ['id'];
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -331,18 +337,18 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'tags_parent_tag_id_user_id_fkey';
-                        columns: ['parent_tag_id', 'user_id'];
+                        foreignKeyName: "tags_parent_tag_id_user_id_fkey";
+                        columns: ["parent_tag_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'tags';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "tags";
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
-                        foreignKeyName: 'tags_user_id_fkey';
-                        columns: ['user_id'];
+                        foreignKeyName: "tags_user_id_fkey";
+                        columns: ["user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'users';
-                        referencedColumns: ['id'];
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -379,11 +385,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'user_settings_user_id_fkey';
-                        columns: ['user_id'];
+                        foreignKeyName: "user_settings_user_id_fkey";
+                        columns: ["user_id"];
                         isOneToOne: true;
-                        referencedRelation: 'users';
-                        referencedColumns: ['id'];
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -417,18 +423,18 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'user_subscription_tags_tag_id_user_id_fkey';
-                        columns: ['tag_id', 'user_id'];
+                        foreignKeyName: "user_subscription_tags_tag_id_user_id_fkey";
+                        columns: ["tag_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'tags';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "tags";
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
-                        foreignKeyName: 'user_subscription_tags_user_subscription_id_user_id_fkey';
-                        columns: ['user_subscription_id', 'user_id'];
+                        foreignKeyName: "user_subscription_tags_user_subscription_id_user_id_fkey";
+                        columns: ["user_subscription_id", "user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'user_subscriptions';
-                        referencedColumns: ['id', 'user_id'];
+                        referencedRelation: "user_subscriptions";
+                        referencedColumns: ["id", "user_id"];
                     },
                 ];
             };
@@ -468,11 +474,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: 'user_subscriptions_user_id_fkey';
-                        columns: ['user_id'];
+                        foreignKeyName: "user_subscriptions_user_id_fkey";
+                        columns: ["user_id"];
                         isOneToOne: false;
-                        referencedRelation: 'users';
-                        referencedColumns: ['id'];
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
                     },
                 ];
             };
@@ -506,7 +512,7 @@ export type Database = {
         };
         Functions: {
             binary_quantize: {
-                Args: { '': string } | { '': unknown };
+                Args: { "": string } | { "": unknown };
                 Returns: unknown;
             };
             get_tag_hierarchy: {
@@ -534,55 +540,55 @@ export type Database = {
                 }[];
             };
             halfvec_avg: {
-                Args: { '': number[] };
+                Args: { "": number[] };
                 Returns: unknown;
             };
             halfvec_out: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             halfvec_send: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: string;
             };
             halfvec_typmod_in: {
-                Args: { '': unknown[] };
+                Args: { "": unknown[] };
                 Returns: number;
             };
             hnsw_bit_support: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             hnsw_halfvec_support: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             hnsw_sparsevec_support: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             hnswhandler: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             ivfflat_bit_support: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             ivfflat_halfvec_support: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             ivfflathandler: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             l2_norm: {
-                Args: { '': unknown } | { '': unknown };
+                Args: { "": unknown } | { "": unknown };
                 Returns: number;
             };
             l2_normalize: {
-                Args: { '': string } | { '': unknown } | { '': unknown };
+                Args: { "": string } | { "": unknown } | { "": unknown };
                 Returns: unknown;
             };
             search_all_content_by_vector: {
@@ -665,39 +671,39 @@ export type Database = {
                 }[];
             };
             sparsevec_out: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: unknown;
             };
             sparsevec_send: {
-                Args: { '': unknown };
+                Args: { "": unknown };
                 Returns: string;
             };
             sparsevec_typmod_in: {
-                Args: { '': unknown[] };
+                Args: { "": unknown[] };
                 Returns: number;
             };
             vector_avg: {
-                Args: { '': number[] };
+                Args: { "": number[] };
                 Returns: string;
             };
             vector_dims: {
-                Args: { '': string } | { '': unknown };
+                Args: { "": string } | { "": unknown };
                 Returns: number;
             };
             vector_norm: {
-                Args: { '': string };
+                Args: { "": string };
                 Returns: number;
             };
             vector_out: {
-                Args: { '': string };
+                Args: { "": string };
                 Returns: unknown;
             };
             vector_send: {
-                Args: { '': string };
+                Args: { "": string };
                 Returns: string;
             };
             vector_typmod_in: {
-                Args: { '': unknown[] };
+                Args: { "": unknown[] };
                 Returns: number;
             };
         };
@@ -710,29 +716,29 @@ export type Database = {
     };
 };
 
-type DefaultSchema = Database[Extract<keyof Database, 'public'>];
+type DefaultSchema = Database[Extract<keyof Database, "public">];
 
 export type Tables<
     DefaultSchemaTableNameOrOptions extends
-        | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+        | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
         | { schema: keyof Database },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof Database;
     }
-        ? keyof (Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-              Database[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+        ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+              Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
         : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? (Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-          Database[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
+    ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+          Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
           Row: infer R;
       }
         ? R
         : never
-    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-            DefaultSchema['Views'])
-      ? (DefaultSchema['Tables'] &
-            DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+            DefaultSchema["Views"])
+      ? (DefaultSchema["Tables"] &
+            DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
             Row: infer R;
         }
           ? R
@@ -741,21 +747,21 @@ export type Tables<
 
 export type TablesInsert<
     DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
+        | keyof DefaultSchema["Tables"]
         | { schema: keyof Database },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof Database;
     }
-        ? keyof Database[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+        ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
         : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
           Insert: infer I;
       }
         ? I
         : never
-    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+      ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
             Insert: infer I;
         }
           ? I
@@ -764,21 +770,21 @@ export type TablesInsert<
 
 export type TablesUpdate<
     DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
+        | keyof DefaultSchema["Tables"]
         | { schema: keyof Database },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof Database;
     }
-        ? keyof Database[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+        ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
         : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
+    ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
           Update: infer U;
       }
         ? U
         : never
-    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+    : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+      ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
             Update: infer U;
         }
           ? U
@@ -787,32 +793,32 @@ export type TablesUpdate<
 
 export type Enums<
     DefaultSchemaEnumNameOrOptions extends
-        | keyof DefaultSchema['Enums']
+        | keyof DefaultSchema["Enums"]
         | { schema: keyof Database },
     EnumName extends DefaultSchemaEnumNameOrOptions extends {
         schema: keyof Database;
     }
-        ? keyof Database[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+        ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
         : never = never,
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-    : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-      ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+    : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+      ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
       : never;
 
 export type CompositeTypes<
     PublicCompositeTypeNameOrOptions extends
-        | keyof DefaultSchema['CompositeTypes']
+        | keyof DefaultSchema["CompositeTypes"]
         | { schema: keyof Database },
     CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
         schema: keyof Database;
     }
-        ? keyof Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+        ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
         : never = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-    : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-      ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+    : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+      ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
       : never;
 
 export const Constants = {

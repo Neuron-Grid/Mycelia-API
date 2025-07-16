@@ -6,7 +6,7 @@ export interface GeminiSummaryRequest {
         publishedAt: string;
         language: string;
     }>;
-    targetLanguage?: 'ja' | 'en';
+    targetLanguage?: "ja" | "en";
 }
 
 export interface GeminiSummaryResponse {

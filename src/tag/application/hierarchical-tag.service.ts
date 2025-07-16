@@ -1,8 +1,13 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { EmbeddingService } from '../../search/infrastructure/services/embedding.service';
-import { TagEntity } from '../domain/tag.entity';
-import { TagRepository } from '../infrastructure/tag.repository';
-import { CreateHierarchicalTagDto } from './dto/create-hierarchical-tag.dto';
+import {
+    BadRequestException,
+    Injectable,
+    Logger,
+    NotFoundException,
+} from "@nestjs/common";
+import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
+import { TagEntity } from "../domain/tag.entity";
+import { TagRepository } from "../infrastructure/tag.repository";
+import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
 
 export interface TagHierarchy {
     id: number;
@@ -35,12 +40,18 @@ export class HierarchicalTagService {
     ) {}
 
     // 階層構造でタグを作成
-    async createHierarchicalTag(userId: string, dto: CreateHierarchicalTagDto): Promise<TagEntity> {
+    async createHierarchicalTag(
+        userId: string,
+        dto: CreateHierarchicalTagDto,
+    ): Promise<TagEntity> {
         // 親タグの検証
         if (dto.parent_tag_id) {
-            const parentTag = await this.tagRepository.findById(dto.parent_tag_id, userId);
+            const parentTag = await this.tagRepository.findById(
+                dto.parent_tag_id,
+                userId,
+            );
             if (!parentTag) {
-                throw new NotFoundException('Parent tag not found');
+                throw new NotFoundException("Parent tag not found");
             }
 
             // 循環参照のチェック
@@ -51,7 +62,7 @@ export class HierarchicalTagService {
             );
             if (isCircular) {
                 throw new BadRequestException(
-                    'Creating this tag would create a circular reference',
+                    "Creating this tag would create a circular reference",
                 );
             }
 
@@ -59,7 +70,9 @@ export class HierarchicalTagService {
             const depth = await this.getTagDepth(userId, dto.parent_tag_id);
             if (depth >= 4) {
                 // 0-indexed なので4が最大（5階層）
-                throw new BadRequestException('Maximum tag hierarchy depth (5 levels) exceeded');
+                throw new BadRequestException(
+                    "Maximum tag hierarchy depth (5 levels) exceeded",
+                );
             }
         }
 
@@ -71,19 +84,23 @@ export class HierarchicalTagService {
         );
         if (duplicateTag) {
             throw new BadRequestException(
-                'Tag with this name already exists under the same parent',
+                "Tag with this name already exists under the same parent",
             );
         }
 
         // タグのベクトル埋め込み生成
         let tagEmbedding: number[] | undefined;
         try {
-            const tagText = dto.description ? `${dto.tag_name} ${dto.description}` : dto.tag_name;
+            const tagText = dto.description
+                ? `${dto.tag_name} ${dto.description}`
+                : dto.tag_name;
             tagEmbedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(tagText),
             );
         } catch (error) {
-            this.logger.warn(`Failed to generate embedding for tag: ${error.message}`);
+            this.logger.warn(
+                `Failed to generate embedding for tag: ${error.message}`,
+            );
         }
 
         // タグ作成
@@ -95,7 +112,9 @@ export class HierarchicalTagService {
             tag_embedding: tagEmbedding,
         });
 
-        this.logger.log(`Created hierarchical tag: ${dto.tag_name} for user ${userId}`);
+        this.logger.log(
+            `Created hierarchical tag: ${dto.tag_name} for user ${userId}`,
+        );
         return tag;
     }
 
@@ -106,7 +125,10 @@ export class HierarchicalTagService {
     }
 
     // 特定のタグとその子孫を取得
-    async getTagSubtree(userId: string, tagId: number): Promise<TagHierarchy | null> {
+    async getTagSubtree(
+        userId: string,
+        tagId: number,
+    ): Promise<TagHierarchy | null> {
         const rootTag = await this.tagRepository.findById(tagId, userId);
         if (!rootTag) {
             return null;
@@ -119,7 +141,10 @@ export class HierarchicalTagService {
     }
 
     // タグのパス（ルートからのパス）を取得
-    async getTagPath(userId: string, tagId: number): Promise<TagWithPath | null> {
+    async getTagPath(
+        userId: string,
+        tagId: number,
+    ): Promise<TagWithPath | null> {
         const tag = await this.tagRepository.findById(tagId, userId);
         if (!tag) {
             return null;
@@ -131,37 +156,48 @@ export class HierarchicalTagService {
             id: tag.id,
             tag_name: tag.tag_name,
             parent_tag_id: tag.parent_tag_id,
-            full_path: pathArray.join(' > '),
+            full_path: pathArray.join(" > "),
             path_array: pathArray,
             level: pathArray.length - 1,
         };
     }
 
     // タグを移動（親を変更）
-    async moveTag(userId: string, tagId: number, newParentId: number | null): Promise<TagEntity> {
+    async moveTag(
+        userId: string,
+        tagId: number,
+        newParentId: number | null,
+    ): Promise<TagEntity> {
         const tag = await this.tagRepository.findById(tagId, userId);
         if (!tag) {
-            throw new NotFoundException('Tag not found');
+            throw new NotFoundException("Tag not found");
         }
 
         // 新しい親タグの検証
         if (newParentId) {
-            const newParent = await this.tagRepository.findById(newParentId, userId);
+            const newParent = await this.tagRepository.findById(
+                newParentId,
+                userId,
+            );
             if (!newParent) {
-                throw new NotFoundException('New parent tag not found');
+                throw new NotFoundException("New parent tag not found");
             }
 
             // 自分自身の子孫に移動しようとしていないかチェック
             const descendants = await this.getTagDescendants(userId, tagId);
             if (descendants.some((d) => d.id === newParentId)) {
-                throw new BadRequestException('Cannot move tag to its own descendant');
+                throw new BadRequestException(
+                    "Cannot move tag to its own descendant",
+                );
             }
 
             // 移動後の深度チェック
             const newDepth = await this.getTagDepth(userId, newParentId);
             const subtreeDepth = await this.getSubtreeDepth(userId, tagId);
             if (newDepth + subtreeDepth >= 5) {
-                throw new BadRequestException('Moving this tag would exceed maximum depth');
+                throw new BadRequestException(
+                    "Moving this tag would exceed maximum depth",
+                );
             }
         }
 
@@ -171,7 +207,11 @@ export class HierarchicalTagService {
     }
 
     // RSSフィードをタグに関連付け
-    async tagSubscription(userId: string, subscriptionId: number, tagIds: number[]): Promise<void> {
+    async tagSubscription(
+        userId: string,
+        subscriptionId: number,
+        tagIds: number[],
+    ): Promise<void> {
         // タグの存在確認
         for (const tagId of tagIds) {
             const tag = await this.tagRepository.findById(tagId, userId);
@@ -180,11 +220,19 @@ export class HierarchicalTagService {
             }
         }
 
-        await this.tagRepository.tagSubscription(userId, subscriptionId, tagIds);
+        await this.tagRepository.tagSubscription(
+            userId,
+            subscriptionId,
+            tagIds,
+        );
     }
 
     // フィードアイテムをタグに関連付け
-    async tagFeedItem(userId: string, feedItemId: number, tagIds: number[]): Promise<void> {
+    async tagFeedItem(
+        userId: string,
+        feedItemId: number,
+        tagIds: number[],
+    ): Promise<void> {
         // タグの存在確認
         for (const tagId of tagIds) {
             const tag = await this.tagRepository.findById(tagId, userId);
@@ -197,18 +245,36 @@ export class HierarchicalTagService {
     }
 
     // タグで絞り込んだフィードアイテムを取得
-    async getFeedItemsByTag(userId: string, tagId: number, includeChildren = false) {
+    async getFeedItemsByTag(
+        userId: string,
+        tagId: number,
+        includeChildren = false,
+    ) {
         const tagIds = includeChildren
-            ? [tagId, ...(await this.getTagDescendants(userId, tagId)).map((t) => t.id)]
+            ? [
+                  tagId,
+                  ...(await this.getTagDescendants(userId, tagId)).map(
+                      (t) => t.id,
+                  ),
+              ]
             : [tagId];
 
         return await this.tagRepository.getFeedItemsByTags(userId, tagIds);
     }
 
     // タグで絞り込んだサブスクリプションを取得
-    async getSubscriptionsByTag(userId: string, tagId: number, includeChildren = false) {
+    async getSubscriptionsByTag(
+        userId: string,
+        tagId: number,
+        includeChildren = false,
+    ) {
         const tagIds = includeChildren
-            ? [tagId, ...(await this.getTagDescendants(userId, tagId)).map((t) => t.id)]
+            ? [
+                  tagId,
+                  ...(await this.getTagDescendants(userId, tagId)).map(
+                      (t) => t.id,
+                  ),
+              ]
             : [tagId];
 
         return await this.tagRepository.getSubscriptionsByTags(userId, tagIds);
@@ -256,7 +322,10 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: 階層から特定のタグを検索
-    private findTagInHierarchy(hierarchy: TagHierarchy[], tagId: number): TagHierarchy | null {
+    private findTagInHierarchy(
+        hierarchy: TagHierarchy[],
+        tagId: number,
+    ): TagHierarchy | null {
         for (const tag of hierarchy) {
             if (tag.id === tagId) {
                 return tag;
@@ -270,7 +339,10 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: タグのパス配列を構築
-    private async buildTagPath(userId: string, tagId: number): Promise<string[]> {
+    private async buildTagPath(
+        userId: string,
+        tagId: number,
+    ): Promise<string[]> {
         const path: string[] = [];
         let currentId = tagId;
 
@@ -314,7 +386,10 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: タグの子孫を取得
-    private async getTagDescendants(userId: string, tagId: number): Promise<TagEntity[]> {
+    private async getTagDescendants(
+        userId: string,
+        tagId: number,
+    ): Promise<TagEntity[]> {
         const allTags = await this.tagRepository.findByUser(userId);
         const descendants: TagEntity[] = [];
 
@@ -332,7 +407,10 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: サブツリーの最大深度を取得
-    private async getSubtreeDepth(userId: string, tagId: number): Promise<number> {
+    private async getSubtreeDepth(
+        userId: string,
+        tagId: number,
+    ): Promise<number> {
         const descendants = await this.getTagDescendants(userId, tagId);
 
         if (descendants.length === 0) {

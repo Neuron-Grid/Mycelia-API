@@ -1,12 +1,14 @@
-import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { InjectQueue } from "@nestjs/bullmq";
+import { Injectable, Logger } from "@nestjs/common";
+import { Queue } from "bullmq";
 
 @Injectable()
 export class PodcastQueueService {
     private readonly logger = new Logger(PodcastQueueService.name);
 
-    constructor(@InjectQueue('podcastQueue') private readonly podcastQueue: Queue) {}
+    constructor(
+        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+    ) {}
 
     //  ポッドキャスト生成ジョブをキューに追加
     //  @param text 音声合成するテキスト
@@ -17,13 +19,14 @@ export class PodcastQueueService {
     async addPodcastJob(
         text: string,
         userId: string,
-        language: 'ja-JP' | 'en-US' = 'ja-JP',
+        language: "ja-JP" | "en-US" = "ja-JP",
         filename?: string,
         title?: string,
     ) {
         // ファイル名が指定されていない場合は日付ベースで自動生成
         const actualFilename =
-            filename || `podcast-${new Date().toISOString().slice(0, 10)}-${Date.now()}.opus`;
+            filename ||
+            `podcast-${new Date().toISOString().slice(0, 10)}-${Date.now()}.opus`;
 
         this.logger.log(
             `ポッドキャスト生成ジョブをキューに追加: userId=${userId}, filename=${actualFilename}`,
@@ -31,7 +34,7 @@ export class PodcastQueueService {
 
         await this.podcastQueue.add(
             // job name
-            'default',
+            "default",
             // job data
             {
                 text,
@@ -46,7 +49,7 @@ export class PodcastQueueService {
                 // 最大3回リトライ
                 attempts: 3,
                 // 30秒後にリトライ
-                backoff: { type: 'fixed', delay: 30_000 },
+                backoff: { type: "fixed", delay: 30_000 },
             },
         );
 

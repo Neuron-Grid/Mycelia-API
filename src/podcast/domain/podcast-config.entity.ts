@@ -1,4 +1,4 @@
-import { Database } from '../../types/schema';
+import { Database } from "../../types/schema";
 
 // ポッドキャスト設定エンティティ
 // @description user_settingsテーブルのポッドキャスト関連フィールドを表現
@@ -10,7 +10,7 @@ export interface PodcastConfig {
     // ポッドキャスト生成スケジュール時刻（HH:MM形式, 例: "07:30"）
     podcast_schedule_time: string | null;
     // ポッドキャスト言語
-    podcast_language: 'ja-JP' | 'en-US';
+    podcast_language: "ja-JP" | "en-US";
     // レコード作成日時（ISO8601）
     created_at: string;
     // レコード更新日時（ISO8601）
@@ -27,8 +27,8 @@ export interface PodcastConfigInput {
     // ポッドキャスト生成スケジュール時刻（HH:MM形式, 例: "07:30"）
     podcast_schedule_time?: string | null;
     // ポッドキャスト言語
-    podcast_language?: 'ja-JP' | 'en-US';
+    podcast_language?: "ja-JP" | "en-US";
 }
 
 // user_settingsテーブルの型定義
-export type UserSettings = Database['public']['Tables']['user_settings']['Row'];
+export type UserSettings = Database["public"]["Tables"]["user_settings"]["Row"];

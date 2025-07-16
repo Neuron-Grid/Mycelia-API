@@ -1,12 +1,12 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
     LlmService,
-} from '../../llm/application/services/llm.service';
-import { CloudflareR2Service } from '../../podcast/cloudflare-r2.service';
-import { CreateSummaryDto } from '../dto/create-summary.dto';
-import { SummaryRepository } from '../infrastructure/summary.repository';
+} from "../../llm/application/services/llm.service";
+import { CloudflareR2Service } from "../../podcast/cloudflare-r2.service";
+import { CreateSummaryDto } from "../dto/create-summary.dto";
+import { SummaryRepository } from "../infrastructure/summary.repository";
 
 @Injectable()
 export class SummaryService {
@@ -24,8 +24,8 @@ export class SummaryService {
     ): Promise<{ summary: string; id?: number }> {
         const { text, fileRef, save } = createSummaryDto;
 
-        let contentToSummarize = '';
-        let sourceName = 'text_input';
+        let contentToSummarize = "";
+        let sourceName = "text_input";
 
         // fileRefが指定された場合、Cloudflare R2からコンテンツを取得
         if (fileRef) {
@@ -33,7 +33,7 @@ export class SummaryService {
                 this.logger.log(`Fetching content from fileRef: ${fileRef}`);
 
                 // fileRefがURLの場合はキーを抽出、そうでなければそのままキーとして使用
-                const objectKey = fileRef.startsWith('http')
+                const objectKey = fileRef.startsWith("http")
                     ? this.cloudflareR2Service.extractKeyFromUrl(fileRef)
                     : fileRef;
 
@@ -44,7 +44,8 @@ export class SummaryService {
                 // セキュリティチェック: ユーザーが自分のファイルにのみアクセス可能かチェック
                 // ただし、要約機能では他のユーザーのファイルも参照する可能性があるため、
                 // 実際の運用では適切なアクセス制御を実装する必要があります
-                const fileContent = await this.cloudflareR2Service.getObject(objectKey);
+                const fileContent =
+                    await this.cloudflareR2Service.getObject(objectKey);
 
                 // ファイルサイズ制限（1MB以下に制限）
                 const maxSize = 1024 * 1024; // 1MB
@@ -52,7 +53,7 @@ export class SummaryService {
                     this.logger.warn(
                         `File too large for processing: ${fileContent.length} bytes, max: ${maxSize} bytes`,
                     );
-                    throw new Error('File too large for processing (max 1MB)');
+                    throw new Error("File too large for processing (max 1MB)");
                 }
 
                 contentToSummarize = fileContent;
@@ -61,13 +62,16 @@ export class SummaryService {
                     `Successfully retrieved ${fileContent.length} characters from ${objectKey}`,
                 );
             } catch (error) {
-                this.logger.warn(`Failed to fetch fileRef: ${fileRef}`, error.message);
+                this.logger.warn(
+                    `Failed to fetch fileRef: ${fileRef}`,
+                    error.message,
+                );
 
                 // フォールバック: textがある場合はそれを使用、なければエラー
                 if (text) {
-                    this.logger.log('Falling back to provided text content');
+                    this.logger.log("Falling back to provided text content");
                     contentToSummarize = text;
-                    sourceName = 'text_input_fallback';
+                    sourceName = "text_input_fallback";
                 } else {
                     throw new Error(
                         `Failed to retrieve content from fileRef and no text provided: ${error.message}`,
@@ -76,13 +80,13 @@ export class SummaryService {
             }
         } else if (text) {
             contentToSummarize = text;
-            sourceName = 'text_input';
+            sourceName = "text_input";
         } else {
-            throw new Error('Either text or fileRef must be provided');
+            throw new Error("Either text or fileRef must be provided");
         }
 
         if (!contentToSummarize.trim()) {
-            throw new Error('Content to summarize is empty');
+            throw new Error("Content to summarize is empty");
         }
 
         const llmRequest: GeminiSummaryRequest = {
@@ -90,15 +94,16 @@ export class SummaryService {
                 {
                     title: `Summary for ${sourceName}`,
                     content: contentToSummarize,
-                    url: fileRef || '',
+                    url: fileRef || "",
                     publishedAt: new Date().toISOString(),
-                    language: 'ja', // Assuming Japanese, could be detected or specified.
+                    language: "ja", // Assuming Japanese, could be detected or specified.
                 },
             ],
-            targetLanguage: 'ja',
+            targetLanguage: "ja",
         };
 
-        const { content: summary } = await this.llmService.generateSummary(llmRequest);
+        const { content: summary } =
+            await this.llmService.generateSummary(llmRequest);
 
         if (save) {
             const id = await this.summaryRepository.save(userId, {

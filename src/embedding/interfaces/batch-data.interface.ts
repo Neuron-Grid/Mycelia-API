@@ -1,7 +1,10 @@
-import { BatchItem, TableType } from '../types/embedding-batch.types';
+import { BatchItem, TableType } from "../types/embedding-batch.types";
 
 export interface IBatchDataService {
-    getMissingEmbeddingsCount(userId: string, tableType: TableType): Promise<number>;
+    getMissingEmbeddingsCount(
+        userId: string,
+        tableType: TableType,
+    ): Promise<number>;
     getBatchData(
         userId: string,
         tableType: TableType,

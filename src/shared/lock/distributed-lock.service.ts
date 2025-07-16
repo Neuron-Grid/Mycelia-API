@@ -1,13 +1,15 @@
 // src/shared/lock/distributed-lock.service.ts
 
-import { randomBytes } from 'node:crypto';
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import Redis from 'ioredis';
-import { RedisService } from '../redis/redis.service';
-import { IDistributedLockService } from './distributed-lock.interface';
+import { randomBytes } from "node:crypto";
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import Redis from "ioredis";
+import { RedisService } from "../redis/redis.service";
+import { IDistributedLockService } from "./distributed-lock.interface";
 
 @Injectable()
-export class DistributedLockService implements IDistributedLockService, OnModuleDestroy {
+export class DistributedLockService
+    implements IDistributedLockService, OnModuleDestroy
+{
     private readonly redisClient: Redis;
     private readonly LUA_RELEASE_SCRIPT = `
     if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -28,9 +30,15 @@ export class DistributedLockService implements IDistributedLockService, OnModule
      * @returns ロックID (成功時) / null (失敗時)
      */
     async acquire(key: string, timeout: number): Promise<string | null> {
-        const lockId = randomBytes(16).toString('hex');
-        const result = await this.redisClient.set(`lock:${key}`, lockId, 'PX', timeout, 'NX');
-        return result === 'OK' ? lockId : null;
+        const lockId = randomBytes(16).toString("hex");
+        const result = await this.redisClient.set(
+            `lock:${key}`,
+            lockId,
+            "PX",
+            timeout,
+            "NX",
+        );
+        return result === "OK" ? lockId : null;
     }
 
     /**

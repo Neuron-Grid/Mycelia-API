@@ -1,10 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min, ValidateNested } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, Max, Min, ValidateNested } from "class-validator";
 
 export class IntervalDto {
     @ApiProperty({
-        description: '時間（0-23時間）',
+        description: "時間（0-23時間）",
         minimum: 0,
         maximum: 23,
         required: false,
@@ -18,7 +18,7 @@ export class IntervalDto {
     hours = 0;
 
     @ApiProperty({
-        description: '分（0-59分）',
+        description: "分（0-59分）",
         minimum: 0,
         maximum: 59,
         required: false,
@@ -92,7 +92,7 @@ export class IntervalDto {
 
 export class UpdateSubscriptionIntervalDto {
     @ApiProperty({
-        description: '更新間隔設定',
+        description: "更新間隔設定",
         type: IntervalDto,
     })
     @ValidateNested()
@@ -109,12 +109,12 @@ export class UpdateSubscriptionIntervalDto {
         if (!this.interval.isValidInterval()) {
             const totalMinutes = this.interval.getTotalMinutes();
             if (totalMinutes < 5) {
-                return '更新間隔は最低5分以上である必要があります';
+                return "更新間隔は最低5分以上である必要があります";
             }
             if (totalMinutes > 1440) {
-                return '更新間隔は最大24時間（1440分）以下である必要があります';
+                return "更新間隔は最大24時間（1440分）以下である必要があります";
             }
         }
-        return '';
+        return "";
     }
 }

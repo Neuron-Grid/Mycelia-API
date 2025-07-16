@@ -1,11 +1,11 @@
 // @file RSSフィードの取得とパースを行うサービス
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from "@nestjs/common";
 // @see https://www.npmjs.com/package/feedparser
-import * as FeedParser from 'feedparser';
+import * as FeedParser from "feedparser";
 // @see https://www.npmjs.com/package/feedparser
-import { Item as FeedparserItem, Meta } from 'feedparser';
+import { Item as FeedparserItem, Meta } from "feedparser";
 // @see https://www.npmjs.com/package/node-fetch
-import fetch, { Response } from 'node-fetch';
+import fetch, { Response } from "node-fetch";
 
 @Injectable()
 // @public
@@ -26,7 +26,9 @@ export class FeedFetchService {
     // @example
     // const { meta, items } = await feedFetchService.parseFeed('https://example.com/rss')
     // @see FeedParser
-    parseFeed(feedUrl: string): Promise<{ meta: Meta; items: FeedparserItem[] }> {
+    parseFeed(
+        feedUrl: string,
+    ): Promise<{ meta: Meta; items: FeedparserItem[] }> {
         const feedparser = new FeedParser({ normalize: true });
         const items: FeedparserItem[] = [];
         let meta: Meta = {} as Meta;
@@ -39,7 +41,7 @@ export class FeedFetchService {
                         return;
                     }
                     if (!res.body) {
-                        reject(new Error('Response body is null'));
+                        reject(new Error("Response body is null"));
                         return;
                     }
                     res.body.pipe(feedparser);
@@ -48,15 +50,15 @@ export class FeedFetchService {
                     reject(err);
                 });
 
-            feedparser.on('error', (error: Error) => {
+            feedparser.on("error", (error: Error) => {
                 reject(error);
             });
 
-            feedparser.on('meta', function () {
+            feedparser.on("meta", function () {
                 meta = this.meta;
             });
 
-            feedparser.on('readable', function (this: FeedParser) {
+            feedparser.on("readable", function (this: FeedParser) {
                 let item: FeedparserItem | null;
                 while (true) {
                     item = this.read();
@@ -67,7 +69,7 @@ export class FeedFetchService {
                 }
             });
 
-            feedparser.on('end', () => {
+            feedparser.on("end", () => {
                 resolve({ meta, items });
             });
         });

@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { DomainConfigService } from './domain-config.service';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { DomainConfigService } from "./domain-config.service";
 
 @Module({
     imports: [

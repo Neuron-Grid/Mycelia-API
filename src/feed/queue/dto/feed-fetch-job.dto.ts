@@ -1,4 +1,4 @@
-import { IsInt, IsPositive, IsString, IsUrl } from 'class-validator';
+import { IsInt, IsPositive, IsString, IsUrl } from "class-validator";
 
 export class FeedFetchJobDto {
     @IsInt()

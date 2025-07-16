@@ -1,20 +1,20 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Length, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, IsString, Length, Min } from "class-validator";
 
 export class CreateHierarchicalTagDto {
     @ApiProperty({
-        description: 'タグ名',
+        description: "タグ名",
         minLength: 1,
         maxLength: 100,
-        example: 'テクノロジー',
+        example: "テクノロジー",
     })
     @IsString()
     @Length(1, 100)
     tag_name!: string;
 
     @ApiPropertyOptional({
-        description: '親タグのID（ルートタグの場合はnull）',
+        description: "親タグのID（ルートタグの場合はnull）",
         example: 1,
     })
     @IsOptional()
@@ -24,9 +24,9 @@ export class CreateHierarchicalTagDto {
     parent_tag_id?: number;
 
     @ApiPropertyOptional({
-        description: 'タグの説明',
+        description: "タグの説明",
         maxLength: 500,
-        example: 'プログラミング、AI、ガジェットなどの技術関連記事',
+        example: "プログラミング、AI、ガジェットなどの技術関連記事",
     })
     @IsOptional()
     @IsString()
@@ -34,9 +34,9 @@ export class CreateHierarchicalTagDto {
     description?: string;
 
     @ApiPropertyOptional({
-        description: 'タグの色（Hex形式）',
-        pattern: '^#[0-9A-Fa-f]{6}$',
-        example: '#3B82F6',
+        description: "タグの色（Hex形式）",
+        pattern: "^#[0-9A-Fa-f]{6}$",
+        example: "#3B82F6",
     })
     @IsOptional()
     @IsString()

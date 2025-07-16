@@ -23,7 +23,11 @@ export class TagEntity {
     }
 
     isValidTagName(): boolean {
-        return !!(this.tag_name && this.tag_name.length > 0 && this.tag_name.length <= 100);
+        return !!(
+            this.tag_name &&
+            this.tag_name.length > 0 &&
+            this.tag_name.length <= 100
+        );
     }
 
     isValidParentRelation(): boolean {

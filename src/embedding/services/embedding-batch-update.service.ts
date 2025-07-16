@@ -1,40 +1,55 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { SupabaseRequestService } from '../../supabase-request.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { SupabaseRequestService } from "../../supabase-request.service";
 import {
     EmbeddingBatchException,
     InvalidTableTypeException,
-} from '../exceptions/embedding-batch.exceptions';
-import { IBatchUpdateService } from '../interfaces/batch-data.interface';
-import { EmbeddingUpdateItem, TableType } from '../types/embedding-batch.types';
+} from "../exceptions/embedding-batch.exceptions";
+import { IBatchUpdateService } from "../interfaces/batch-data.interface";
+import { EmbeddingUpdateItem, TableType } from "../types/embedding-batch.types";
 
 @Injectable()
 export class EmbeddingBatchUpdateService implements IBatchUpdateService {
     private readonly logger = new Logger(EmbeddingBatchUpdateService.name);
 
-    constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
+    constructor(
+        private readonly supabaseRequestService: SupabaseRequestService,
+    ) {}
 
-    async updateFeedItemsEmbeddings(userId: string, items: EmbeddingUpdateItem[]): Promise<void> {
+    async updateFeedItemsEmbeddings(
+        userId: string,
+        items: EmbeddingUpdateItem[],
+    ): Promise<void> {
         try {
             const updatePromises = items.map((item) =>
                 this.supabaseRequestService
                     .getClient()
-                    .from('feed_items')
+                    .from("feed_items")
                     .update({ title_embedding: JSON.stringify(item.embedding) })
-                    .eq('id', item.id)
-                    .eq('user_id', userId),
+                    .eq("id", item.id)
+                    .eq("user_id", userId),
             );
 
             const results = await Promise.allSettled(updatePromises);
 
-            const failures = results.filter((result) => result.status === 'rejected');
+            const failures = results.filter(
+                (result) => result.status === "rejected",
+            );
             if (failures.length > 0) {
-                this.logger.error(`Failed to update ${failures.length} feed items`);
-                throw new Error(`Failed to update ${failures.length} feed items`);
+                this.logger.error(
+                    `Failed to update ${failures.length} feed items`,
+                );
+                throw new Error(
+                    `Failed to update ${failures.length} feed items`,
+                );
             }
 
-            this.logger.debug(`Successfully updated ${items.length} feed items embeddings`);
+            this.logger.debug(
+                `Successfully updated ${items.length} feed items embeddings`,
+            );
         } catch (error) {
-            this.logger.error(`Failed to update feed items embeddings: ${error.message}`);
+            this.logger.error(
+                `Failed to update feed items embeddings: ${error.message}`,
+            );
             throw new EmbeddingBatchException(
                 `Failed to update feed items embeddings: ${error.message}`,
                 userId,
@@ -42,28 +57,43 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         }
     }
 
-    async updateSummariesEmbeddings(userId: string, items: EmbeddingUpdateItem[]): Promise<void> {
+    async updateSummariesEmbeddings(
+        userId: string,
+        items: EmbeddingUpdateItem[],
+    ): Promise<void> {
         try {
             const updatePromises = items.map((item) =>
                 this.supabaseRequestService
                     .getClient()
-                    .from('daily_summaries')
-                    .update({ summary_embedding: JSON.stringify(item.embedding) })
-                    .eq('id', item.id)
-                    .eq('user_id', userId),
+                    .from("daily_summaries")
+                    .update({
+                        summary_embedding: JSON.stringify(item.embedding),
+                    })
+                    .eq("id", item.id)
+                    .eq("user_id", userId),
             );
 
             const results = await Promise.allSettled(updatePromises);
 
-            const failures = results.filter((result) => result.status === 'rejected');
+            const failures = results.filter(
+                (result) => result.status === "rejected",
+            );
             if (failures.length > 0) {
-                this.logger.error(`Failed to update ${failures.length} summaries`);
-                throw new Error(`Failed to update ${failures.length} summaries`);
+                this.logger.error(
+                    `Failed to update ${failures.length} summaries`,
+                );
+                throw new Error(
+                    `Failed to update ${failures.length} summaries`,
+                );
             }
 
-            this.logger.debug(`Successfully updated ${items.length} summaries embeddings`);
+            this.logger.debug(
+                `Successfully updated ${items.length} summaries embeddings`,
+            );
         } catch (error) {
-            this.logger.error(`Failed to update summaries embeddings: ${error.message}`);
+            this.logger.error(
+                `Failed to update summaries embeddings: ${error.message}`,
+            );
             throw new EmbeddingBatchException(
                 `Failed to update summaries embeddings: ${error.message}`,
                 userId,
@@ -79,23 +109,33 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
             const updatePromises = items.map((item) =>
                 this.supabaseRequestService
                     .getClient()
-                    .from('podcast_episodes')
+                    .from("podcast_episodes")
                     .update({ title_embedding: JSON.stringify(item.embedding) })
-                    .eq('id', item.id)
-                    .eq('user_id', userId),
+                    .eq("id", item.id)
+                    .eq("user_id", userId),
             );
 
             const results = await Promise.allSettled(updatePromises);
 
-            const failures = results.filter((result) => result.status === 'rejected');
+            const failures = results.filter(
+                (result) => result.status === "rejected",
+            );
             if (failures.length > 0) {
-                this.logger.error(`Failed to update ${failures.length} podcast episodes`);
-                throw new Error(`Failed to update ${failures.length} podcast episodes`);
+                this.logger.error(
+                    `Failed to update ${failures.length} podcast episodes`,
+                );
+                throw new Error(
+                    `Failed to update ${failures.length} podcast episodes`,
+                );
             }
 
-            this.logger.debug(`Successfully updated ${items.length} podcast episodes embeddings`);
+            this.logger.debug(
+                `Successfully updated ${items.length} podcast episodes embeddings`,
+            );
         } catch (error) {
-            this.logger.error(`Failed to update podcast episodes embeddings: ${error.message}`);
+            this.logger.error(
+                `Failed to update podcast episodes embeddings: ${error.message}`,
+            );
             throw new EmbeddingBatchException(
                 `Failed to update podcast episodes embeddings: ${error.message}`,
                 userId,
@@ -103,28 +143,37 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         }
     }
 
-    async updateTagsEmbeddings(userId: string, items: EmbeddingUpdateItem[]): Promise<void> {
+    async updateTagsEmbeddings(
+        userId: string,
+        items: EmbeddingUpdateItem[],
+    ): Promise<void> {
         try {
             const updatePromises = items.map((item) =>
                 this.supabaseRequestService
                     .getClient()
-                    .from('tags')
+                    .from("tags")
                     .update({ tag_embedding: JSON.stringify(item.embedding) })
-                    .eq('id', item.id)
-                    .eq('user_id', userId),
+                    .eq("id", item.id)
+                    .eq("user_id", userId),
             );
 
             const results = await Promise.allSettled(updatePromises);
 
-            const failures = results.filter((result) => result.status === 'rejected');
+            const failures = results.filter(
+                (result) => result.status === "rejected",
+            );
             if (failures.length > 0) {
                 this.logger.error(`Failed to update ${failures.length} tags`);
                 throw new Error(`Failed to update ${failures.length} tags`);
             }
 
-            this.logger.debug(`Successfully updated ${items.length} tags embeddings`);
+            this.logger.debug(
+                `Successfully updated ${items.length} tags embeddings`,
+            );
         } catch (error) {
-            this.logger.error(`Failed to update tags embeddings: ${error.message}`);
+            this.logger.error(
+                `Failed to update tags embeddings: ${error.message}`,
+            );
             throw new EmbeddingBatchException(
                 `Failed to update tags embeddings: ${error.message}`,
                 userId,
@@ -138,13 +187,16 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         items: EmbeddingUpdateItem[],
     ): Promise<void> {
         switch (tableType) {
-            case 'feed_items':
+            case "feed_items":
                 return await this.updateFeedItemsEmbeddings(userId, items);
-            case 'daily_summaries':
+            case "daily_summaries":
                 return await this.updateSummariesEmbeddings(userId, items);
-            case 'podcast_episodes':
-                return await this.updatePodcastEpisodesEmbeddings(userId, items);
-            case 'tags':
+            case "podcast_episodes":
+                return await this.updatePodcastEpisodesEmbeddings(
+                    userId,
+                    items,
+                );
+            case "tags":
                 return await this.updateTagsEmbeddings(userId, items);
             default:
                 throw new InvalidTableTypeException(tableType);

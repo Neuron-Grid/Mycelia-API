@@ -1,15 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PaginatedResult } from 'src/common/interfaces/paginated-result.interface';
-import { SupabaseRequestService } from 'src/supabase-request.service';
-import { Database } from 'src/types/schema';
+import { Injectable, Logger } from "@nestjs/common";
+import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { SupabaseRequestService } from "src/supabase-request.service";
+import { Database } from "src/types/schema";
 
-type Row = Database['public']['Tables']['feed_items']['Row'];
+type Row = Database["public"]["Tables"]["feed_items"]["Row"];
 
 @Injectable()
 export class FeedItemRepository {
     private readonly logger = new Logger(FeedItemRepository.name);
 
-    constructor(private readonly supabaseRequestService: SupabaseRequestService) {}
+    constructor(
+        private readonly supabaseRequestService: SupabaseRequestService,
+    ) {}
 
     // ページネーション付き取得
     async findBySubscriptionIdPaginated(
@@ -22,15 +24,18 @@ export class FeedItemRepository {
         const offset = (page - 1) * limit;
 
         const { data, error, count } = await supabase
-            .from('feed_items')
-            .select('*', { count: 'exact' })
-            .eq('user_subscription_id', subscriptionId)
-            .eq('user_id', userId)
-            .order('published_at', { ascending: false })
+            .from("feed_items")
+            .select("*", { count: "exact" })
+            .eq("user_subscription_id", subscriptionId)
+            .eq("user_id", userId)
+            .order("published_at", { ascending: false })
             .range(offset, offset + limit - 1);
 
         if (error) {
-            this.logger.error(`findBySubscriptionIdPaginated: ${error.message}`, error);
+            this.logger.error(
+                `findBySubscriptionIdPaginated: ${error.message}`,
+                error,
+            );
             throw error;
         }
 
@@ -56,9 +61,11 @@ export class FeedItemRepository {
         published_at: Date | null;
     }) {
         const supabase = this.supabaseRequestService.getClient();
-        const { error } = await supabase.from('feed_items').insert({
+        const { error } = await supabase.from("feed_items").insert({
             ...item,
-            published_at: item.published_at ? item.published_at.toISOString() : null,
+            published_at: item.published_at
+                ? item.published_at.toISOString()
+                : null,
         });
 
         return error;

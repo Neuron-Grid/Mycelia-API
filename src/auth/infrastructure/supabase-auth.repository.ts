@@ -1,8 +1,8 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { createClient } from '@supabase/supabase-js';
-import { DistributedLockService } from 'src/shared/lock/distributed-lock.service';
-import { SupabaseRequestService } from 'src/supabase-request.service';
-import { AuthRepositoryPort } from '../domain/auth.repository';
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { createClient } from "@supabase/supabase-js";
+import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
+import { SupabaseRequestService } from "src/supabase-request.service";
+import { AuthRepositoryPort } from "../domain/auth.repository";
 
 @Injectable()
 export class SupabaseAuthRepository implements AuthRepositoryPort {
@@ -54,7 +54,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
             if (err instanceof Error) {
                 throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
             }
-            throw new HttpException('Unknown error', HttpStatus.BAD_REQUEST);
+            throw new HttpException("Unknown error", HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -68,11 +68,11 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
 
         const { error: upErr } = await sb
-            .from('users')
+            .from("users")
             .update({
                 email: newEmail,
             })
-            .eq('id', userId);
+            .eq("id", userId);
         if (upErr) {
             throw new HttpException(upErr.message, HttpStatus.BAD_REQUEST);
         }
@@ -90,22 +90,27 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
 
         const { error: upErr } = await sb
-            .from('users')
+            .from("users")
             .update({ username: newUsername })
-            .eq('id', userId);
+            .eq("id", userId);
         if (upErr) {
             throw new HttpException(upErr.message, HttpStatus.BAD_REQUEST);
         }
         return data;
     }
 
-    async updatePassword(userId: string, userEmail: string, oldPw: string, newPw: string) {
+    async updatePassword(
+        userId: string,
+        userEmail: string,
+        oldPw: string,
+        newPw: string,
+    ) {
         const lockKey = `user-password-update:${userId}`;
         const lockId = await this.lockService.acquire(lockKey, 5000); // 5秒のロックタイムアウト
 
         if (!lockId) {
             throw new HttpException(
-                'Could not acquire lock for password update. Please try again later.',
+                "Could not acquire lock for password update. Please try again later.",
                 HttpStatus.CONFLICT,
             );
         }
@@ -116,7 +121,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
 
             if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
                 throw new HttpException(
-                    'Supabase environment variables are not set.',
+                    "Supabase environment variables are not set.",
                     HttpStatus.INTERNAL_SERVER_ERROR,
                 );
             }
@@ -137,7 +142,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
                 if (signErr) {
                     // 認証情報が間違っている場合は、より汎用的なメッセージを返すのが望ましい場合もある
                     throw new HttpException(
-                        'Invalid credentials provided.',
+                        "Invalid credentials provided.",
                         HttpStatus.UNAUTHORIZED,
                     );
                 }
@@ -146,16 +151,21 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
                     // このエラーは、認証されたユーザーと操作対象のユーザーが異なるという深刻な状態を示す
                     // ログに記録するなど、追加の監視が望ましい
                     throw new HttpException(
-                        'User mismatch after authentication.',
+                        "User mismatch after authentication.",
                         HttpStatus.FORBIDDEN,
                     );
                 }
 
                 // 2. 同じクライアントで即座にパスワード更新
-                const { data, error } = await tempClient.auth.updateUser({ password: newPw });
+                const { data, error } = await tempClient.auth.updateUser({
+                    password: newPw,
+                });
 
                 if (error) {
-                    throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+                    throw new HttpException(
+                        error.message,
+                        HttpStatus.BAD_REQUEST,
+                    );
                 }
 
                 return data;
@@ -184,19 +194,23 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         const sb = this.supabaseReq.getClient();
 
         // 1. OTP検証を実行
-        const { data: verifyData, error: verifyError } = await sb.auth.verifyOtp({
-            token_hash: accessToken,
-            type: 'recovery',
-        });
+        const { data: verifyData, error: verifyError } =
+            await sb.auth.verifyOtp({
+                token_hash: accessToken,
+                type: "recovery",
+            });
 
         if (verifyError) {
-            throw new HttpException('Invalid or expired reset token', HttpStatus.UNAUTHORIZED);
+            throw new HttpException(
+                "Invalid or expired reset token",
+                HttpStatus.UNAUTHORIZED,
+            );
         }
 
         // 2. 検証成功後のセッション設定
         await sb.auth.setSession({
-            access_token: verifyData.session?.access_token || '',
-            refresh_token: verifyData.session?.refresh_token || '',
+            access_token: verifyData.session?.access_token || "",
+            refresh_token: verifyData.session?.refresh_token || "",
         });
 
         // 3. パスワード更新
@@ -214,7 +228,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         const { data, error } = await sb.auth.verifyOtp({
             email,
             token,
-            type: 'email',
+            type: "email",
         });
         if (error) {
             throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
@@ -230,7 +244,10 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
             factorId,
         });
         if (chErr || !challenge) {
-            throw new HttpException(chErr?.message ?? 'Challenge failed', HttpStatus.BAD_REQUEST);
+            throw new HttpException(
+                chErr?.message ?? "Challenge failed",
+                HttpStatus.BAD_REQUEST,
+            );
         }
 
         const { data, error } = await sb.auth.mfa.verify({

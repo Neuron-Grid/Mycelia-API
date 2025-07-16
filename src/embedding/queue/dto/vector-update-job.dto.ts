@@ -1,12 +1,12 @@
-import { IsIn, IsInt, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsPositive, IsString } from "class-validator";
 
 export class VectorUpdateJobDto {
     @IsString()
     userId!: string;
 
     @IsString()
-    @IsIn(['feed_items', 'daily_summaries', 'podcast_episodes', 'tags'])
-    tableType!: 'feed_items' | 'daily_summaries' | 'podcast_episodes' | 'tags';
+    @IsIn(["feed_items", "daily_summaries", "podcast_episodes", "tags"])
+    tableType!: "feed_items" | "daily_summaries" | "podcast_episodes" | "tags";
 
     @IsOptional()
     @IsInt()

@@ -34,7 +34,7 @@ export class PodcastEpisodeEntity {
 
         try {
             const url = new URL(this.audio_url);
-            const pathParts = url.pathname.split('/');
+            const pathParts = url.pathname.split("/");
             return pathParts[pathParts.length - 1];
         } catch {
             return null;

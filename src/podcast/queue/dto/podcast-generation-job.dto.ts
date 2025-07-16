@@ -1,4 +1,4 @@
-import { IsInt, IsPositive, IsString } from 'class-validator';
+import { IsInt, IsPositive, IsString } from "class-validator";
 
 export class PodcastGenerationJobDto {
     @IsString()
