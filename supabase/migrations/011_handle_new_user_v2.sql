@@ -1,11 +1,7 @@
--- depends-on: 10
--- GoTrue v2 連携トリガー
-DROP TRIGGER IF EXISTS trg_on_auth_user_created ON auth.users;
+-- depends-on: 010_tables_core.sql
+-- Supabase Authで新しいユーザーが作成された際に、public.usersテーブルにレコードを自動作成するトリガー
 
-DROP FUNCTION IF EXISTS public.handle_new_user;
-
--- SECURITY DEFINER: 認証ユーザー作成時に自動でusersテーブル等へデータを投入するため、service_role権限での実行が必要。
-CREATE FUNCTION public.handle_new_user()
+CREATE OR REPLACE FUNCTION public.handle_new_user()
     RETURNS TRIGGER
     LANGUAGE plpgsql
     SECURITY DEFINER
@@ -30,4 +26,3 @@ CREATE TRIGGER trg_on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW
     EXECUTE PROCEDURE public.handle_new_user();
-

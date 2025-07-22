@@ -1,5 +1,6 @@
--- depends-on: 01
---  users / user_settings
+-- depends-on: 005_extensions.sql
+-- users / user_settings テーブル定義
+
 CREATE TABLE public.users(
     id Uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email Text NOT NULL UNIQUE,
@@ -21,11 +22,10 @@ CREATE TABLE public.user_settings(
     refresh_every Interval NOT NULL DEFAULT INTERVAL '30 minutes',
     created_at Timestamptz NOT NULL DEFAULT NOW(),
     updated_at Timestamptz NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_refresh_every_pos CHECK (refresh_every > Interval '0')
+    CONSTRAINT chk_refresh_every_pos CHECK (refresh_every > INTERVAL '0')
 );
 
 CREATE TRIGGER trg_user_settings_updated
     BEFORE UPDATE ON public.user_settings
     FOR EACH ROW
     EXECUTE PROCEDURE public.update_timestamp();
-

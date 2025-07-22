@@ -1,6 +1,7 @@
--- depends-on: 50
--- next_fetch_at 自動計算
--- refresh_every 変更反映
+-- depends-on: 020_tables_feeds.sql
+-- depends-on: 010_tables_core.sql
+-- フィードの次回取得時刻(next_fetch_at)を自動計算するトリガー
+
 CREATE OR REPLACE FUNCTION public.set_next_fetch()
     RETURNS TRIGGER
     LANGUAGE plpgsql
@@ -48,4 +49,3 @@ CREATE TRIGGER trg_recalc_next_fetch
     AFTER UPDATE OF refresh_every ON public.user_settings
     FOR EACH ROW
     EXECUTE PROCEDURE public.recalc_next_fetch();
-
