@@ -16,6 +16,8 @@ CREATE TABLE public.feed_items(
 
     -- 制約
     PRIMARY KEY(id),
+    -- 複合外部キーの参照元としてUNIQUE制約を追加
+    UNIQUE (id, user_id),
     UNIQUE (user_subscription_id, link_hash),
     FOREIGN KEY (user_subscription_id, user_id) REFERENCES public.user_subscriptions(id, user_id) ON DELETE CASCADE
 );

@@ -13,6 +13,8 @@ CREATE TABLE public.user_subscriptions(
 
     -- 制約
     PRIMARY KEY(id),
+    -- 複合外部キーの参照元としてUNIQUE制約を追加
+    UNIQUE (id, user_id),
     UNIQUE (user_id, feed_url),
     CONSTRAINT chk_feed_title_len CHECK (char_length(feed_title) <= 255)
 );

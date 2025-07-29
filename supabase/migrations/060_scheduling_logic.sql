@@ -30,17 +30,37 @@ CREATE TRIGGER trg_set_next_fetch
     FOR EACH ROW
     EXECUTE PROCEDURE public.set_next_fetch();
 
+-- soft_deleted列が存在する場合のみ条件
 CREATE OR REPLACE FUNCTION public.recalc_next_fetch()
     RETURNS TRIGGER
     LANGUAGE plpgsql
     AS $$
+DECLARE
+    has_soft_deleted BOOLEAN;
 BEGIN
-    UPDATE
-        public.user_subscriptions
-    SET
-        next_fetch_at = NOW() + NEW.refresh_every
-    WHERE
-        user_id = NEW.user_id;
+    -- 再帰呼び出しの防止
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
+    -- soft_deleted列の存在確認
+    SELECT EXISTS(
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+        AND table_name = 'user_subscriptions'
+        AND column_name = 'soft_deleted'
+    ) INTO has_soft_deleted;
+
+    IF has_soft_deleted THEN
+        UPDATE public.user_subscriptions
+        SET next_fetch_at = NOW() + NEW.refresh_every
+        WHERE user_id = NEW.user_id
+        AND soft_deleted = FALSE;
+    ELSE
+        UPDATE public.user_subscriptions
+        SET next_fetch_at = NOW() + NEW.refresh_every
+        WHERE user_id = NEW.user_id;
+    END IF;
     RETURN NEW;
 END;
 $$;
