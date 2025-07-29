@@ -7,6 +7,11 @@ export type Json =
     | Json[];
 
 export type Database = {
+    // Allows to automatically instanciate createClient with right options
+    // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+    __InternalSupabase: {
+        PostgrestVersion: "12.2.12 (cd3cf9e)";
+    };
     graphql_public: {
         Tables: {
             [_ in never]: never;
@@ -88,31 +93,60 @@ export type Database = {
                 Row: {
                     feed_item_id: number;
                     summary_id: number;
+                    user_id: string;
                 };
                 Insert: {
                     feed_item_id: number;
                     summary_id: number;
+                    user_id: string;
                 };
                 Update: {
                     feed_item_id?: number;
                     summary_id?: number;
+                    user_id?: string;
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "daily_summary_items_feed_item_id_fkey";
-                        columns: ["feed_item_id"];
+                        foreignKeyName:
+                            "daily_summary_items_feed_item_id_user_id_fkey";
+                        columns: ["feed_item_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "feed_items";
-                        referencedColumns: ["id"];
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
-                        foreignKeyName: "daily_summary_items_summary_id_fkey";
-                        columns: ["summary_id"];
+                        foreignKeyName:
+                            "daily_summary_items_summary_id_user_id_fkey";
+                        columns: ["summary_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "daily_summaries";
-                        referencedColumns: ["id"];
+                        referencedColumns: ["id", "user_id"];
                     },
                 ];
+            };
+            embedding_config: {
+                Row: {
+                    created_at: string;
+                    dimensions: number;
+                    id: number;
+                    model_name: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    created_at?: string;
+                    dimensions?: number;
+                    id?: number;
+                    model_name?: string;
+                    updated_at?: string;
+                };
+                Update: {
+                    created_at?: string;
+                    dimensions?: number;
+                    id?: number;
+                    model_name?: string;
+                    updated_at?: string;
+                };
+                Relationships: [];
             };
             feed_item_favorites: {
                 Row: {
@@ -141,7 +175,8 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "feed_item_favorites_feed_item_id_user_id_fkey";
+                        foreignKeyName:
+                            "feed_item_favorites_feed_item_id_user_id_fkey";
                         columns: ["feed_item_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "feed_items";
@@ -179,7 +214,8 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "feed_item_tags_feed_item_id_user_id_fkey";
+                        foreignKeyName:
+                            "feed_item_tags_feed_item_id_user_id_fkey";
                         columns: ["feed_item_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "feed_items";
@@ -239,7 +275,8 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "feed_items_user_subscription_id_user_id_fkey";
+                        foreignKeyName:
+                            "feed_items_user_subscription_id_user_id_fkey";
                         columns: ["user_subscription_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "user_subscriptions";
@@ -305,6 +342,7 @@ export type Database = {
                     description: string | null;
                     id: number;
                     parent_tag_id: number | null;
+                    path: unknown | null;
                     soft_deleted: boolean;
                     tag_emb: string | null;
                     tag_name: string;
@@ -317,6 +355,7 @@ export type Database = {
                     description?: string | null;
                     id?: never;
                     parent_tag_id?: number | null;
+                    path?: unknown | null;
                     soft_deleted?: boolean;
                     tag_emb?: string | null;
                     tag_name: string;
@@ -329,6 +368,7 @@ export type Database = {
                     description?: string | null;
                     id?: never;
                     parent_tag_id?: number | null;
+                    path?: unknown | null;
                     soft_deleted?: boolean;
                     tag_emb?: string | null;
                     tag_name?: string;
@@ -337,11 +377,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "tags_parent_tag_id_user_id_fkey";
-                        columns: ["parent_tag_id", "user_id"];
+                        foreignKeyName: "tags_parent_tag_id_fkey";
+                        columns: ["parent_tag_id"];
                         isOneToOne: false;
                         referencedRelation: "tags";
-                        referencedColumns: ["id", "user_id"];
+                        referencedColumns: ["id"];
                     },
                     {
                         foreignKeyName: "tags_user_id_fkey";
@@ -423,14 +463,16 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "user_subscription_tags_tag_id_user_id_fkey";
+                        foreignKeyName:
+                            "user_subscription_tags_tag_id_user_id_fkey";
                         columns: ["tag_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "tags";
                         referencedColumns: ["id", "user_id"];
                     },
                     {
-                        foreignKeyName: "user_subscription_tags_user_subscription_id_user_id_fkey";
+                        foreignKeyName:
+                            "user_subscription_tags_user_subscription_id_user_id_fkey";
                         columns: ["user_subscription_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "user_subscriptions";
@@ -511,32 +553,53 @@ export type Database = {
             [_ in never]: never;
         };
         Functions: {
+            _ltree_compress: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            _ltree_gist_options: {
+                Args: { "": unknown };
+                Returns: undefined;
+            };
             binary_quantize: {
                 Args: { "": string } | { "": unknown };
                 Returns: unknown;
             };
-            get_tag_hierarchy: {
-                Args: { target_user_id: string };
-                Returns: {
-                    id: number;
-                    tag_name: string;
-                    parent_tag_id: number;
-                    description: string;
-                    color: string;
-                    level: number;
-                    path: string;
-                    children_count: number;
-                    subscription_count: number;
-                    feed_item_count: number;
-                }[];
+            citext: {
+                Args: { "": boolean } | { "": string } | { "": unknown };
+                Returns: string;
+            };
+            citext_hash: {
+                Args: { "": string };
+                Returns: number;
+            };
+            citextin: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            citextout: {
+                Args: { "": string };
+                Returns: unknown;
+            };
+            citextrecv: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            citextsend: {
+                Args: { "": string };
+                Returns: string;
+            };
+            get_embedding_dimensions: {
+                Args: Record<PropertyKey, never>;
+                Returns: number;
             };
             get_tag_statistics: {
                 Args: Record<PropertyKey, never>;
                 Returns: {
                     total_tags: number;
                     root_tags: number;
-                    total_subscriptions: number;
-                    total_feed_items: number;
+                    total_subscriptions_tagged: number;
+                    total_feed_items_tagged: number;
                 }[];
             };
             halfvec_avg: {
@@ -553,6 +616,10 @@ export type Database = {
             };
             halfvec_typmod_in: {
                 Args: { "": unknown[] };
+                Returns: number;
+            };
+            hash_ltree: {
+                Args: { "": unknown };
                 Returns: number;
             };
             hnsw_bit_support: {
@@ -591,28 +658,91 @@ export type Database = {
                 Args: { "": string } | { "": unknown } | { "": unknown };
                 Returns: unknown;
             };
-            search_all_content_by_vector: {
-                Args: {
-                    query_embedding: string;
-                    match_threshold: number;
-                    match_count: number;
-                    target_user_id: string;
-                };
-                Returns: {
-                    content_type: string;
-                    id: number;
-                    title: string;
-                    content: string;
-                    similarity: number;
-                    metadata: Json;
-                }[];
+            lca: {
+                Args: { "": unknown[] };
+                Returns: unknown;
+            };
+            lquery_in: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            lquery_out: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            lquery_recv: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            lquery_send: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            ltree_compress: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_decompress: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_gist_in: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_gist_options: {
+                Args: { "": unknown };
+                Returns: undefined;
+            };
+            ltree_gist_out: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_in: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_out: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_recv: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltree_send: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            ltree2text: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            ltxtq_in: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltxtq_out: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltxtq_recv: {
+                Args: { "": unknown };
+                Returns: unknown;
+            };
+            ltxtq_send: {
+                Args: { "": unknown };
+                Returns: string;
+            };
+            nlevel: {
+                Args: { "": unknown };
+                Returns: number;
             };
             search_feed_items_by_vector: {
                 Args: {
                     query_embedding: string;
                     match_threshold: number;
                     match_count: number;
-                    target_user_id: string;
                 };
                 Returns: {
                     id: number;
@@ -624,12 +754,23 @@ export type Database = {
                     similarity: number;
                 }[];
             };
+            search_items_dynamic: {
+                Args: {
+                    query_embedding: string;
+                    match_threshold: number;
+                    match_count: number;
+                };
+                Returns: {
+                    id: number;
+                    title: string;
+                    similarity: number;
+                }[];
+            };
             search_podcast_episodes_by_vector: {
                 Args: {
                     query_embedding: string;
                     match_threshold: number;
                     match_count: number;
-                    target_user_id: string;
                 };
                 Returns: {
                     id: number;
@@ -645,7 +786,6 @@ export type Database = {
                     query_embedding: string;
                     match_threshold: number;
                     match_count: number;
-                    target_user_id: string;
                 };
                 Returns: {
                     id: number;
@@ -661,7 +801,6 @@ export type Database = {
                     query_embedding: string;
                     match_threshold: number;
                     match_count: number;
-                    target_user_id: string;
                 };
                 Returns: {
                     id: number;
@@ -681,6 +820,10 @@ export type Database = {
             sparsevec_typmod_in: {
                 Args: { "": unknown[] };
                 Returns: number;
+            };
+            text2ltree: {
+                Args: { "": string };
+                Returns: unknown;
             };
             vector_avg: {
                 Args: { "": number[] };
@@ -716,110 +859,147 @@ export type Database = {
     };
 };
 
-type DefaultSchema = Database[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema =
+    DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
     DefaultSchemaTableNameOrOptions extends
         | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-        | { schema: keyof Database },
+        | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof Database;
-    }
-        ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-              Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+        schema: keyof DatabaseWithoutInternals;
+    } ? keyof (
+            & DatabaseWithoutInternals[
+                DefaultSchemaTableNameOrOptions["schema"]
+            ]["Tables"]
+            & DatabaseWithoutInternals[
+                DefaultSchemaTableNameOrOptions["schema"]
+            ]["Views"]
+        )
         : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-          Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-          Row: infer R;
-      }
-        ? R
-        : never
-    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-            DefaultSchema["Views"])
-      ? (DefaultSchema["Tables"] &
-            DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+} ? (
+        & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+            "Tables"
+        ]
+        & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+            "Views"
+        ]
+    )[TableName] extends {
+        Row: infer R;
+    } ? R
+    : never
+    : DefaultSchemaTableNameOrOptions extends keyof (
+        & DefaultSchema["Tables"]
+        & DefaultSchema["Views"]
+    ) ? (
+            & DefaultSchema["Tables"]
+            & DefaultSchema["Views"]
+        )[DefaultSchemaTableNameOrOptions] extends {
             Row: infer R;
-        }
-          ? R
-          : never
-      : never;
+        } ? R
+        : never
+    : never;
 
 export type TablesInsert<
     DefaultSchemaTableNameOrOptions extends
         | keyof DefaultSchema["Tables"]
-        | { schema: keyof Database },
+        | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof Database;
+        schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+        ? keyof DatabaseWithoutInternals[
+            DefaultSchemaTableNameOrOptions["schema"]
+        ]["Tables"]
         : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-          Insert: infer I;
-      }
-        ? I
-        : never
+> = DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+}
+    ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+        "Tables"
+    ][TableName] extends {
+        Insert: infer I;
+    } ? I
+    : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-      ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
             Insert: infer I;
-        }
-          ? I
-          : never
-      : never;
+        } ? I
+        : never
+    : never;
 
 export type TablesUpdate<
     DefaultSchemaTableNameOrOptions extends
         | keyof DefaultSchema["Tables"]
-        | { schema: keyof Database },
+        | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
-        schema: keyof Database;
+        schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+        ? keyof DatabaseWithoutInternals[
+            DefaultSchemaTableNameOrOptions["schema"]
+        ]["Tables"]
         : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-          Update: infer U;
-      }
-        ? U
-        : never
+> = DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+}
+    ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+        "Tables"
+    ][TableName] extends {
+        Update: infer U;
+    } ? U
+    : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-      ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
             Update: infer U;
-        }
-          ? U
-          : never
-      : never;
+        } ? U
+        : never
+    : never;
 
 export type Enums<
     DefaultSchemaEnumNameOrOptions extends
         | keyof DefaultSchema["Enums"]
-        | { schema: keyof Database },
+        | { schema: keyof DatabaseWithoutInternals },
     EnumName extends DefaultSchemaEnumNameOrOptions extends {
-        schema: keyof Database;
+        schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+        ? keyof DatabaseWithoutInternals[
+            DefaultSchemaEnumNameOrOptions["schema"]
+        ]["Enums"]
         : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-    ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+}
+    ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]][
+        "Enums"
+    ][EnumName]
     : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-      ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-      : never;
+        ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
 
 export type CompositeTypes<
     PublicCompositeTypeNameOrOptions extends
         | keyof DefaultSchema["CompositeTypes"]
-        | { schema: keyof Database },
+        | { schema: keyof DatabaseWithoutInternals },
     CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-        schema: keyof Database;
+        schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+        ? keyof DatabaseWithoutInternals[
+            PublicCompositeTypeNameOrOptions["schema"]
+        ]["CompositeTypes"]
         : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-    ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-    : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-      ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-      : never;
+> = PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+}
+    ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]][
+        "CompositeTypes"
+    ][CompositeTypeName]
+    : PublicCompositeTypeNameOrOptions extends
+        keyof DefaultSchema["CompositeTypes"]
+        ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
 
 export const Constants = {
     graphql_public: {
