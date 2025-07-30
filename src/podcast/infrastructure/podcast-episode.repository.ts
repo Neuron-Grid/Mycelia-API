@@ -47,7 +47,7 @@ export class PodcastEpisodeRepository {
         summaryId: number,
         data: {
             title?: string;
-            title_embedding?: number[];
+            title_emb?: number[];
             audio_url?: string;
         },
     ): Promise<PodcastEpisodeEntity> {
@@ -59,7 +59,9 @@ export class PodcastEpisodeRepository {
                     user_id: userId,
                     summary_id: summaryId,
                     title: data.title || null,
-                    title_embedding: data.title_embedding || null,
+                    title_emb: data.title_emb
+                        ? JSON.stringify(data.title_emb)
+                        : null,
                     audio_url: data.audio_url || null,
                     soft_deleted: false,
                 })
@@ -82,7 +84,7 @@ export class PodcastEpisodeRepository {
         userId: string,
         data: {
             title?: string;
-            title_embedding?: number[];
+            title_emb?: number[];
             audio_url?: string;
         },
     ): Promise<PodcastEpisodeEntity> {
@@ -210,7 +212,7 @@ export class PodcastEpisodeRepository {
     ): Promise<PodcastEpisodeEntity> {
         return this.update(id, userId, {
             title,
-            title_embedding: titleEmb || null,
+            title_emb: titleEmb ? JSON.stringify(titleEmb) : null,
         });
     }
 

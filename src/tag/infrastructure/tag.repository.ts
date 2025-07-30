@@ -33,6 +33,7 @@ export class TagRepository {
             .from("tags")
             .select("*")
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .order("id", { ascending: true });
 
         if (error) {
@@ -279,6 +280,7 @@ export class TagRepository {
             .select("*")
             .eq("id", tagId)
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .single();
 
         if (error) {
@@ -306,7 +308,7 @@ export class TagRepository {
             parent_tag_id?: number | null;
             description?: string;
             color?: string;
-            tag_embedding?: number[];
+            tag_emb?: number[];
         },
     ): Promise<TagEntity> {
         const supabase = this.supabaseService.getClient();
@@ -316,9 +318,7 @@ export class TagRepository {
             parent_tag_id: data.parent_tag_id ?? null,
             description: data.description ?? null,
             color: data.color ?? null,
-            tag_emb: data.tag_embedding
-                ? JSON.stringify(data.tag_embedding)
-                : null,
+            tag_emb: data.tag_emb ? JSON.stringify(data.tag_emb) : null,
         };
 
         const { data: result, error } = await supabase
@@ -343,7 +343,7 @@ export class TagRepository {
             parent_tag_id: number | null;
             description: string;
             color: string;
-            tag_embedding: number[];
+            tag_emb: number[];
         }>,
     ): Promise<TagEntity> {
         const supabase = this.supabaseService.getClient();
@@ -355,9 +355,9 @@ export class TagRepository {
         if (data.description !== undefined)
             updateData.description = data.description;
         if (data.color !== undefined) updateData.color = data.color;
-        if (data.tag_embedding !== undefined) {
-            updateData.tag_emb = data.tag_embedding
-                ? JSON.stringify(data.tag_embedding)
+        if (data.tag_emb !== undefined) {
+            updateData.tag_emb = data.tag_emb
+                ? JSON.stringify(data.tag_emb)
                 : null;
         }
 
@@ -403,7 +403,8 @@ export class TagRepository {
             .from("tags")
             .select("*")
             .eq("user_id", userId)
-            .eq("tag_name", tagName);
+            .eq("tag_name", tagName)
+            .eq("soft_deleted", false);
 
         if (parentTagId === null) {
             query.is("parent_tag_id", null);

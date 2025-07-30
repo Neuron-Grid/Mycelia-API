@@ -24,6 +24,7 @@ export class SubscriptionRepository {
             .from("user_subscriptions")
             .select("*", { count: "exact" })
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .order("id", { ascending: true })
             .range(offset, offset + limit - 1);
 
@@ -53,6 +54,7 @@ export class SubscriptionRepository {
             .select("*")
             .eq("id", subId)
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .single();
 
         if (error && error.code !== "PGRST116") {
@@ -72,6 +74,7 @@ export class SubscriptionRepository {
             .from("user_subscriptions")
             .select("*")
             .lte("next_fetch_at", cutoff.toISOString())
+            .eq("soft_deleted", false)
             .order("next_fetch_at", { ascending: true });
 
         if (error) {

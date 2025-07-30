@@ -6,9 +6,10 @@ export class TagEntity {
     soft_deleted!: boolean;
     created_at!: string;
     updated_at!: string;
-    tag_embedding?: string | null;
+    tag_emb?: string | null;
     description?: string | null;
     color?: string | null;
+    path?: unknown | null;
 
     constructor(data: Partial<TagEntity> = {}) {
         Object.assign(this, data);

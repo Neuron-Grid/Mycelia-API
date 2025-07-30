@@ -28,6 +28,7 @@ export class FeedItemRepository {
             .select("*", { count: "exact" })
             .eq("user_subscription_id", subscriptionId)
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .order("published_at", { ascending: false })
             .range(offset, offset + limit - 1);
 

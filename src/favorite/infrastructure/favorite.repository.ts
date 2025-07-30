@@ -20,6 +20,7 @@ export class FavoriteRepository {
             .from("feed_item_favorites")
             .select("*")
             .eq("user_id", userId)
+            .eq("soft_deleted", false)
             .order("created_at", { ascending: false });
 
         if (error) {

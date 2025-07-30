@@ -7,7 +7,7 @@ export class FeedItemEntity {
     link_hash!: string | null;
     description!: string | null;
     published_at!: Date | null;
-    title_embedding!: number[] | null;
+    title_emb!: string | null;
     soft_deleted!: boolean;
     created_at!: Date;
     updated_at!: Date;
@@ -43,7 +43,7 @@ export class FeedItemEntity {
 
     // ビジネスロジック: ベクトル埋め込みが存在するかをチェック
     hasEmbedding(): boolean {
-        return !!(this.title_embedding && this.title_embedding.length > 0);
+        return !!(this.title_emb && this.title_emb.length > 0);
     }
 
     // ビジネスロジック: 要約用のテキストコンテンツを取得
