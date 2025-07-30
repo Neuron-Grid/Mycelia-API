@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PodcastConfigInput } from "../domain/podcast-config.entity";
 import { PodcastConfigRepository } from "../infrastructure/podcast-config.repository";
 import { PodcastConfigResponseDto } from "./dto/podcast-config.dto";
@@ -6,8 +6,6 @@ import { PodcastConfigMapper } from "./podcast-config.mapper";
 
 @Injectable()
 export class PodcastConfigService {
-    private readonly logger = new Logger(PodcastConfigService.name);
-
     constructor(
         private readonly podcastConfigRepository: PodcastConfigRepository,
     ) {}

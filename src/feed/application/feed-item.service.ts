@@ -1,29 +1,23 @@
 // @file フィードアイテムの取得・登録を行うサービス
-import { Injectable, Logger } from "@nestjs/common";
-// @see src/common/interfaces/paginated-result.interface
+import { Injectable } from "@nestjs/common";
 import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
-// @see src/types/schema
-import { Database } from "src/types/schema";
-// @see ../infrastructure/feed-item.repository
+import { FavoriteRepository } from "src/favorite/infrastructure/favorite.repository";
+import { TagRepository } from "src/tag/infrastructure/tag.repository";
 import { FeedItemRepository } from "../infrastructure/feed-item.repository";
-
-// @typedef {Database['public']['Tables']['feed_items']['Row']} Row - フィードアイテムの型
-type Row = Database["public"]["Tables"]["feed_items"]["Row"];
+import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
 
 @Injectable()
 // @public
 // @since 1.0.0
 export class FeedItemService {
-    // @type {Logger}
-    // @readonly
-    // @private
-    // @default new Logger(FeedItemService.name)
-    private readonly logger = new Logger(FeedItemService.name);
-
     // @param {FeedItemRepository} feedItemRepo - フィードアイテムリポジトリ
     // @since 1.0.0
     // @public
-    constructor(private readonly feedItemRepo: FeedItemRepository) {}
+    constructor(
+        private readonly feedItemRepo: FeedItemRepository,
+        private readonly favoriteRepo: FavoriteRepository,
+        private readonly tagRepo: TagRepository,
+    ) {}
 
     // @async
     // @public
@@ -42,13 +36,43 @@ export class FeedItemService {
         subscriptionId: number,
         page: number,
         limit: number,
-    ): Promise<PaginatedResult<Row>> {
-        return await this.feedItemRepo.findBySubscriptionIdPaginated(
-            subscriptionId,
-            userId,
-            page,
-            limit,
+    ): Promise<PaginatedResult<FeedItemResponseDto>> {
+        // 1. 基本的なフィードアイテムをページネーションで取得
+        const paginatedResult =
+            await this.feedItemRepo.findBySubscriptionIdPaginated(
+                subscriptionId,
+                userId,
+                page,
+                limit,
+            );
+        const feedItems = paginatedResult.data;
+        if (feedItems.length === 0) {
+            return { ...paginatedResult, data: [] };
+        }
+
+        const feedItemIds = feedItems.map((item) => item.id);
+
+        // 2. 関連データをIDのリストで一括取得 (N+1問題の回避)
+        const [favorites, tagsMap] = await Promise.all([
+            this.favoriteRepo.findFavoritesByFeedItemIds(userId, feedItemIds),
+            this.tagRepo.findTagsMapByFeedItemIds(userId, feedItemIds),
+        ]);
+
+        const favoriteFeedItemIds = new Set(
+            favorites.map((fav) => fav.feed_item_id),
         );
+
+        // 3. データをDTOにマッピング
+        const responseData = feedItems.map((item) => ({
+            ...item,
+            isFavorite: favoriteFeedItemIds.has(item.id),
+            tags: tagsMap.get(item.id) || [],
+        }));
+
+        return {
+            ...paginatedResult,
+            data: responseData,
+        };
     }
 
     // @async

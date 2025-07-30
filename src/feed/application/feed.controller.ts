@@ -35,14 +35,13 @@ import { PaginationQueryDto } from "src/common/dto/pagination-query.dto";
 import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
 import { Database } from "../../types/schema";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
+import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { FeedItemService } from "./feed-item.service";
 import { FeedUseCaseService } from "./feed-usecase.service";
 import { buildResponse } from "./response.util";
 import { SubscriptionService } from "./subscription.service";
 
-// @typedef {Database['public']['Tables']['feed_items']['Row']} FeedItemRow - フィードアイテムの型
-type FeedItemRow = Database["public"]["Tables"]["feed_items"]["Row"];
 // @typedef {Database['public']['Tables']['user_subscriptions']['Row']} SubscriptionRow - 購読の型
 type SubscriptionRow =
     Database["public"]["Tables"]["user_subscriptions"]["Row"];
@@ -214,7 +213,7 @@ export class FeedController {
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
         @Query() query: PaginationQueryDto,
-    ): Promise<PaginatedResult<FeedItemRow>> {
+    ): Promise<PaginatedResult<FeedItemResponseDto>> {
         return await this.feedItemService.getFeedItemsPaginated(
             userId,
             subscriptionId,

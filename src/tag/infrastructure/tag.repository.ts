@@ -350,10 +350,12 @@ export class TagRepository {
         const updateData: Partial<TagsUpdate> = {};
 
         if (data.tag_name !== undefined) updateData.tag_name = data.tag_name;
-        if (data.parent_tag_id !== undefined)
+        if (data.parent_tag_id !== undefined) {
             updateData.parent_tag_id = data.parent_tag_id;
-        if (data.description !== undefined)
+        }
+        if (data.description !== undefined) {
             updateData.description = data.description;
+        }
         if (data.color !== undefined) updateData.color = data.color;
         if (data.tag_emb !== undefined) {
             updateData.tag_emb = data.tag_emb
@@ -513,5 +515,56 @@ export class TagRepository {
             throw error;
         }
         return data ?? [];
+    }
+
+    // 複数のフィードアイテムIDに対応するタグを一括で取得し、Map形式で返す
+    async findTagsMapByFeedItemIds(
+        userId: string,
+        feedItemIds: number[],
+    ): Promise<Map<number, string[]>> {
+        if (feedItemIds.length === 0) {
+            return new Map();
+        }
+
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase
+            .from("feed_item_tags")
+            .select(
+                `
+                feed_item_id,
+                tag:tags!inner(tag_name)
+            `,
+            )
+            .eq("user_id", userId)
+            .in("feed_item_id", feedItemIds)
+            .eq("soft_deleted", false);
+
+        if (error) {
+            this.logger.error(
+                `findTagsMapByFeedItemIds failed: ${error.message}`,
+                error,
+            );
+            throw error;
+        }
+
+        const tagsMap = new Map<number, string[]>();
+        if (data) {
+            for (const row of data) {
+                // 型ガード
+                if (
+                    typeof row.feed_item_id === "number" &&
+                    row.tag &&
+                    "tag_name" in row.tag &&
+                    typeof row.tag.tag_name === "string"
+                ) {
+                    if (!tagsMap.has(row.feed_item_id)) {
+                        tagsMap.set(row.feed_item_id, []);
+                    }
+                    tagsMap.get(row.feed_item_id)?.push(row.tag.tag_name);
+                }
+            }
+        }
+
+        return tagsMap;
     }
 }

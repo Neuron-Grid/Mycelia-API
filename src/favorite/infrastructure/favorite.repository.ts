@@ -91,4 +91,31 @@ export class FavoriteRepository {
         }
         return !!data;
     }
+
+    // 複数のフィードアイテムIDに対してお気に入り情報を一括取得
+    async findFavoritesByFeedItemIds(
+        userId: string,
+        feedItemIds: number[],
+    ): Promise<FavoritesRow[]> {
+        if (feedItemIds.length === 0) {
+            return [];
+        }
+
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase
+            .from("feed_item_favorites")
+            .select("*")
+            .eq("user_id", userId)
+            .in("feed_item_id", feedItemIds)
+            .eq("soft_deleted", false);
+
+        if (error) {
+            this.logger.error(
+                `findFavoritesByFeedItemIds failed: ${error.message}`,
+                error,
+            );
+            throw error;
+        }
+        return data ?? [];
+    }
 }

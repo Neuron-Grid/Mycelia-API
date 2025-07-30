@@ -1,5 +1,5 @@
 // @file RSSフィードの取得とパースを行うサービス
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 // @see https://www.npmjs.com/package/feedparser
 import * as FeedParser from "feedparser";
 // @see https://www.npmjs.com/package/feedparser
@@ -11,12 +11,6 @@ import fetch, { Response } from "node-fetch";
 // @public
 // @since 1.0.0
 export class FeedFetchService {
-    // @type {Logger}
-    // @readonly
-    // @private
-    // @default new Logger(FeedFetchService.name)
-    private readonly logger = new Logger(FeedFetchService.name);
-
     // @async
     // @public
     // @since 1.0.0

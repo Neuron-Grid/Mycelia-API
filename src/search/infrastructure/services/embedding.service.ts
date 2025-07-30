@@ -1,11 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { EmbeddingService as IEmbeddingService } from "../../domain/interfaces/embedding-service.interface";
 import { OpenAIEmbeddingClient } from "../clients/openai-embedding.client";
 
 @Injectable()
 export class EmbeddingService implements IEmbeddingService {
-    private readonly logger = new Logger(EmbeddingService.name);
-
     constructor(private readonly openAIClient: OpenAIEmbeddingClient) {}
 
     generateEmbedding(text: string): Promise<number[]> {
