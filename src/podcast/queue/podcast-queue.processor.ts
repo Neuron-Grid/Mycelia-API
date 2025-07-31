@@ -3,7 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
-import { EmbeddingService } from "../../search/embedding.service";
+import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
 import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";
 import { PodcastTtsService } from "../podcast-tts.service";
@@ -102,7 +102,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                     summaryId,
                     {
                         title: episodeTitle,
-                        title_embedding: titleEmbedding,
+                        title_emb: titleEmbedding,
                     },
                 );
             }

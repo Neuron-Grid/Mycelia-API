@@ -5,7 +5,7 @@ import {
     GeminiSummaryRequest,
     GeminiSummaryResponse,
     LlmService,
-} from "./llm.service";
+} from "../../application/services/llm.service";
 
 @Injectable()
 export class MockLlmService implements LlmService {

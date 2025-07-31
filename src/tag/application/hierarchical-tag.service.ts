@@ -109,7 +109,7 @@ export class HierarchicalTagService {
             parent_tag_id: dto.parent_tag_id || null,
             description: dto.description,
             color: dto.color,
-            tag_embedding: tagEmbedding,
+            tag_emb: tagEmbedding,
         });
 
         this.logger.log(

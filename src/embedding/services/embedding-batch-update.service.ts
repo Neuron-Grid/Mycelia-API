@@ -152,7 +152,7 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
                 this.supabaseRequestService
                     .getClient()
                     .from("tags")
-                    .update({ tag_embedding: JSON.stringify(item.embedding) })
+                    .update({ tag_emb: JSON.stringify(item.embedding) })
                     .eq("id", item.id)
                     .eq("user_id", userId),
             );

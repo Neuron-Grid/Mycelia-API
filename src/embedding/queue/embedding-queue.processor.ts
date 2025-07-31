@@ -2,7 +2,7 @@ import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
-import { EmbeddingService } from "../../search/embedding.service";
+import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
 import {

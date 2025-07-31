@@ -78,7 +78,7 @@ export class EmbeddingQueueService {
                     userId,
                     tableType,
                     recordId,
-                } as VectorUpdateJobData,
+                } as VectorUpdateJobDto,
                 {
                     priority: 10,
                 },
