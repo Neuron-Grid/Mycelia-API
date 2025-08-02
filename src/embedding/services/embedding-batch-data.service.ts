@@ -33,7 +33,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
                 .from("feed_items")
                 .select("id, title, description")
                 .eq("user_id", userId)
-                .is("title_embedding", null)
+                .is("title_emb", null)
                 .eq("soft_deleted", false)
                 .limit(batchSize)
                 .order("id");
@@ -82,7 +82,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
                 .from("daily_summaries")
                 .select("id, summary_title, markdown")
                 .eq("user_id", userId)
-                .is("summary_embedding", null)
+                .is("summary_emb", null)
                 .eq("soft_deleted", false)
                 .limit(batchSize)
                 .order("id");
@@ -130,7 +130,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
                 .from("podcast_episodes")
                 .select("id, title")
                 .eq("user_id", userId)
-                .is("title_embedding", null)
+                .is("title_emb", null)
                 .eq("soft_deleted", false)
                 .limit(batchSize)
                 .order("id");
@@ -267,10 +267,10 @@ export class EmbeddingBatchDataService implements IBatchDataService {
 
     private getEmbeddingColumn(tableType: TableType): string {
         const columnMap = {
-            feed_items: "title_embedding",
-            daily_summaries: "summary_embedding",
-            podcast_episodes: "title_embedding",
-            tags: "tag_embedding",
+            feed_items: "title_emb",
+            daily_summaries: "summary_emb",
+            podcast_episodes: "title_emb",
+            tags: "tag_emb",
         } as const;
         return columnMap[tableType];
     }

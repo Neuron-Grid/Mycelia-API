@@ -24,7 +24,7 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
                 this.supabaseRequestService
                     .getClient()
                     .from("feed_items")
-                    .update({ title_embedding: JSON.stringify(item.embedding) })
+                    .update({ title_emb: JSON.stringify(item.embedding) })
                     .eq("id", item.id)
                     .eq("user_id", userId),
             );
@@ -67,7 +67,7 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
                     .getClient()
                     .from("daily_summaries")
                     .update({
-                        summary_embedding: JSON.stringify(item.embedding),
+                        summary_emb: JSON.stringify(item.embedding),
                     })
                     .eq("id", item.id)
                     .eq("user_id", userId),

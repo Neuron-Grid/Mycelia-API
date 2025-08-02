@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { SupabaseRequestService } from "../../../supabase-request.service";
+import { TablesInsert, TablesUpdate } from "../../../types/schema";
 import {
     DailySummaryEntity,
     DailySummaryItemEntity,
@@ -49,21 +50,25 @@ export class DailySummaryRepository {
         data: {
             markdown?: string;
             summary_title?: string;
-            summary_embedding?: number[];
+            summary_emb?: number[];
         },
     ): Promise<DailySummaryEntity> {
         try {
+            const insertData: TablesInsert<"daily_summaries"> = {
+                user_id: userId,
+                summary_date: summaryDate,
+                markdown: data.markdown,
+                summary_title: data.summary_title,
+                summary_emb: data.summary_emb
+                    ? JSON.stringify(data.summary_emb)
+                    : null,
+                soft_deleted: false,
+            };
+
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from("daily_summaries")
-                .insert({
-                    user_id: userId,
-                    summary_date: summaryDate,
-                    markdown: data.markdown || null,
-                    summary_title: data.summary_title || null,
-                    summary_embedding: data.summary_embedding || null,
-                    soft_deleted: false,
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
@@ -84,19 +89,24 @@ export class DailySummaryRepository {
         data: {
             markdown?: string;
             summary_title?: string;
-            summary_embedding?: number[];
+            summary_emb?: number[];
             script_text?: string;
             script_tts_duration_sec?: number;
         },
     ): Promise<DailySummaryEntity> {
         try {
+            const updateData: TablesUpdate<"daily_summaries"> = {
+                ...data,
+                summary_emb: data.summary_emb
+                    ? JSON.stringify(data.summary_emb)
+                    : undefined,
+                updated_at: new Date().toISOString(),
+            };
+
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from("daily_summaries")
-                .update({
-                    ...data,
-                    updated_at: new Date().toISOString(),
-                })
+                .update(updateData)
                 .eq("id", id)
                 .eq("user_id", userId) // ユーザー分離の保証
                 .eq("soft_deleted", false)

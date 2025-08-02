@@ -8,7 +8,10 @@ import {
     Matches,
     ValidateNested,
 } from "class-validator";
+import { Database } from "../../types/schema";
 import { IntervalDto } from "../../feed/application/dto/subscription-interval.dto";
+
+type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 
 export class UpdateUserSettingsDto {
     @ApiPropertyOptional({
@@ -167,23 +170,18 @@ export class UserSettingsResponseDto {
     updated_at!: string;
 
     // ファクトリメソッド: データベースレコードから作成
-    static fromDatabaseRecord(record: {
-        user_id: string;
-        refresh_every: string;
-        podcast_enabled: boolean;
-        podcast_schedule_time: string | null;
-        podcast_language: "ja-JP" | "en-US";
-        created_at: string;
-        updated_at: string;
-    }): UserSettingsResponseDto {
+    static fromDatabaseRecord(record: SettingsRow): UserSettingsResponseDto {
         const dto = new UserSettingsResponseDto();
         dto.user_id = record.user_id;
+        // DBから取得したunknown型をstringに変換してからIntervalDtoを作成
         dto.refresh_every = IntervalDto.fromPostgresInterval(
-            record.refresh_every,
+            String(record.refresh_every ?? "30 minutes"),
         );
         dto.podcast_enabled = record.podcast_enabled || false;
         dto.podcast_schedule_time = record.podcast_schedule_time;
-        dto.podcast_language = record.podcast_language || "ja-JP";
+        const lang = record.podcast_language;
+        dto.podcast_language =
+            lang === "ja-JP" || lang === "en-US" ? lang : "ja-JP";
         dto.created_at = record.created_at;
         dto.updated_at = record.updated_at;
         return dto;
