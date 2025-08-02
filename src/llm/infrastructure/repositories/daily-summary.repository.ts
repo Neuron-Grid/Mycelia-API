@@ -241,7 +241,7 @@ export class DailySummaryRepository {
             title: string;
             description: string;
             link: string;
-            publication_date: string;
+            published_at: string;
             feed_id: number;
         }[]
     > {

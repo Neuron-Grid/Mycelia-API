@@ -152,7 +152,7 @@ export class SupabaseSearchClient {
                 .getClient()
                 .from("feed_items")
                 .update({
-                    title_embedding: JSON.stringify(embedding),
+                    title_emb: JSON.stringify(embedding),
                 } as Record<string, unknown>)
                 .eq("id", feedItemId)
                 .eq("user_id", userId);

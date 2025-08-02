@@ -212,7 +212,7 @@ export class PodcastEpisodeRepository {
     ): Promise<PodcastEpisodeEntity> {
         return this.update(id, userId, {
             title,
-            title_emb: titleEmb ? JSON.stringify(titleEmb) : null,
+            title_emb: titleEmb,
         });
     }
 

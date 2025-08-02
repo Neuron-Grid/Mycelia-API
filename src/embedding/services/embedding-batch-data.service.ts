@@ -177,7 +177,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
                 .from("tags")
                 .select("id, tag_name, description")
                 .eq("user_id", userId)
-                .is("tag_embedding", null)
+                .is("tag_emb", null)
                 .eq("soft_deleted", false)
                 .limit(batchSize)
                 .order("id");

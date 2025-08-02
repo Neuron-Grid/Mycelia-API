@@ -110,7 +110,7 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
                 this.supabaseRequestService
                     .getClient()
                     .from("podcast_episodes")
-                    .update({ title_embedding: JSON.stringify(item.embedding) })
+                    .update({ title_emb: JSON.stringify(item.embedding) })
                     .eq("id", item.id)
                     .eq("user_id", userId),
             );
