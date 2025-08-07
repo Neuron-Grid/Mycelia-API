@@ -12,8 +12,25 @@ export class FeedItemEntity {
     created_at!: Date;
     updated_at!: Date;
 
-    constructor(data: Partial<FeedItemEntity> = {}) {
+    constructor(
+        data: Partial<FeedItemEntity> & {
+            published_at?: string | Date | null;
+            created_at?: string | Date;
+            updated_at?: string | Date;
+        } = {},
+    ) {
         Object.assign(this, data);
+
+        // 日付文字列をDateオブジェクトに変換
+        if (data.published_at && typeof data.published_at === "string") {
+            this.published_at = new Date(data.published_at);
+        }
+        if (data.created_at && typeof data.created_at === "string") {
+            this.created_at = new Date(data.created_at);
+        }
+        if (data.updated_at && typeof data.updated_at === "string") {
+            this.updated_at = new Date(data.updated_at);
+        }
     }
 
     // ビジネスロジック: フィードアイテムが有効かどうかをチェック

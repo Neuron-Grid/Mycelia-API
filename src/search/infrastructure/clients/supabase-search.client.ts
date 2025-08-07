@@ -19,7 +19,6 @@ export class SupabaseSearchClient {
     ) {}
 
     async searchFeedItems(
-        userId: string,
         queryEmbedding: number[],
         threshold: number,
         limit: number,
@@ -31,7 +30,6 @@ export class SupabaseSearchClient {
                     query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId,
                 });
 
             if (error) {
@@ -60,7 +58,6 @@ export class SupabaseSearchClient {
     }
 
     async searchSummaries(
-        userId: string,
         queryEmbedding: number[],
         threshold: number,
         limit: number,
@@ -72,7 +69,6 @@ export class SupabaseSearchClient {
                     query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId,
                 });
 
             if (error) {
@@ -100,7 +96,6 @@ export class SupabaseSearchClient {
     }
 
     async searchPodcastEpisodes(
-        userId: string,
         queryEmbedding: number[],
         threshold: number,
         limit: number,
@@ -112,7 +107,6 @@ export class SupabaseSearchClient {
                     query_embedding: JSON.stringify(queryEmbedding),
                     match_threshold: threshold,
                     match_count: limit,
-                    target_user_id: userId,
                 });
 
             if (error) {

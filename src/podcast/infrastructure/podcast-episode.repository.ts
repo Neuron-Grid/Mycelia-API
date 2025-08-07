@@ -58,12 +58,11 @@ export class PodcastEpisodeRepository {
                 .insert({
                     user_id: userId,
                     summary_id: summaryId,
-                    title: data.title || null,
+                    title: data.title || "Untitled Episode",
                     title_emb: data.title_emb
                         ? JSON.stringify(data.title_emb)
                         : null,
-                    audio_url: data.audio_url || null,
-                    soft_deleted: false,
+                    audio_url: data.audio_url || "",
                 })
                 .select()
                 .single();
@@ -93,7 +92,11 @@ export class PodcastEpisodeRepository {
                 .getClient()
                 .from("podcast_episodes")
                 .update({
-                    ...data,
+                    title: data.title,
+                    title_emb: data.title_emb
+                        ? JSON.stringify(data.title_emb)
+                        : undefined,
+                    audio_url: data.audio_url,
                     updated_at: new Date().toISOString(),
                 })
                 .eq("id", id)

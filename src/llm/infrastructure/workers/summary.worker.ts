@@ -63,8 +63,11 @@ export class SummaryWorker extends WorkerHost {
                     title: item.title,
                     content: item.description || "",
                     url: item.link,
-                    publishedAt: item.published_at,
-                    language: this.detectLanguage(item.title, item.description),
+                    publishedAt: item.published_at || new Date().toISOString(),
+                    language: this.detectLanguage(
+                        item.title,
+                        item.description || "",
+                    ),
                 })),
                 targetLanguage: this.determineTargetLanguage(feedItems),
             };
@@ -130,12 +133,13 @@ export class SummaryWorker extends WorkerHost {
     private determineTargetLanguage(
         feedItems: {
             title: string;
-            description: string;
+            description: string | null;
         }[],
     ): "ja" | "en" {
         const japaneseCount = feedItems.filter(
             (item) =>
-                this.detectLanguage(item.title, item.description) === "ja",
+                this.detectLanguage(item.title, item.description || "") ===
+                "ja",
         ).length;
 
         // 日本語記事が半数以上なら日本語、そうでなければ英語

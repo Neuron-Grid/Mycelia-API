@@ -63,11 +63,12 @@ export class FeedItemService {
         );
 
         // 3. データをDTOにマッピング
-        const responseData = feedItems.map((item) => ({
-            ...item,
-            isFavorite: favoriteFeedItemIds.has(item.id),
-            tags: tagsMap.get(item.id) || [],
-        }));
+        const responseData = feedItems.map((item) => {
+            const responseDto = new FeedItemResponseDto(item);
+            responseDto.isFavorite = favoriteFeedItemIds.has(item.id);
+            responseDto.tags = tagsMap.get(item.id) || [];
+            return responseDto;
+        });
 
         return {
             ...paginatedResult,

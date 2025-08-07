@@ -44,3 +44,11 @@ CREATE TRIGGER trg_feed_item_favorites_updated
     BEFORE UPDATE ON public.feed_item_favorites
     FOR EACH ROW
     EXECUTE PROCEDURE public.update_timestamp();
+
+-- 型生成用のコメント
+-- ドキュメント化
+COMMENT ON COLUMN public.feed_items.published_at IS 'ISO 8601 string format in TypeScript';
+COMMENT ON COLUMN public.feed_items.created_at IS 'ISO 8601 string format in TypeScript';
+COMMENT ON COLUMN public.feed_items.updated_at IS 'ISO 8601 string format in TypeScript';
+COMMENT ON COLUMN public.feed_item_favorites.created_at IS 'ISO 8601 string format in TypeScript';
+COMMENT ON COLUMN public.feed_item_favorites.updated_at IS 'ISO 8601 string format in TypeScript';

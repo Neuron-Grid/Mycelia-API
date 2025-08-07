@@ -57,8 +57,8 @@ export class DailySummaryRepository {
             const insertData: TablesInsert<"daily_summaries"> = {
                 user_id: userId,
                 summary_date: summaryDate,
-                markdown: data.markdown,
-                summary_title: data.summary_title,
+                markdown: data.markdown ?? "",
+                summary_title: data.summary_title ?? "",
                 summary_emb: data.summary_emb
                     ? JSON.stringify(data.summary_emb)
                     : null,
@@ -194,6 +194,7 @@ export class DailySummaryRepository {
             const items = validFeedItemIds.map((feedItemId) => ({
                 summary_id: summaryId,
                 feed_item_id: feedItemId,
+                user_id: userId,
             }));
 
             const { error } = await this.supabaseRequestService
@@ -249,10 +250,12 @@ export class DailySummaryRepository {
         {
             id: number;
             title: string;
-            description: string;
+            description: string | null;
             link: string;
-            published_at: string;
-            feed_id: number;
+            published_at: string | null;
+            user_subscriptions: {
+                feed_title: string | null;
+            };
         }[]
     > {
         try {

@@ -21,7 +21,11 @@
     "scan:semgrep": "npx semgrep --config p/owasp-top-ten --error",
     "scan:trivy": "trivy fs --scanners vuln,secret,config .",
     "scan:gitleaks": "gitleaks detect -v --source .",
-    "scan:all": "npm run scan:npm && npm run scan:semgrep && npm run scan:trivy && npm run scan:gitleaks"
+    "scan:all": "npm run scan:npm && npm run scan:semgrep && npm run scan:trivy && npm run scan:gitleaks",
+    "types:generate": "supabase gen types --local > src/types/schema.d.ts",
+    "types:linked": "supabase gen types --linked > src/types/schema.d.ts",
+    "types:clean": "supabase gen types --local --schema public > src/types/schema.d.ts",
+    "db:reset:with-types": "supabase db reset && npm run types:generate"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.856.0",

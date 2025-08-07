@@ -43,7 +43,10 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.content,
                         result.similarity,
                         result.type,
-                        result.metadata,
+                        result.metadata as Record<
+                            string,
+                            string | number | boolean | null
+                        >,
                     ),
             );
         } catch (error) {
@@ -77,7 +80,10 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.content,
                         result.similarity,
                         result.type,
-                        result.metadata,
+                        result.metadata as Record<
+                            string,
+                            string | number | boolean | null
+                        >,
                     ),
             );
         } catch (error) {
@@ -111,7 +117,10 @@ export class SearchRepositoryImpl implements SearchRepository {
                         result.content,
                         result.similarity,
                         result.type,
-                        result.metadata,
+                        result.metadata as Record<
+                            string,
+                            string | number | boolean | null
+                        >,
                     ),
             );
         } catch (error) {
@@ -130,7 +139,7 @@ export class SearchRepositoryImpl implements SearchRepository {
         const limitPerType = criteria.getLimitPerType();
 
         try {
-            const promises = [];
+            const promises: Promise<SearchResultEntity[]>[] = [];
 
             if (criteria.shouldIncludeFeedItems()) {
                 promises.push(
