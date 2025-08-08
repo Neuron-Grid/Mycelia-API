@@ -1,26 +1,24 @@
 -- depends-on: 081_add_soft_delete_column.sql
--- 統計情報を取得するための関数を定義
+-- 統計情報を取得するための関数
 
--- 明示的なuser_id制限を追加した改良版
-CREATE OR REPLACE FUNCTION get_tag_statistics()
-    RETURNS TABLE(
-        total_tags Bigint,
-        root_tags Bigint,
-        total_subscriptions_tagged Bigint,
-        total_feed_items_tagged Bigint
-    )
-    LANGUAGE plpgsql STABLE
-    AS $$
+CREATE OR REPLACE FUNCTION public.get_tag_statistics()
+RETURNS TABLE(
+    total_tags bigint,
+    root_tags  bigint,
+    total_subscriptions_tagged bigint,
+    total_feed_items_tagged    bigint
+)
+LANGUAGE plpgsql STABLE
+AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        (SELECT COUNT(*) FROM public.tags WHERE user_id = auth.uid() AND soft_deleted = FALSE) AS total_tags,
-        (SELECT COUNT(*) FROM public.tags WHERE user_id = auth.uid() AND parent_tag_id IS NULL AND soft_deleted = FALSE) AS root_tags,
-        (SELECT COUNT(*) FROM public.user_subscription_tags WHERE user_id = auth.uid() AND soft_deleted = FALSE) AS total_subscriptions_tagged,
-        (SELECT COUNT(*) FROM public.feed_item_tags WHERE user_id = auth.uid() AND soft_deleted = FALSE) AS total_feed_items_tagged;
+        (SELECT COUNT(*) FROM public.tags                 WHERE user_id = auth.uid() AND soft_deleted = FALSE),
+        (SELECT COUNT(*) FROM public.tags                 WHERE user_id = auth.uid() AND parent_tag_id IS NULL AND soft_deleted = FALSE),
+        (SELECT COUNT(*) FROM public.user_subscription_tags WHERE user_id = auth.uid() AND soft_deleted = FALSE),
+        (SELECT COUNT(*) FROM public.feed_item_tags         WHERE user_id = auth.uid() AND soft_deleted = FALSE);
 END;
 $$;
 
--- 権限設定
-REVOKE ALL ON FUNCTION get_tag_statistics() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION get_tag_statistics() TO authenticated;
+REVOKE ALL ON FUNCTION public.get_tag_statistics() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_tag_statistics() TO authenticated;

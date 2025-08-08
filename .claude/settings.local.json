@@ -12,7 +12,9 @@
       "WebFetch(domain:feeds.bbci.co.uk)",
       "WebFetch(domain:developer.mozilla.org)",
       "Bash(npm test:*)",
-      "Bash(supabase:*)"
+      "Bash(supabase:*)",
+      "WebFetch(domain:docs.nestjs.com)",
+      "WebFetch(domain:www.postgresql.org)"
     ],
     "deny": []
   }
