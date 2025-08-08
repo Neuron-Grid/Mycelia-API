@@ -63,5 +63,4 @@ GEMINI.md
 .claude/settings.local.json
 .claude/
 
-SSRF_SECURITY_REPORT.md
-tag-vulnerability-fix-plan.md
+AGENTS.md

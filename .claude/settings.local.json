@@ -14,7 +14,8 @@
       "Bash(npm test:*)",
       "Bash(supabase:*)",
       "WebFetch(domain:docs.nestjs.com)",
-      "WebFetch(domain:www.postgresql.org)"
+      "WebFetch(domain:www.postgresql.org)",
+      "WebFetch(domain:docs.bullmq.io)"
     ],
     "deny": []
   }

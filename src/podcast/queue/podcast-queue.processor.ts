@@ -28,7 +28,31 @@ export class PodcastQueueProcessor extends WorkerHost {
         super();
     }
 
-    @Processor("generatePodcast")
+    async process(
+        job: Job<
+            | PodcastGenerationJobDto
+            | AudioEnhancementJobDto
+            | PodcastCleanupJobDto
+        >,
+    ) {
+        switch (job.name) {
+            case "generatePodcast":
+                return await this.processPodcastGeneration(
+                    job as Job<PodcastGenerationJobDto>,
+                );
+            case "enhanceAudio":
+                return await this.processAudioEnhancement(
+                    job as Job<AudioEnhancementJobDto>,
+                );
+            case "cleanupOldPodcasts":
+                return await this.processOldPodcastCleanup(
+                    job as Job<PodcastCleanupJobDto>,
+                );
+            default:
+                this.logger.warn(`Unknown job: ${job.name}`);
+        }
+    }
+
     async processPodcastGeneration(job: Job<PodcastGenerationJobDto>) {
         // DTO バリデーション – 破損データを早期検出
         await validateDto(PodcastGenerationJobDto, job.data);
@@ -133,7 +157,6 @@ export class PodcastQueueProcessor extends WorkerHost {
             const audioBuffer = await this.podcastTtsService.generateSpeech(
                 summary.script_text,
                 "ja-JP", // TODO: ユーザー設定から取得
-                "ja-JP-Wavenet-B", // 男性ニュースキャスターらしい声
             );
 
             // 音声の長さを推定（概算）
@@ -191,7 +214,6 @@ export class PodcastQueueProcessor extends WorkerHost {
     }
 
     // 音声品質向上処理（オプション）
-    @Processor("enhanceAudio")
     async processAudioEnhancement(job: Job<AudioEnhancementJobDto>) {
         // DTO バリデーション – 破損データを早期検出
         await validateDto(AudioEnhancementJobDto, job.data);
@@ -228,7 +250,6 @@ export class PodcastQueueProcessor extends WorkerHost {
     }
 
     // 古いポッドキャストファイルの削除処理
-    @Processor("cleanupOldPodcasts")
     async processOldPodcastCleanup(job: Job<PodcastCleanupJobDto>) {
         // DTO バリデーション – 破損データを早期検出
         await validateDto(PodcastCleanupJobDto, job.data);

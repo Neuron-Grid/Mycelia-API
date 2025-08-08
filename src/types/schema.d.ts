@@ -92,16 +92,19 @@ export type Database = {
             daily_summary_items: {
                 Row: {
                     feed_item_id: number;
+                    soft_deleted: boolean;
                     summary_id: number;
                     user_id: string;
                 };
                 Insert: {
                     feed_item_id: number;
+                    soft_deleted?: boolean;
                     summary_id: number;
                     user_id: string;
                 };
                 Update: {
                     feed_item_id?: number;
+                    soft_deleted?: boolean;
                     summary_id?: number;
                     user_id?: string;
                 };
@@ -315,11 +318,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "podcast_episodes_summary_id_fkey";
-                        columns: ["summary_id"];
-                        isOneToOne: true;
+                        foreignKeyName: "podcast_episodes_summary_id_user_id_fkey";
+                        columns: ["summary_id", "user_id"];
+                        isOneToOne: false;
                         referencedRelation: "daily_summaries";
-                        referencedColumns: ["id"];
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
                         foreignKeyName: "podcast_episodes_user_id_fkey";
@@ -337,7 +340,7 @@ export type Database = {
                     description: string | null;
                     id: number;
                     parent_tag_id: number | null;
-                    path: unknown | null;
+                    path: unknown;
                     soft_deleted: boolean;
                     tag_emb: string | null;
                     tag_name: string;
@@ -350,7 +353,7 @@ export type Database = {
                     description?: string | null;
                     id?: never;
                     parent_tag_id?: number | null;
-                    path?: unknown | null;
+                    path: unknown;
                     soft_deleted?: boolean;
                     tag_emb?: string | null;
                     tag_name: string;
@@ -363,7 +366,7 @@ export type Database = {
                     description?: string | null;
                     id?: never;
                     parent_tag_id?: number | null;
-                    path?: unknown | null;
+                    path?: unknown;
                     soft_deleted?: boolean;
                     tag_emb?: string | null;
                     tag_name?: string;
@@ -372,11 +375,11 @@ export type Database = {
                 };
                 Relationships: [
                     {
-                        foreignKeyName: "tags_parent_tag_id_fkey";
-                        columns: ["parent_tag_id"];
+                        foreignKeyName: "tags_parent_tag_id_user_id_fkey";
+                        columns: ["parent_tag_id", "user_id"];
                         isOneToOne: false;
                         referencedRelation: "tags";
-                        referencedColumns: ["id"];
+                        referencedColumns: ["id", "user_id"];
                     },
                     {
                         foreignKeyName: "tags_user_id_fkey";
@@ -395,6 +398,7 @@ export type Database = {
                     podcast_schedule_time: string | null;
                     refresh_every: unknown;
                     soft_deleted: boolean;
+                    summary_enabled: boolean;
                     updated_at: string;
                     user_id: string;
                 };
@@ -405,6 +409,7 @@ export type Database = {
                     podcast_schedule_time?: string | null;
                     refresh_every?: unknown;
                     soft_deleted?: boolean;
+                    summary_enabled?: boolean;
                     updated_at?: string;
                     user_id: string;
                 };
@@ -415,6 +420,7 @@ export type Database = {
                     podcast_schedule_time?: string | null;
                     refresh_every?: unknown;
                     soft_deleted?: boolean;
+                    summary_enabled?: boolean;
                     updated_at?: string;
                     user_id?: string;
                 };
@@ -744,18 +750,6 @@ export type Database = {
                     link: string;
                     published_at: string;
                     feed_title: string;
-                    similarity: number;
-                }[];
-            };
-            search_items_dynamic: {
-                Args: {
-                    query_embedding: string;
-                    match_threshold: number;
-                    match_count: number;
-                };
-                Returns: {
-                    id: number;
-                    title: string;
                     similarity: number;
                 }[];
             };
