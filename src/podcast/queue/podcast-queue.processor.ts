@@ -1,12 +1,13 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
-import { Job } from "bullmq";
+import { Job, Queue } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
 import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";
 import { PodcastTtsService } from "../podcast-tts.service";
+import { GeneratePodcastForTodayJobDto } from "./dto/generate-today-job.dto";
 import {
     AudioEnhancementJobDto,
     PodcastCleanupJobDto,
@@ -24,6 +25,7 @@ export class PodcastQueueProcessor extends WorkerHost {
         private readonly podcastTtsService: PodcastTtsService,
         private readonly cloudflareR2Service: CloudflareR2Service,
         private readonly embeddingService: EmbeddingService,
+        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
     ) {
         super();
     }
@@ -48,9 +50,51 @@ export class PodcastQueueProcessor extends WorkerHost {
                 return await this.processOldPodcastCleanup(
                     job as Job<PodcastCleanupJobDto>,
                 );
+            case "generatePodcastForToday":
+                return await this.processPodcastForToday(
+                    job as Job<GeneratePodcastForTodayJobDto>,
+                );
             default:
                 this.logger.warn(`Unknown job: ${job.name}`);
         }
+    }
+
+    // 当日の要約があれば、その要約IDでgeneratePodcastジョブを再投入
+    async processPodcastForToday(job: Job<GeneratePodcastForTodayJobDto>) {
+        await validateDto(GeneratePodcastForTodayJobDto, job.data);
+        const { userId } = job.data;
+        const today = this.formatDateJst(new Date());
+        this.logger.log(
+            `Processing generatePodcastForToday for user ${userId}, date ${today}`,
+        );
+
+        const summary = await this.dailySummaryRepository.findByUserAndDate(
+            userId,
+            today,
+        );
+        if (!summary) {
+            this.logger.log(
+                `No summary found for user ${userId} on ${today}, skipping podcast generation`,
+            );
+            return { success: true, skipped: true } as const;
+        }
+
+        await this.podcastQueue.add(
+            "generatePodcast",
+            { userId, summaryId: summary.id } as PodcastGenerationJobDto,
+            {
+                removeOnComplete: true,
+                removeOnFail: false,
+                attempts: 3,
+                backoff: { type: "fixed", delay: 30_000 },
+                jobId: `podcast:${userId}:${summary.id}`,
+            },
+        );
+
+        this.logger.log(
+            `Enqueued generatePodcast for user ${userId}, summary ${summary.id}`,
+        );
+        return { success: true, enqueued: true } as const;
     }
 
     async processPodcastGeneration(job: Job<PodcastGenerationJobDto>) {
@@ -316,5 +360,14 @@ export class PodcastQueueProcessor extends WorkerHost {
         }
 
         return `${formattedDate}のニュース要約`;
+    }
+
+    private formatDateJst(date: Date): string {
+        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+        const jst = new Date(utc + 9 * 60 * 60000);
+        const yyyy = jst.getFullYear();
+        const mm = String(jst.getMonth() + 1).padStart(2, "0");
+        const dd = String(jst.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
     }
 }

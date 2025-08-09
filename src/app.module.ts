@@ -9,6 +9,7 @@ import { FavoriteModule } from "./favorite/favorite.module";
 import { FeedModule } from "./feed/feed.module";
 import { FeedQueueModule } from "./feed/queue/feed-queue.module";
 import { HealthModule } from "./health/health.module";
+import { JobsModule } from "./jobs/jobs.module";
 import { LlmModule } from "./llm/llm.module";
 import { PodcastModule } from "./podcast/podcast.module";
 import { PodcastQueueModule } from "./podcast/queue/podcast-queue.module";
@@ -41,6 +42,8 @@ import { TagModule } from "./tag/tag.module";
         EmbeddingModule,
         // Summary Module
         SummaryModule,
+        // Daily jobs scheduler (BullMQ repeatable)
+        JobsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

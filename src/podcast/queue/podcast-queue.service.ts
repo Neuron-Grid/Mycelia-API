@@ -1,6 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { PodcastGenerationJobDto } from "src/podcast/queue/dto/podcast-generation-job.dto";
 
 @Injectable()
 export class PodcastQueueService {
@@ -10,49 +11,50 @@ export class PodcastQueueService {
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
     ) {}
 
-    //  ポッドキャスト生成ジョブをキューに追加
-    //  @param text 音声合成するテキスト
-    //  @param userId ユーザーID
-    //  @param language 言語コード（デフォルト: ja-JP）
-    //  @param filename 保存ファイル名（指定なしの場合は自動生成）
-    //  @param title 書名（メタデータとして保存）
-    async addPodcastJob(
-        text: string,
+    // 旧API（非推奨）: 互換のため残置
+    async addPodcastJobDeprecated(
+        _text: string,
         userId: string,
-        language: "ja-JP" | "en-US" = "ja-JP",
-        filename?: string,
-        title?: string,
+        _language: "ja-JP" | "en-US" = "ja-JP",
+        _filename?: string,
+        _title?: string,
     ) {
-        // ファイル名が指定されていない場合は日付ベースで自動生成
-        const actualFilename =
-            filename ||
-            `podcast-${new Date().toISOString().slice(0, 10)}-${Date.now()}.opus`;
-
-        this.logger.log(
-            `ポッドキャスト生成ジョブをキューに追加: userId=${userId}, filename=${actualFilename}`,
+        this.logger.warn(
+            "addPodcastJobDeprecated は非推奨です。generatePodcast を使用してください",
         );
+        // today用のジョブを投入（サマリ存在時のみ実行される）
+        await this.addGeneratePodcastForTodayJob(userId);
+        return { deprecated: true } as const;
+    }
 
+    // 要約IDを指定してポッドキャスト生成を投入
+    async addGeneratePodcastJob(userId: string, summaryId: number) {
+        const payload: PodcastGenerationJobDto = { userId, summaryId };
+        await this.podcastQueue.add("generatePodcast", payload, {
+            removeOnComplete: true,
+            removeOnFail: false,
+            attempts: 3,
+            backoff: { type: "fixed", delay: 30_000 },
+            jobId: `podcast:${userId}:${summaryId}`,
+        });
+        this.logger.log(
+            `Queued generatePodcast job: userId=${userId}, summaryId=${summaryId}`,
+        );
+    }
+
+    // 当日要約に基づいてポッドキャスト生成（スケジュール用途）
+    async addGeneratePodcastForTodayJob(userId: string) {
         await this.podcastQueue.add(
-            // job name
-            "default",
-            // job data
-            {
-                text,
-                userId,
-                language,
-                filename: actualFilename,
-                title, // 書名を追加
-            },
+            "generatePodcastForToday",
+            { userId },
             {
                 removeOnComplete: true,
                 removeOnFail: false,
-                // 最大3回リトライ
                 attempts: 3,
-                // 30秒後にリトライ
                 backoff: { type: "fixed", delay: 30_000 },
+                jobId: `podcast-today:${userId}`,
             },
         );
-
-        return { filename: actualFilename };
+        this.logger.log(`Queued generatePodcastForToday job: userId=${userId}`);
     }
 }

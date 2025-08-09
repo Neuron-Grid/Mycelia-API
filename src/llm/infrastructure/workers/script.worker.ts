@@ -1,12 +1,14 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Job } from "bullmq";
+import { Job, Queue } from "bullmq";
 import {
     GeminiScriptRequest,
     LLM_SERVICE,
     LlmService,
 } from "../../application/services/llm.service";
 import { DailySummaryRepository } from "../repositories/daily-summary.repository";
+import { PodcastQueueService } from "src/podcast/queue/podcast-queue.service";
+import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 
 export interface ScriptJobData {
     userId: string;
@@ -21,6 +23,8 @@ export class ScriptWorker extends WorkerHost {
     constructor(
         private readonly dailySummaryRepository: DailySummaryRepository,
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
+        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        private readonly settingsRepo: UserSettingsRepository,
     ) {
         super();
     }
@@ -97,6 +101,25 @@ export class ScriptWorker extends WorkerHost {
                 this.logger.log(
                     `Script generated successfully for summary ID: ${summaryId}`,
                 );
+                // 設定が有効なら、ポッドキャスト生成を連鎖投入
+                const settings = await this.settingsRepo.getByUserId(userId);
+                if (settings?.podcast_enabled && settings?.summary_enabled) {
+                    await this.podcastQueue.add(
+                        "generatePodcast",
+                        { userId, summaryId },
+                        {
+                            removeOnComplete: true,
+                            removeOnFail: 5,
+                            attempts: 3,
+                            backoff: { type: "fixed", delay: 30_000 },
+                            jobId: `podcast:${userId}:${summaryId}`,
+                        },
+                    );
+                    this.logger.log(
+                        `Enqueued podcast generation for user ${userId}, summary ${summaryId}`,
+                    );
+                }
+
                 return {
                     success: true,
                     summaryId,

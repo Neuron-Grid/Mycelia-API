@@ -5,6 +5,7 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
+import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
 import { TagEntity } from "../domain/tag.entity";
 import { TagRepository } from "../infrastructure/tag.repository";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
@@ -37,6 +38,7 @@ export class HierarchicalTagService {
     constructor(
         private readonly tagRepository: TagRepository,
         private readonly embeddingService: EmbeddingService,
+        private readonly embeddingQueueService: EmbeddingQueueService,
     ) {}
 
     // 階層構造でタグを作成
@@ -201,9 +203,16 @@ export class HierarchicalTagService {
             }
         }
 
-        return await this.tagRepository.update(tagId, userId, {
+        const updated = await this.tagRepository.update(tagId, userId, {
             parent_tag_id: newParentId,
         });
+        // バックグラウンドで埋め込み更新
+        await this.embeddingQueueService.addSingleEmbeddingJob(
+            userId,
+            updated.id,
+            "tags",
+        );
+        return updated;
     }
 
     // RSSフィードをタグに関連付け

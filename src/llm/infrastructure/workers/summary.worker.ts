@@ -1,16 +1,18 @@
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Job } from "bullmq";
+import { Job, Queue } from "bullmq";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
     LlmService,
 } from "../../application/services/llm.service";
 import { DailySummaryRepository } from "../repositories/daily-summary.repository";
+import { SCRIPT_GENERATE_QUEUE } from "../../application/services/summary-script.service";
+import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
 
 export interface SummaryJobData {
     userId: string;
-    summaryDate: string;
+    summaryDate?: string;
 }
 
 @Processor("summary-generate")
@@ -21,12 +23,17 @@ export class SummaryWorker extends WorkerHost {
     constructor(
         private readonly dailySummaryRepository: DailySummaryRepository,
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
+        @InjectQueue(SCRIPT_GENERATE_QUEUE)
+        private readonly scriptQueue: Queue,
+        private readonly embeddingQueueService: EmbeddingQueueService,
     ) {
         super();
     }
 
     async process(job: Job<SummaryJobData>) {
-        const { userId, summaryDate } = job.data;
+        const { userId } = job.data;
+        const summaryDate =
+            job.data.summaryDate || this.formatDateJst(new Date());
         this.logger.log(
             `Processing summary job for user ${userId}, date ${summaryDate}`,
         );
@@ -113,6 +120,27 @@ export class SummaryWorker extends WorkerHost {
             this.logger.log(
                 `Summary generated successfully for user ${userId}, summary ID: ${summary.id}`,
             );
+
+            // 生成直後に埋め込み更新ジョブを追加（単発）
+            await this.embeddingQueueService.addSingleEmbeddingJob(
+                userId,
+                summary.id,
+                "daily_summaries",
+            );
+
+            // 台本生成ジョブをキューに連鎖投入
+            await this.scriptQueue.add(
+                "generateSummaryScript",
+                { summaryId: summary.id } as any,
+                {
+                    removeOnComplete: true,
+                    removeOnFail: 5,
+                    attempts: 3,
+                    backoff: { type: "fixed", delay: 30_000 },
+                    jobId: `script:${summary.id}`,
+                },
+            );
+
             return { success: true, summaryId: summary.id };
         } catch (error) {
             this.logger.error(
@@ -158,5 +186,15 @@ export class SummaryWorker extends WorkerHost {
         return (
             plainText.substring(0, 50) + (plainText.length > 50 ? "..." : "")
         );
+    }
+
+    // JST(UTC+9)基準でYYYY-MM-DDを返す
+    private formatDateJst(date: Date): string {
+        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+        const jst = new Date(utc + 9 * 60 * 60000);
+        const yyyy = jst.getFullYear();
+        const mm = String(jst.getMonth() + 1).padStart(2, "0");
+        const dd = String(jst.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
     }
 }
