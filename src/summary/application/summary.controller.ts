@@ -13,7 +13,7 @@ import { SummaryService } from "./summary.service";
 
 @ApiTags("Summary")
 @ApiBearerAuth()
-@Controller("api/v1/summary")
+@Controller("summary")
 @UseGuards(SupabaseAuthGuard)
 export class SummaryController {
     constructor(private readonly summaryService: SummaryService) {}

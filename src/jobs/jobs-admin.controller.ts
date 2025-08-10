@@ -30,7 +30,7 @@ type QueueName =
 @ApiTags("Jobs Admin")
 @ApiBearerAuth()
 @UseGuards(SupabaseAuthGuard)
-@Controller("api/v1/jobs")
+@Controller("jobs")
 export class JobsAdminController {
     constructor(
         @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,

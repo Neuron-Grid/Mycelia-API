@@ -38,7 +38,7 @@ import {
 import { PodcastEpisodeMapper } from "./podcast-episode.mapper";
 
 @ApiTags("Podcast Episodes")
-@Controller("api/v1/podcast-episodes")
+@Controller("podcast-episodes")
 @UseGuards(SupabaseAuthGuard)
 @ApiBearerAuth()
 export class PodcastEpisodeController {

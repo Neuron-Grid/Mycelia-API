@@ -21,7 +21,7 @@ import { DailySummaryRepository } from "../../infrastructure/repositories/daily-
 import { SummaryScriptService } from "../services/summary-script.service";
 
 @ApiTags("Summary & Script Regeneration")
-@Controller("api/v1") // ベースパス
+@Controller() // グローバルPrefix `api/v1` を利用（ベースパスは空）
 export class SummaryController {
     private readonly logger = new Logger(SummaryController.name); // Loggerインスタンス
 
