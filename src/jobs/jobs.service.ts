@@ -21,6 +21,7 @@ export class JobsService implements OnModuleInit {
         await this.registerDailySummaryJobs();
         await this.registerDailyPodcastJobs();
         await this.registerWeeklyMaintenanceJobs();
+        await this.registerPodcastCleanupJobs();
     }
 
     private async registerDailySummaryJobs(): Promise<void> {
@@ -82,6 +83,29 @@ export class JobsService implements OnModuleInit {
         );
         this.logger.log(
             `Registered weekly maintenance job (vector reindex) at JST 03:00 on Sundays`,
+        );
+    }
+
+    private async registerPodcastCleanupJobs(): Promise<void> {
+        // 毎日 04:00 JST に30日以上前のエピソードをユーザー毎にクリーンアップ
+        const pattern = `0 4 * * *`;
+        const daysOld = 30;
+        const schedules =
+            await this.settingsRepo.getAllEnabledPodcastSchedules();
+        for (const { userId } of schedules) {
+            await this.podcastQueue.add(
+                "cleanupOldPodcasts",
+                { userId, daysOld },
+                {
+                    repeat: { pattern, tz: "Asia/Tokyo" },
+                    jobId: `podcast-cleanup-daily:${userId}`,
+                    removeOnComplete: true,
+                    removeOnFail: 5,
+                },
+            );
+        }
+        this.logger.log(
+            `Registered daily podcast cleanup (>${daysOld} days) for ${schedules.length} users at JST 04:00`,
         );
     }
 

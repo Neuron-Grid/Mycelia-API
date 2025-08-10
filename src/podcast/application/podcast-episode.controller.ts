@@ -356,13 +356,11 @@ export class PodcastEpisodeController {
             );
         }
 
-        // ポッドキャスト生成ジョブをキューに追加
-        const result = await this.podcastQueueService.addPodcastJob(
-            summary.script_text,
+        // ポッドキャスト生成ジョブをキューに追加（新APIへ統一）
+        const jobId = `podcast:${userId}:${generateDto.summary_id}`;
+        await this.podcastQueueService.addGeneratePodcastJob(
             userId,
-            "ja-JP", // デフォルト言語
-            `episode-${episode.id}-${Date.now()}.opus`,
-            episode.title || undefined,
+            generateDto.summary_id,
         );
 
         const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`;
@@ -370,7 +368,7 @@ export class PodcastEpisodeController {
 
         return {
             message,
-            job_id: result.filename, // ファイル名をジョブIDとして使用
+            job_id: jobId,
             episode_id: episode.id,
         };
     }

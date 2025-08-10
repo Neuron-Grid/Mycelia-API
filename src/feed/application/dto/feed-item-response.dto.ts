@@ -9,7 +9,7 @@ export class FeedItemResponseDto extends FeedItemEntity {
 
     constructor(data: FeedItemRow) {
         // FeedItemEntityのコンストラクタに適切な形式でデータを渡す
-        super(data as any); // データベース層の文字列日付がEntityで変換される
+        super(data as ConstructorParameters<typeof FeedItemEntity>[0]); // データベース層の文字列日付がEntityで変換される
         // デフォルト値を設定
         this.isFavorite = false;
         this.tags = [];

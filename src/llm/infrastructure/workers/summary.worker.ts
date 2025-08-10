@@ -1,14 +1,14 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
+import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
     LlmService,
 } from "../../application/services/llm.service";
-import { DailySummaryRepository } from "../repositories/daily-summary.repository";
 import { SCRIPT_GENERATE_QUEUE } from "../../application/services/summary-script.service";
-import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { DailySummaryRepository } from "../repositories/daily-summary.repository";
 
 export interface SummaryJobData {
     userId: string;
@@ -131,7 +131,10 @@ export class SummaryWorker extends WorkerHost {
             // 台本生成ジョブをキューに連鎖投入
             await this.scriptQueue.add(
                 "generateSummaryScript",
-                { summaryId: summary.id } as any,
+                {
+                    userId,
+                    summaryId: summary.id,
+                },
                 {
                     removeOnComplete: true,
                     removeOnFail: 5,

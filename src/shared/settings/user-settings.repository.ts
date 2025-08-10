@@ -72,15 +72,12 @@ export class UserSettingsRepository {
         }
     }
 
-    async getByUserId(userId: string): Promise<
-        | {
-              user_id: string;
-              summary_enabled: boolean;
-              podcast_enabled: boolean;
-              podcast_language?: "ja-JP" | "en-US";
-          }
-        | null
-    > {
+    async getByUserId(userId: string): Promise<{
+        user_id: string;
+        summary_enabled: boolean;
+        podcast_enabled: boolean;
+        podcast_language?: "ja-JP" | "en-US";
+    } | null> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
@@ -91,17 +88,20 @@ export class UserSettingsRepository {
                 .eq("user_id", userId)
                 .single();
             if (error) throw error;
-            return data
-                ? {
-                      user_id: data.user_id as string,
-                      summary_enabled: data.summary_enabled as boolean,
-                      podcast_enabled: data.podcast_enabled as boolean,
-                      podcast_language: (data.podcast_language as
-                          | "ja-JP"
-                          | "en-US"
-                          | undefined) as any,
-                  }
-                : null;
+            if (!data) return null;
+            const lang = data.podcast_language as "ja-JP" | "en-US" | null as
+                | "ja-JP"
+                | "en-US"
+                | null;
+            return {
+                user_id: data.user_id as string,
+                summary_enabled: data.summary_enabled as boolean,
+                podcast_enabled: data.podcast_enabled as boolean,
+                podcast_language: (lang ?? undefined) as
+                    | "ja-JP"
+                    | "en-US"
+                    | undefined,
+            };
         } catch (e) {
             this.logger.warn(
                 `Failed to load settings for user ${userId}: ${(e as Error).message}`,

@@ -737,6 +737,10 @@ export type Database = {
                 Args: { "": unknown };
                 Returns: number;
             };
+            rebuild_vector_index: {
+                Args: { p_index_name: string };
+                Returns: string;
+            };
             search_feed_items_by_vector: {
                 Args: {
                     query_embedding: string;

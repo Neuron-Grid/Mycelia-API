@@ -2,6 +2,9 @@ import { HttpModule, HttpService } from "@nestjs/axios";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { RedisModule } from "src/shared/redis/redis.module";
+import { RedisService } from "src/shared/redis/redis.service";
+import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { SummaryController } from "./application/controllers/summary.controller";
 import { LLM_SERVICE } from "./application/services/llm.service";
@@ -20,29 +23,42 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
     imports: [
         HttpModule,
         ConfigModule, // ConfigService を使う場合
-        BullModule.registerQueue(
-            // キューを登録
+        RedisModule,
+        BullModule.registerQueueAsync(
             {
                 name: SUMMARY_GENERATE_QUEUE,
-                // Redis 接続設定を追加
-                connection: {
-                    host: process.env.REDIS_HOST || "localhost",
-                    port: Number.parseInt(process.env.REDIS_PORT || "6379", 10),
-                },
+                imports: [RedisModule],
+                useFactory: (redis: RedisService) => ({
+                    connection: redis.createBullClient(),
+                    defaultJobOptions: {
+                        attempts: 3,
+                        backoff: { type: "fixed", delay: 30_000 },
+                        removeOnComplete: 5,
+                        removeOnFail: 10,
+                    },
+                }),
+                inject: [RedisService],
             },
             {
                 name: SCRIPT_GENERATE_QUEUE,
-                // Redis 接続設定を追加
-                connection: {
-                    host: process.env.REDIS_HOST || "localhost",
-                    port: Number.parseInt(process.env.REDIS_PORT || "6379", 10),
-                },
+                imports: [RedisModule],
+                useFactory: (redis: RedisService) => ({
+                    connection: redis.createBullClient(),
+                    defaultJobOptions: {
+                        attempts: 3,
+                        backoff: { type: "fixed", delay: 30_000 },
+                        removeOnComplete: 5,
+                        removeOnFail: 10,
+                    },
+                }),
+                inject: [RedisService],
             },
         ),
         SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
     ],
     providers: [
         DailySummaryRepository,
+        UserSettingsRepository,
         {
             provide: LLM_SERVICE,
             useFactory: (

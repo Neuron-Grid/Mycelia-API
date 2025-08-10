@@ -4,8 +4,8 @@ import {
     Logger,
     NotFoundException,
 } from "@nestjs/common";
-import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { TagEntity } from "../domain/tag.entity";
 import { TagRepository } from "../infrastructure/tag.repository";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
@@ -116,6 +116,12 @@ export class HierarchicalTagService {
 
         this.logger.log(
             `Created hierarchical tag: ${dto.tag_name} for user ${userId}`,
+        );
+        // バックグラウンドでも最新埋め込みを維持（DBトリガーや将来の仕様変更に対応）
+        await this.embeddingQueueService.addSingleEmbeddingJob(
+            userId,
+            tag.id,
+            "tags",
         );
         return tag;
     }

@@ -4,7 +4,7 @@ import { Controller, Get } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import { ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
-import { Queue } from "bullmq";
+import { Job, Queue } from "bullmq";
 import { RedisService } from "src/shared/redis/redis.service";
 import { SupabaseRequestService } from "src/supabase-request.service";
 import {
@@ -36,6 +36,11 @@ export class HealthController {
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
+        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
+        @InjectQueue("summary-generate")
+        private readonly summaryQueue: Queue,
+        @InjectQueue("script-generate") private readonly scriptQueue: Queue,
+        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
         private readonly redisService: RedisService,
     ) {}
 
@@ -52,16 +57,28 @@ export class HealthController {
     async checkHealth(): Promise<HealthCheckResponseDto> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();
-        const { bullStatus, jobCounts } =
-            await this.checkBullQueueWithTimeout();
+        const queues = [
+            ["feedQueue", this.feedQueue],
+            ["embeddingQueue", this.embeddingQueue],
+            ["summary-generate", this.summaryQueue],
+            ["script-generate", this.scriptQueue],
+            ["podcastQueue", this.podcastQueue],
+        ] as const;
+
+        const results = await Promise.all(
+            queues.map(([name, q]) => this.checkQueueStatsWithTimeout(name, q)),
+        );
+        const bullStatus = results.every((r) => r.status === "OK")
+            ? "OK"
+            : "DEGRADED";
+        const jobCounts = Object.fromEntries(
+            results.map((r) => [r.name, r.counts]),
+        ) as unknown as JobCountsDto;
 
         return {
             status: "OK",
             db: "OK",
-            bullQueue: {
-                status: bullStatus,
-                jobCounts,
-            },
+            bullQueue: { status: bullStatus, jobCounts },
             redis: "OK",
         };
     }
@@ -119,40 +136,53 @@ export class HealthController {
     // @example
     // await healthController['checkBullQueueWithTimeout']()
     // @see Queue.getJobCounts
-    private async checkBullQueueWithTimeout(): Promise<{
-        bullStatus: string;
-        jobCounts: JobCountsDto;
+    private async checkQueueStatsWithTimeout(
+        name: string,
+        queue: Queue,
+    ): Promise<{
+        name: string;
+        status: string;
+        counts: RawJobCounts & {
+            failureRate?: number;
+            oldestWaitingMs?: number | null;
+        };
     }> {
-        // DTOと同じキーを持つ初期値
-        let jobCounts: JobCountsDto = {
+        let counts: RawJobCounts & {
+            failureRate?: number;
+            oldestWaitingMs?: number | null;
+        } = {
             waiting: 0,
             active: 0,
             completed: 0,
             failed: 0,
             delayed: 0,
-        };
+            paused: 0,
+        } as RawJobCounts;
 
         await this.withTimeout(
             (async () => {
-                await this.feedQueue.waitUntilReady();
-                const counts: RawJobCounts =
-                    await this.feedQueue.getJobCounts();
+                await queue.waitUntilReady();
+                const c: RawJobCounts = await queue.getJobCounts();
+                counts = { ...counts, ...c };
+                const denom = (c.completed || 0) + (c.failed || 0);
+                counts.failureRate = denom > 0 ? (c.failed || 0) / denom : 0;
 
-                jobCounts = {
-                    waiting: counts.waiting ?? 0,
-                    active: counts.active ?? 0,
-                    completed: counts.completed ?? 0,
-                    failed: counts.failed ?? 0,
-                    delayed: counts.delayed ?? 0,
-                };
+                // 待機中の最古ジョブの滞留時間を概算
+                const waitingJobs: Job[] = await queue.getWaiting(0, 0);
+                if (waitingJobs.length > 0) {
+                    const created = waitingJobs[0].timestamp || Date.now();
+                    counts.oldestWaitingMs = Date.now() - created;
+                } else {
+                    counts.oldestWaitingMs = null;
+                }
             })(),
             this.TIMEOUT_MS,
         );
 
-        return {
-            bullStatus: "OK",
-            jobCounts,
-        };
+        // 失敗しきい値で通知（ログ代替）: 20%超でDEGRADED扱い
+        const status =
+            counts.failureRate && counts.failureRate > 0.2 ? "DEGRADED" : "OK";
+        return { name, status, counts };
     }
 
     // @async

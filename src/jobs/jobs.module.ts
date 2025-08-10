@@ -7,6 +7,7 @@ import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { JobsService } from "./jobs.service";
+import { JobsAdminController } from "./jobs-admin.controller";
 
 @Module({
     imports: [
@@ -16,8 +17,11 @@ import { JobsService } from "./jobs.service";
         // Ensure queues are available for injection
         BullModule.registerQueue({ name: SUMMARY_GENERATE_QUEUE }),
         BullModule.registerQueue({ name: "podcastQueue" }),
+        BullModule.registerQueue({ name: "script-generate" }),
+        BullModule.registerQueue({ name: "embeddingQueue" }),
         MaintenanceQueueModule,
     ],
+    controllers: [JobsAdminController],
     providers: [JobsService, UserSettingsRepository],
     exports: [JobsService],
 })

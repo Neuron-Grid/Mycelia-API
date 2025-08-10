@@ -140,9 +140,10 @@ export class SummaryController {
         try {
             const result =
                 await this.summaryScriptService.requestScriptGeneration(
+                    user.id,
                     summaryId,
                     body?.prompt,
-                ); // await を追加
+                );
             const message = `Script regeneration job (ID: ${result.jobId}) has been queued for summary ID ${summaryId}.`;
             this.logger.log(message);
             return { message, jobId: result.jobId };

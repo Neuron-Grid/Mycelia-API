@@ -57,6 +57,7 @@ export class TagRepository {
             user_id: userId,
             tag_name: tagName,
             parent_tag_id: parentTagId ?? null,
+            path: null as unknown,
         };
 
         const { data, error } = await supabase
@@ -319,6 +320,7 @@ export class TagRepository {
             description: data.description ?? null,
             color: data.color ?? null,
             tag_emb: data.tag_emb ? JSON.stringify(data.tag_emb) : null,
+            path: null as unknown,
         };
 
         const { data: result, error } = await supabase

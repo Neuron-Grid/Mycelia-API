@@ -62,6 +62,11 @@ export class SupabaseRequestService {
         return this.sbAnon;
     }
 
+    // Service-Roleクライアント（RLSバイパス／SECURITY DEFINER RPC用）
+    getAdminClient(): SupabaseClient<Database> {
+        return this.sbAdmin;
+    }
+
     // @async
     // @public
     // @since 1.0.0

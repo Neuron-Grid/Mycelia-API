@@ -7,22 +7,51 @@ export class MaintenanceService {
 
     constructor(private readonly supabase: SupabaseRequestService) {}
 
-    // 週次のベクトルインデックス再構築（DB側にRPCが用意されている前提）
+    // 週次のベクトルインデックス再構築（アプローチB: 個別RPCを順次呼ぶ）
     async rebuildVectorIndexes(): Promise<void> {
-        try {
-            // 例: すべてのHNSWインデックス再構築を行うRPC
-            const { error } = await this.supabase
-                .getClient()
-                .rpc("rebuild_all_vector_indexes");
-            if (error) throw error;
-            this.logger.log("Rebuilt all vector indexes via RPC");
-        } catch (e) {
-            this.logger.warn(
-                `RPC 'rebuild_all_vector_indexes' failed: ${(e as Error).message}. Falling back to per-table refresh (if available).`,
-            );
-            // 必要に応じて、テーブル毎のRPCにフォールバック
-            // 例: search_feed_items_by_vector_reindex など
+        const targetIndexes = [
+            "idx_feed_items_title_emb_hnsw",
+            "idx_daily_summaries_summary_emb_hnsw",
+            "idx_podcast_episodes_title_emb_hnsw",
+            "idx_tags_tag_emb_hnsw",
+        ];
+        this.logger.log(
+            `Starting weekly vector index rebuild for: ${targetIndexes.join(", ")}`,
+        );
+
+        // service-roleでのみEXECUTEがGRANTされているため、adminクライアント必須
+        const adminRpc = this.supabase.getAdminClient().rpc as unknown as (
+            fn: string,
+            args?: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: unknown }>;
+
+        let success = 0;
+        for (const indexName of targetIndexes) {
+            try {
+                const { error } = await adminRpc("rebuild_vector_index", {
+                    p_index_name: indexName,
+                });
+
+                if (error) {
+                    throw new Error(
+                        `RPC error: ${JSON.stringify(error, null, 2)}`,
+                    );
+                }
+
+                this.logger.log(`Successfully rebuilt index '${indexName}'`);
+                success++;
+            } catch (e) {
+                this.logger.error(
+                    `Failed to rebuild index '${indexName}': ${(e as Error).message}`,
+                );
+                // 1つのインデックスで失敗しても、次のインデックスの処理を続ける
+            }
         }
+        if (success === 0) {
+            throw new Error("All index rebuild operations failed");
+        }
+        this.logger.log(
+            `Finished weekly vector index rebuild process. Success: ${success}/${targetIndexes.length}`,
+        );
     }
 }
-

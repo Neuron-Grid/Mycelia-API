@@ -1,5 +1,7 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { RedisModule } from "src/shared/redis/redis.module";
+import { RedisService } from "src/shared/redis/redis.service";
 import { SearchModule } from "../../search/search.module";
 import { SupabaseRequestModule } from "../../supabase-request.module";
 import { EMBEDDING_BATCH_CONFIG } from "../config/embedding-batch.config";
@@ -10,17 +12,24 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
 
 @Module({
     imports: [
-        BullModule.registerQueue({
+        RedisModule,
+        BullModule.registerQueueAsync({
             name: "embeddingQueue",
-            defaultJobOptions: {
-                removeOnComplete: EMBEDDING_BATCH_CONFIG.queue.removeOnComplete,
-                removeOnFail: EMBEDDING_BATCH_CONFIG.queue.removeOnFail,
-                attempts: EMBEDDING_BATCH_CONFIG.queue.attempts,
-                backoff: {
-                    type: "exponential",
-                    delay: EMBEDDING_BATCH_CONFIG.queue.backoffDelay,
+            imports: [RedisModule],
+            useFactory: (redisService: RedisService) => ({
+                connection: redisService.createBullClient(),
+                defaultJobOptions: {
+                    removeOnComplete:
+                        EMBEDDING_BATCH_CONFIG.queue.removeOnComplete,
+                    removeOnFail: EMBEDDING_BATCH_CONFIG.queue.removeOnFail,
+                    attempts: EMBEDDING_BATCH_CONFIG.queue.attempts,
+                    backoff: {
+                        type: "exponential",
+                        delay: EMBEDDING_BATCH_CONFIG.queue.backoffDelay,
+                    },
                 },
-            },
+            }),
+            inject: [RedisService],
         }),
         SearchModule,
         SupabaseRequestModule,
@@ -31,6 +40,6 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
         EmbeddingBatchDataService,
         EmbeddingBatchUpdateService,
     ],
-    exports: [EmbeddingQueueService],
+    exports: [EmbeddingQueueService, BullModule],
 })
 export class EmbeddingQueueModule {}

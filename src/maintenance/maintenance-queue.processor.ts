@@ -23,4 +23,3 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
     }
 }
-

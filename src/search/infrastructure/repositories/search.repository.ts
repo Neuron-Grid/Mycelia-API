@@ -19,7 +19,7 @@ export class SearchRepositoryImpl implements SearchRepository {
     ) {}
 
     async searchFeedItems(
-        userId: string,
+        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -29,7 +29,6 @@ export class SearchRepositoryImpl implements SearchRepository {
                 );
 
             const results = await this.supabaseClient.searchFeedItems(
-                userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,
@@ -56,7 +55,7 @@ export class SearchRepositoryImpl implements SearchRepository {
     }
 
     async searchSummaries(
-        userId: string,
+        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -66,7 +65,6 @@ export class SearchRepositoryImpl implements SearchRepository {
                 );
 
             const results = await this.supabaseClient.searchSummaries(
-                userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,
@@ -93,7 +91,7 @@ export class SearchRepositoryImpl implements SearchRepository {
     }
 
     async searchPodcastEpisodes(
-        userId: string,
+        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -103,7 +101,6 @@ export class SearchRepositoryImpl implements SearchRepository {
                 );
 
             const results = await this.supabaseClient.searchPodcastEpisodes(
-                userId,
                 queryEmbedding,
                 criteria.threshold,
                 criteria.limit,

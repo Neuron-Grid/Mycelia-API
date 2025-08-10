@@ -11,22 +11,6 @@ export class PodcastQueueService {
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
     ) {}
 
-    // 旧API（非推奨）: 互換のため残置
-    async addPodcastJobDeprecated(
-        _text: string,
-        userId: string,
-        _language: "ja-JP" | "en-US" = "ja-JP",
-        _filename?: string,
-        _title?: string,
-    ) {
-        this.logger.warn(
-            "addPodcastJobDeprecated は非推奨です。generatePodcast を使用してください",
-        );
-        // today用のジョブを投入（サマリ存在時のみ実行される）
-        await this.addGeneratePodcastForTodayJob(userId);
-        return { deprecated: true } as const;
-    }
-
     // 要約IDを指定してポッドキャスト生成を投入
     async addGeneratePodcastJob(userId: string, summaryId: number) {
         const payload: PodcastGenerationJobDto = { userId, summaryId };
