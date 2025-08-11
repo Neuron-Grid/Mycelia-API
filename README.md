@@ -1,255 +1,214 @@
 # RSS News API
 
-## プロジェクト概要
+RSS News API は、Supabase Auth と PostgreSQL(pgvector) を用いたアカウント分離・RLS前提のRSSリーダー用バックエンドです。NestJS 11 + BullMQ により、購読取得、ベクトル検索、日次要約、ポッドキャスト生成までを非同期で処理します。
 
-`RSS News API`は、RSSフィードを購読・管理・閲覧するための高機能なバックエンドAPIサービスです。NestJSフレームワークを活用し、長期的な利用を前提とした設計を採用しているため、スマートフォンなどのデバイスを買い替えた際にも煩雑な移行作業を最小限に抑え、ベンダーロックインを回避しながら自由度の高いRSSリーダー体験を提供します。さらに、オープンな技術を採用することで多くのユーザーや開発者が参加しやすく、コミュニティ主導での機能強化やカスタマイズが期待される人気プロジェクトを目指しています。
+注意: 本プロジェクトはベータ版です。APIやスキーマは今後変更される可能性があります。
 
-### 主な機能
+## 主要機能
 
-- ユーザー認証（Supabaseと連携）
-- RSSフィードの購読管理
-- フィードの自動・手動更新
-- お気に入り機能
-- タグ付け機能
+- 認証/アカウント管理: Supabase Auth (メール/パスワード, JWT) による登録・ログイン・更新・削除
+- フィード管理: 購読の追加/更新/削除、手動取得、アイテムのページング取得
+- タグ機能: 階層化タグ(最大5階層)、一括タグ付け、ツリー/パス/サブツリー取得、子孫含むフィルタ
+- お気に入り: フィードアイテムのFavorite登録/解除
+- ベクトル検索: OpenAI text-embedding-3-small + pgvector + HNSW インデックス
+- 日次要約: Gemini 2.5 Flash を用いた24h要約、BullMQで1日1回/ユーザー
+- ポッドキャスト: Geminiで台本生成 + Google Cloud TTS(Opus) で音声生成、R2へ保存
+- ジョブ運用: BullMQキューの進行監視/再実行API、ユーザー毎スケジューリング
 
-## 技術スタック
+## セキュリティとアーキテクチャ
 
-- **バックエンド**: [NestJS](https://nestjs.com/) (v11)
-- **認証**: [Supabase](https://supabase.io/)
-- **データベース**: PostgreSQL（Supabase経由）
-- **キャッシュ/キュー**: Redis, Bull
-- **コンテナ化**: Docker
-- **API文書**: Swagger
-- **パッケージマネージャ**: pnpm
+- RLS前提: 全ユーザーデータは `user_id = auth.uid()` 条件でRLSを適用。アプリも常に `user_id` を付与/検証
+- SupabaseAuthGuard: `Authorization: Bearer <JWT>` を検証し、`request.user` を付与
+- SupabaseRequestService: RLS有効(anon)とService-Role(管理/RPC用途)の2クライアントをリクエストスコープで提供
+- 所有者のみアクセス: DBポリシー`owner_only` + コントローラ/リポジトリでの `userId` チェック
+- ソフトデリート方針: users等の将来拡張用に `deleted_at`/`soft_deleted` を設計（実装中/一部テーブルで対応）
 
-## セットアップ方法
+## 実行/開発
 
-### 前提条件
+前提
+- Node.js 20+
+- pnpm 10+
+- Redis (ローカルは Docker 推奨)
+- Supabase プロジェクト
 
-- Node.js v20以上
-- pnpm v10以上
-- Docker
-- Supabaseプロジェクト
-
-オプション
-
-- Docker Compose
-  - プロジェクトをコンテナ上で実行する場合は必要です
-
-### ローカル開発環境のセットアップ
-
-1. リポジトリをクローン
-
-```bash
-git clone https://github.com/Neuron-Grid/rss-news-api.git
-cd rss-news-api
-```
-
-2. 依存関係のインストール
-
+セットアップ
 ```bash
 pnpm install
-```
+# Redis を起動（Compose V2）
+docker compose -f compose.yml up -d redis
 
-3. 環境変数の設定
-   `.env`ファイルをプロジェクトルートに作成し、以下の環境変数を設定します。
-
-```
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-PRODUCTION_DOMAIN=localhost:3000
-REDIS_HOST=localhost
-REDIS_PORT=6379
-```
-
-4. Redisの起動（Docker Composeを使用）
-
-```bash
-docker-compose up redis -d
-```
-
-5. アプリケーションの起動
-
-```bash
-# 開発モード
+# 開発起動
 pnpm start:dev
 
-# プロダクションモード
+# ビルド/本番起動
 pnpm build
 pnpm start:prod
 ```
 
-### APIドキュメントへのアクセス
+環境変数
+- 具体的なキー値は `.env` を使用します（内容は公開しません）
+- 例や用途は `.env.example` を参照してください（編集して実値を設定）
+- ローカル開発では `NODE_ENV` の設定は必須ではありません（Swaggerは `NODE_ENV=development` のときに `/api/docs` が有効）
 
-アプリケーションを起動した後、以下のURLでSwagger UIにアクセスできます。
+APIドキュメント
+- 開発モードでは Swagger を `http://localhost:3000/api/docs` で提供します
+- すべてのAPIプレフィックスは `/api/v1/` です
+
+整形/規約
+- Biome を採用: `pnpm format` または `biome check --write ./src`
+- import は絶対パス (`src/...`) を使用
+
+## ディレクトリ構成（主なもの）
 
 ```
-http://localhost:3000/api-docs
+src/
+  app.module.ts, main.ts
+  auth/            # 認証・アカウント管理（Supabase Auth）
+  feed/            # 購読/フィード取得・スケジューラ・キュー
+  tag/             # 階層タグと一括タグ付け
+  favorite/        # お気に入り
+  search/          # ベクトル検索（OpenAI + pgvector）
+  embedding/       # 埋め込みバッチ更新（BullMQ）
+  llm/             # 要約/台本生成（Gemini, BullMQ ワーカー）
+  podcast/         # ポッドキャスト設定・エピソード生成/配信
+  settings/        # 機能有効/無効・スケジュール・ステータス
+  jobs/            # 管理向けジョブAPI・再実行など
+  shared/, common/, types/, domain-config/
 ```
 
-## プロジェクト構造
+## 代表的なエンドポイント（抜粋）
 
-プロジェクトは以下のような構造になっています。
+認証（AuthController, version=v1, prefix=/api/v1/auth）
+- `POST /api/v1/auth/signup` 登録（usernameはmetadata経由）
+- `POST /api/v1/auth/login` ログイン
+- `POST /api/v1/auth/logout` ログアウト（要JWT）
+- `DELETE /api/v1/auth/delete` アカウント削除（要JWT）
+- `PATCH /api/v1/auth/update-email`/`update-username`/`update-password`
+- `POST /api/v1/auth/forgot-password`/`reset-password`/`verify-email`
 
-```
-rss-news-api/
-├── src/                          # ソースコード
-│   ├── app.module.ts             # メインモジュール
-│   ├── main.ts                   # アプリケーションのエントリーポイント
-│   ├── auth/                     # 認証関連
-│   ├── feed/                     # フィード関連機能
-│   │   ├── application/          # ユースケース・コントローラー
-│   │   ├── domain/               # ドメインモデル
-│   │   ├── infrastructure/       # リポジトリ
-│   │   └── queue/                # キュー処理
-│   ├── favorite/                 # お気に入り機能
-│   ├── tag/                      # タグ機能
-│   └── shared/                   # 共通コンポーネント
-├── test/                         # テストファイル
-├── Dockerfile                    # Dockerビルド設定
-├── compose.yml                   # Docker Compose設定
-├── package.json                  # パッケージ設定
-└── nest-cli.json                 # NestJSの設定
-```
+フィード（FeedController, prefix=/api/v1/feed）
+- `GET /api/v1/feed` 購読一覧（ページング）
+- `POST /api/v1/feed` 購読追加（URL指定）
+- `PATCH /api/v1/feed/:id` 購読更新 / `DELETE /api/v1/feed/:id` 購読削除
+- `POST /api/v1/feed/:id/fetch` フィード手動取得
+- `GET /api/v1/feed/:id/items` アイテム一覧（ページング）
 
-## 主なモジュールと役割
+タグ（TagController, prefix=/api/v1/tags、要JWT）
+- 基本: `GET /` 一覧, `POST /` 作成, `PATCH /:tagId` 更新, `DELETE /:tagId` 削除
+- ツリー: `GET /hierarchy`, `GET /:tagId/subtree`, `GET /:tagId/path`
+- 高度作成: `POST /hierarchical`（description, color, embedding自動生成）
+- 移動: `PATCH /:tagId/move`（循環/深度チェック）
+- 紐付け: FeedItem `POST /feed-items/:id`, `DELETE /feed-items/:id?tagId=...`
+- 一括: `POST /feed-items/:id/bulk`, `POST /subscriptions/:id/bulk`
+- 検索: `GET /:tagId/feed-items?includeChildren=true`, `.../subscriptions?...`
 
-### Auth モジュール
+お気に入り（FavoriteController, prefix=/api/v1/favorites）
+- `GET /` 一覧, `POST /:feedItemId` 追加, `DELETE /:feedItemId` 解除
+- `GET /:feedItemId/is-favorited` 判定
 
-Supabaseを利用したユーザー認証機能を提供します。
+検索（SearchController, prefix=/api/v1/search）
+- `GET /all|feed-items|summaries|podcasts?q=...` 類似検索（しきい値/件数指定）
 
-- サインアップ/サインイン
-- パスワード変更
-- メール確認
-- TOTP（二要素認証）
+埋め込みバッチ（EmbeddingController, prefix=/api/v1/embeddings）
+- `POST /batch-update` テーブル別バッチ更新, `GET /progress` 進捗
 
-### Feed モジュール
+要約/台本再生成（LLM SummaryController）
+- `POST /api/v1/summaries/users/:userId/regenerate`
+- `POST /api/v1/scripts/summaries/:summaryId/regenerate`
 
-RSSフィードの購読管理とフィードアイテムの取得・表示機能を提供します。
+ポッドキャスト
+- 設定: `GET/PUT /api/v1/podcast/config`
+- エピソード: `GET /api/v1/podcast-episodes` 一覧, `POST /` 作成,
+  `GET/PUT/DELETE /:id`, `POST /generate` 生成ジョブ投入
 
-- 購読管理（追加・更新・削除）
-- フィード手動更新
-- フィードアイテム表示
+設定/スケジュール（SettingsController）
+- `GET /api/v1/settings` 統合ビュー, `POST /schedule/reload|preview`,
+  `PUT /settings/summary|podcast`
 
-### Tag モジュール
+ジョブ運用（JobsAdminController, prefix=/api/v1/jobs）
+- `GET /failed?queue=...`, `POST /:jobId/retry?queue=...`, `POST /failed/retry?queue=...`
 
-購読に対してタグ付けする機能を提供します。
+詳細なAPI仕様はSwagger UIを参照してください。以下は暫定の詳細例です（抜粋）。
 
-### Favorite モジュール
+### エンドポイント例（詳細）
 
-フィードアイテムをお気に入りに登録する機能を提供します。
+Auth
+- サインアップ: `POST /api/v1/auth/signup`
+  - body: `{ "email": "user@example.com", "password": "...", "username": "myname" }`
+- ログイン: `POST /api/v1/auth/login`
+  - body: `{ "email": "user@example.com", "password": "..." }`
+- ログアウト: `POST /api/v1/auth/logout` (Bearer 必須)
+- プロフィール変更: `PATCH /api/v1/auth/update-email|update-username|update-password`
+- パスワード系: `POST /api/v1/auth/forgot-password|reset-password`, メール認証: `POST /api/v1/auth/verify-email`
 
-## API エンドポイント
+Feed（購読）
+- 購読一覧: `GET /api/v1/feed?page=1&limit=20`
+- 追加: `POST /api/v1/feed` body: `{ "feedUrl": "https://example.com/rss.xml" }`
+- 更新: `PATCH /api/v1/feed/:id` body 例: `{ "feedTitle": "新しいタイトル" }`
+- 削除: `DELETE /api/v1/feed/:id`
+- 手動取得: `POST /api/v1/feed/:id/fetch`
+- アイテム一覧: `GET /api/v1/feed/:id/items?page=1&limit=50`
 
-### 認証関連
+Tags（階層タグ）
+- 一覧: `GET /api/v1/tags`
+- 作成（基本）: `POST /api/v1/tags` body: `{ "tagName": "テクノロジー", "parentTagId": null }`
+- 更新: `PATCH /api/v1/tags/:tagId` body: `{ "newName": "プログラミング", "newParentTagId": 1 }`
+- 削除: `DELETE /api/v1/tags/:tagId`
+- 作成（拡張・階層）: `POST /api/v1/tags/hierarchical`
+  - body: `{ "tag_name": "JavaScript", "description": "Front-end runtime", "color": "#3B82F6", "parent_tag_id": 2 }`
+- 移動（階層変更）: `PATCH /api/v1/tags/:tagId/move` body: `{ "new_parent_id": null }`
+- ツリー取得: `GET /api/v1/tags/hierarchy`
+- サブツリー: `GET /api/v1/tags/:tagId/subtree`
+- パス取得: `GET /api/v1/tags/:tagId/path`
+- 子孫含むフィード検索: `GET /api/v1/tags/:tagId/feed-items?includeChildren=true`
+- 子孫含む購読検索: `GET /api/v1/tags/:tagId/subscriptions?includeChildren=true`
+- 一括タグ付け（記事）: `POST /api/v1/tags/feed-items/:feedItemId/bulk` body: `{ "tagIds": [1,2,3] }`
+- 一括タグ付け（購読）: `POST /api/v1/tags/subscriptions/:subscriptionId/bulk` body: `{ "tagIds": [1,5,8] }`
 
-- `POST /api/v1/auth/signup` - 新規ユーザー登録
-- `POST /api/v1/auth/signin` - ログイン
-- `POST /api/v1/auth/verify-email` - メール確認
-- `POST /api/v1/auth/forgot-password` - パスワードリセットメール送信
-- `POST /api/v1/auth/reset-password` - パスワードリセット
+Favorites
+- 一覧: `GET /api/v1/favorites`
+- 追加: `POST /api/v1/favorites/:feedItemId`
+- 解除: `DELETE /api/v1/favorites/:feedItemId`
+- 判定: `GET /api/v1/favorites/:feedItemId/is-favorited`
 
-### フィード関連
+Search（ベクトル検索）
+- 全体検索: `GET /api/v1/search/all?q=query&limit=20&threshold=0.7&types=feed_item,summary,podcast`
+- フィードのみ: `GET /api/v1/search/feed-items?q=...`
+- サマリーのみ: `GET /api/v1/search/summaries?q=...`
+- ポッドキャストのみ: `GET /api/v1/search/podcasts?q=...`
 
-- `GET /api/v1/feed/subscriptions` - 購読一覧取得
-- `POST /api/v1/feed/subscriptions` - 新規購読追加
-- `PATCH /api/v1/feed/subscriptions/:id` - 購読更新
-- `DELETE /api/v1/feed/subscriptions/:id` - 購読削除
-- `POST /api/v1/feed/subscriptions/:id/fetch` - 購読を手動更新
-- `GET /api/v1/feed/subscriptions/:id/items` - 購読のフィードアイテム取得
+Embeddings（埋め込み）
+- バッチ更新: `POST /api/v1/embeddings/batch-update` body: `{ "tableTypes": ["feed_items", "summaries", "tags"] }`
+- 進捗: `GET /api/v1/embeddings/progress`
 
-### お気に入り関連
+Summary/Script 再生成（LLM）
+- 要約再生成: `POST /api/v1/summaries/users/:userId/regenerate` body: `{ "date": "YYYY-MM-DD", "prompt": "..." }`
+- 台本再生成: `POST /api/v1/scripts/summaries/:summaryId/regenerate` body: `{ "prompt": "..." }`
 
-- `GET /api/v1/favorites` - お気に入り一覧取得
-- `POST /api/v1/favorites` - お気に入り追加
-- `DELETE /api/v1/favorites/:id` - お気に入り削除
+Podcast
+- 設定取得/更新: `GET /api/v1/podcast/config`, `PUT /api/v1/podcast/config`
+  - 更新 body 例: `{ "podcast_enabled": true, "podcast_schedule_time": "06:00", "podcast_language": "ja-JP" }`
+- エピソード: `GET /api/v1/podcast-episodes?page=1&limit=20`, `POST /api/v1/podcast-episodes`
+- 個別取得/更新/削除: `GET|PUT|DELETE /api/v1/podcast-episodes/:id`
+- 生成ジョブ投入: `POST /api/v1/podcast-episodes/generate` body: `{ "summary_id": 123 }`
 
-### タグ関連
+Jobs（管理・自身のジョブのみ）
+- 失敗一覧: `GET /api/v1/jobs/failed?queue=summary-generate|script-generate|podcastQueue|embeddingQueue`
+- 単体リトライ: `POST /api/v1/jobs/:jobId/retry?queue=...`
+- 一括リトライ: `POST /api/v1/jobs/failed/retry?queue=...` body: `{ "max": 100 }`
 
-- `GET /api/v1/tags` - タグ一覧取得
-- `POST /api/v1/tags` - タグ作成
-- `PATCH /api/v1/tags/:id` - タグ更新
-- `DELETE /api/v1/tags/:id` - タグ削除
+## 運用メモ
 
-## 開発ガイド
+- インデックス/再生成: フィード登録/更新時にembedding追加、週1再構築（BullMQ）
+- 1日1回の要約/ポッドキャスト: JST指定時刻 + 自動ジッター、24h内重複回避（jobId）
+- ポッドキャストは要約が前提。有効化は要約有効時のみ可能
 
-### コード規約
+## トラブルシューティング（抜粋）
 
-このプロジェクトでは、以下のコード規約に従っています。
+- Redis接続不可: `compose.yml` の `redis` を起動、`REDIS_*` を確認
+- Supabase認証: `.env` のURL/鍵やRLS設定、CORS設定を確認
+- Swagger未表示: `NODE_ENV=development` で起動し `/api/docs` を確認
 
-- [Biome](https://biomejs.dev/)を使用したコード整形
-- NestJSの推奨するディレクトリ構造
-- クリーンアーキテクチャ（Application, Domain, Infrastructure）
+## ライセンス
 
-### テスト実行
-
-```bash
-# ユニットテスト
-pnpm test
-
-# E2Eテスト
-pnpm test:e2e
-
-# カバレッジレポート
-pnpm test:cov
-```
-
-## Dockerを使用したデプロイ
-
-### コンテナビルド
-
-```bash
-docker build -t rss-news-api .
-```
-
-### Docker Composeでの起動
-
-`compose.yml`を編集して、コメントアウトされている`rss-news-api`サービスの設定を有効にします。
-その後、以下のコマンドで起動できます。
-
-```bash
-docker-compose up -d
-```
-
-## 運用上の注意点
-
-### バックグラウンドジョブ
-
-このアプリケーションでは、Redisとともに`Bull`を使用して、フィードの定期的な更新を行います。
-以下の点に注意してください。
-
-- Redisが稼働している必要があります
-- 本番環境ではRedisの永続性と高可用性について検討してください
-
-### 環境変数
-
-機密情報やデプロイ環境に依存する設定は環境変数で管理しています。本番環境では適切に設定してください。
-
-## トラブルシューティング
-
-### よくある問題
-
-1. **Redisに接続できない**
-
-- Redisが起動しているか確認
-- 環境変数`REDIS_HOST`と`REDIS_PORT`が正しく設定されているか確認
-
-2. **Supabase認証エラー**
-
-- Supabaseの認証キーが正しいか確認
-- Supabaseプロジェクトの設定を確認
-
-3. **RSSフィードが取得できない**
-
-- URLが正しいか確認
-- ターゲットサイトがRSSを提供しているか確認
-- ネットワーク接続を確認
-
-## 貢献について
-
-バグ報告や機能リクエストは、GitHubのIssueを通じて行ってください。
-
----
-
-このプロジェクトは[Apache License 2.0](./LICENSE.txt)の下で提供されています。
+本プロジェクトは [Apache License 2.0](./LICENSE.txt) で提供されます。
