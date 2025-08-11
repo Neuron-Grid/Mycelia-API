@@ -1,5 +1,5 @@
 services:
-  # rss-news-api:
+  # mycelia-api:
   #   build:
   #     context: ./
   #     dockerfile: Containerfile
@@ -9,7 +9,7 @@ services:
   #     - "3000:3000"
   #   env_file: .env
   #   volumes:
-  #     - ./container/rss-news-api:/data
+  #     - ./container/mycelia-api:/data
   #   depends_on:
   #     - redis
 
@@ -32,9 +32,9 @@ services:
   #     - "80:80"
   #     - "443:443"
   #   depends_on:
-  #     - rss-news-api
+  #     - mycelia-api
   #     - redis
   #   volumes:
   #     - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
   #     - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
-  #     - ./nginx/rss-news-api.conf.template:/etc/nginx/templates/rss-news-api.conf.template:ro
+  #     - ./nginx/mycelia-api.conf.template:/etc/nginx/templates/mycelia-api.conf.template:ro

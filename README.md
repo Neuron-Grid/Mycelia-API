@@ -1,6 +1,6 @@
-# RSS News API
+# Mycelia API
 
-RSS News API は、Supabase Auth と PostgreSQL(pgvector) を用いたアカウント分離・RLS前提のRSSリーダー用バックエンドです。NestJS 11 + BullMQ により、購読取得、ベクトル検索、日次要約、ポッドキャスト生成までを非同期で処理します。
+Mycelia API は、Supabase Auth と PostgreSQL(pgvector) を用いたアカウント分離・RLS前提のRSSリーダー用バックエンドです。NestJS 11 + BullMQ により、購読取得、ベクトル検索、日次要約、ポッドキャスト生成までを非同期で処理します。
 
 注意: 本プロジェクトはベータ版です。APIやスキーマは今後変更される可能性があります。
 

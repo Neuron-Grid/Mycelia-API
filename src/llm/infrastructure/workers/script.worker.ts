@@ -1,7 +1,6 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Job, Queue } from "bullmq";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { Job } from "bullmq";
 import {
     GeminiScriptRequest,
     LLM_SERVICE,

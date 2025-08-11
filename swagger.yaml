@@ -674,7 +674,7 @@ paths:
       summary: Remove a feed item from favorites
       tags: *ref_6
 info:
-  title: RSS News API
+  title: Mycelia API
   description: NestJS + Supabase implementation
   version: 1.0.0
   contact: {}
