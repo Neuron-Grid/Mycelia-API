@@ -1,28 +1,41 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { RedisModule } from "../../shared/redis/redis.module";
-import { RedisService } from "../../shared/redis/redis.service";
-import { SupabaseRequestModule } from "../../supabase-request.module";
-import { PodcastModule } from "../podcast.module";
-import { PodcastQueueProcessor } from "./podcast-queue.processor";
-import { PodcastQueueService } from "./podcast-queue.service";
+import { PodcastCoreModule } from "src/podcast/core/podcast-core.module";
+import { PodcastQueueProcessor } from "src/podcast/queue/podcast-queue.processor";
+import { PodcastQueueService } from "src/podcast/queue/podcast-queue.service";
+import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
+import { RedisModule } from "src/shared/redis/redis.module";
+import { RedisService } from "src/shared/redis/redis.service";
+import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { SupabaseRequestModule } from "src/supabase-request.module";
 
 @Module({
     imports: [
         SupabaseRequestModule,
         RedisModule,
-        PodcastModule,
+        DistributedLockModule,
+        // Queue側はPodcastModuleには依存せず、Coreにのみ依存させる
+        PodcastCoreModule,
         BullModule.registerQueueAsync({
             name: "podcastQueue",
             imports: [RedisModule],
             // RedisService側で用意した共通ioredisインスタンスを共有する
             useFactory: (redisService: RedisService) => ({
                 connection: redisService.createBullClient(),
+                limiter: {
+                    max: 30,
+                    duration: 1000,
+                    groupKey: "data.userId",
+                },
             }),
             inject: [RedisService],
         }),
     ],
-    providers: [PodcastQueueProcessor, PodcastQueueService],
+    providers: [
+        PodcastQueueProcessor,
+        PodcastQueueService,
+        UserSettingsRepository,
+    ],
     exports: [PodcastQueueService, BullModule],
 })
 export class PodcastQueueModule {}

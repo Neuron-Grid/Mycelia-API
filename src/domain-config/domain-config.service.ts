@@ -227,6 +227,38 @@ export class DomainConfigService {
         }
     }
 
+    // 要約機能の有効/無効のみを更新（無効化時はポッドキャストも無効化）
+    async updateSummaryEnabled(
+        userId: string,
+        enabled: boolean,
+    ): Promise<UserSettingsResponseDto> {
+        try {
+            const { data, error } = await this.supabaseRequestService
+                .getClient()
+                .from("user_settings")
+                .update({
+                    summary_enabled: enabled,
+                    podcast_enabled: enabled ? undefined : false,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", userId)
+                .select()
+                .single();
+
+            if (error) throw error;
+            if (!data) {
+                throw new NotFoundException("User settings not found");
+            }
+
+            return UserSettingsResponseDto.fromDatabaseRecord(data);
+        } catch (error) {
+            this.logger.error(
+                `Failed to update summary setting: ${error.message}`,
+            );
+            throw error;
+        }
+    }
+
     // ユーザー設定の統計情報を取得
     async getUserSettingsStats(userId: string) {
         try {

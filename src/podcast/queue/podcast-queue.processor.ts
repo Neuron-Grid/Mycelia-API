@@ -2,6 +2,8 @@ import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
+import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
+import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
@@ -26,6 +28,9 @@ export class PodcastQueueProcessor extends WorkerHost {
         private readonly cloudflareR2Service: CloudflareR2Service,
         private readonly embeddingService: EmbeddingService,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        // 設定からTTS言語を取得
+        private readonly settingsRepo: UserSettingsRepository,
+        private readonly lock: DistributedLockService,
     ) {
         super();
     }
@@ -105,7 +110,17 @@ export class PodcastQueueProcessor extends WorkerHost {
             `Processing podcast generation for user ${userId}, summary ${summaryId}`,
         );
 
+        let lockId: string | null = null;
         try {
+            // 直列化ロック（ユーザー単位、10分）
+            lockId = await this.lock.acquire(`podcast:${userId}`, 10 * 60_000);
+            if (!lockId) {
+                this.logger.warn(
+                    `Another podcast job is running for user ${userId}, skipping`,
+                );
+                return { success: true, skipped: true } as const;
+            }
+            const start = Date.now();
             // 既存のエピソードをチェック
             const existingEpisode =
                 await this.podcastEpisodeRepository.findBySummaryId(
@@ -198,9 +213,13 @@ export class PodcastQueueProcessor extends WorkerHost {
             this.logger.log(
                 `Generating TTS audio for script length: ${summary.script_text.length} characters`,
             );
+            // ユーザー設定から言語を取得（デフォルトはja-JP）
+            const settings = await this.settingsRepo.getByUserId(userId);
+            const language: "ja-JP" | "en-US" =
+                settings?.podcast_language === "en-US" ? "en-US" : "ja-JP";
             const audioBuffer = await this.podcastTtsService.generateSpeech(
                 summary.script_text,
-                "ja-JP", // TODO: ユーザー設定から取得
+                language,
             );
 
             // 音声の長さを推定（概算）
@@ -215,7 +234,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                 episodeId: episode.id,
                 title: episode.title || "Untitled Episode",
                 duration: estimatedDurationSec,
-                language: "ja-JP",
+                language,
                 generatedAt: new Date().toISOString(),
             };
 
@@ -238,8 +257,9 @@ export class PodcastQueueProcessor extends WorkerHost {
                 script_tts_duration_sec: estimatedDurationSec,
             });
 
+            const durationMs = Date.now() - start;
             this.logger.log(
-                `Podcast generation completed successfully for episode ${episode.id}`,
+                `Podcast generation completed successfully for episode ${episode.id} in ${durationMs}ms`,
             );
             return {
                 success: true,
@@ -254,6 +274,15 @@ export class PodcastQueueProcessor extends WorkerHost {
                 error.stack,
             );
             throw error;
+        } finally {
+            // ロック解放
+            try {
+                if (lockId) {
+                    await this.lock.release(`podcast:${userId}`, lockId);
+                }
+            } catch {
+                // lock release failure is non-fatal; lock will expire
+            }
         }
     }
 

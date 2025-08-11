@@ -2,6 +2,8 @@ import { HttpModule, HttpService } from "@nestjs/axios";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { EmbeddingModule } from "src/embedding/embedding.module";
+import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
@@ -24,12 +26,18 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
         HttpModule,
         ConfigModule, // ConfigService を使う場合
         RedisModule,
+        DistributedLockModule,
         BullModule.registerQueueAsync(
             {
                 name: SUMMARY_GENERATE_QUEUE,
                 imports: [RedisModule],
                 useFactory: (redis: RedisService) => ({
                     connection: redis.createBullClient(),
+                    limiter: {
+                        max: 50,
+                        duration: 1000,
+                        groupKey: "data.userId",
+                    },
                     defaultJobOptions: {
                         attempts: 3,
                         backoff: { type: "fixed", delay: 30_000 },
@@ -44,6 +52,11 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
                 imports: [RedisModule],
                 useFactory: (redis: RedisService) => ({
                     connection: redis.createBullClient(),
+                    limiter: {
+                        max: 50,
+                        duration: 1000,
+                        groupKey: "data.userId",
+                    },
                     defaultJobOptions: {
                         attempts: 3,
                         backoff: { type: "fixed", delay: 30_000 },
@@ -55,6 +68,7 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
             },
         ),
         SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
+        EmbeddingModule, // EmbeddingQueueService を利用
     ],
     providers: [
         DailySummaryRepository,
@@ -79,6 +93,12 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
         // もしGeminiFlashClientがConfigServiceを必要とするなら、それもuseFactoryで注入
     ],
     controllers: [SummaryController],
-    exports: [LLM_SERVICE, SummaryScriptService, BullModule], // BullModuleもエクスポートすると他でキューを使える
+    exports: [
+        LLM_SERVICE,
+        SummaryScriptService,
+        BullModule,
+        // Queue/Core側で DailySummaryRepository を注入できるように公開
+        DailySummaryRepository,
+    ], // BullModuleもエクスポートすると他でキューを使える
 })
 export class LlmModule {}

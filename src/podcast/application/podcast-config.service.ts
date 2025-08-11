@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { JobsService } from "src/jobs/jobs.service";
 import { PodcastConfigInput } from "../domain/podcast-config.entity";
 import { PodcastConfigRepository } from "../infrastructure/podcast-config.repository";
 import { PodcastConfigResponseDto } from "./dto/podcast-config.dto";
@@ -8,6 +9,7 @@ import { PodcastConfigMapper } from "./podcast-config.mapper";
 export class PodcastConfigService {
     constructor(
         private readonly podcastConfigRepository: PodcastConfigRepository,
+        private readonly jobsService: JobsService,
     ) {}
 
     //  ユーザーのポッドキャスト設定を取得
@@ -40,6 +42,8 @@ export class PodcastConfigService {
                 "ポッドキャスト設定の更新に失敗しました",
             );
         }
+        // 設定変更を即時にスケジュールへ反映（対象ユーザーのみ）
+        await this.jobsService.rescheduleUserRepeatableJobs(userId);
         return PodcastConfigMapper.toResponseDto(updated);
     }
 

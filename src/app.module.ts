@@ -14,6 +14,7 @@ import { LlmModule } from "./llm/llm.module";
 import { PodcastModule } from "./podcast/podcast.module";
 import { PodcastQueueModule } from "./podcast/queue/podcast-queue.module";
 import { SearchModule } from "./search/search.module";
+import { SettingsModule } from "./settings/settings.module";
 import { SummaryModule } from "./summary/summary.module";
 import { SupabaseRequestModule } from "./supabase-request.module";
 import { TagModule } from "./tag/tag.module";
@@ -44,6 +45,7 @@ import { TagModule } from "./tag/tag.module";
         SummaryModule,
         // Daily jobs scheduler (BullMQ repeatable)
         JobsModule,
+        SettingsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

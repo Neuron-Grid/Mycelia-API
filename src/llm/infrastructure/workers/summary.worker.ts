@@ -2,6 +2,7 @@ import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
@@ -26,6 +27,7 @@ export class SummaryWorker extends WorkerHost {
         @InjectQueue(SCRIPT_GENERATE_QUEUE)
         private readonly scriptQueue: Queue,
         private readonly embeddingQueueService: EmbeddingQueueService,
+        private readonly lock: DistributedLockService,
     ) {
         super();
     }
@@ -38,7 +40,17 @@ export class SummaryWorker extends WorkerHost {
             `Processing summary job for user ${userId}, date ${summaryDate}`,
         );
 
+        let lockId: string | null = null;
         try {
+            // ユーザー単位の直列化ロック（5分）
+            lockId = await this.lock.acquire(`summary:${userId}`, 5 * 60_000);
+            if (!lockId) {
+                this.logger.warn(
+                    `Another summary job is running for user ${userId}, skipping`,
+                );
+                return { success: true, skipped: true } as const;
+            }
+            const start = Date.now();
             // 既存の要約をチェック
             const existingSummary =
                 await this.dailySummaryRepository.findByUserAndDate(
@@ -144,6 +156,10 @@ export class SummaryWorker extends WorkerHost {
                 },
             );
 
+            const durationMs = Date.now() - start;
+            this.logger.log(
+                `Summary job completed for user ${userId} in ${durationMs}ms`,
+            );
             return { success: true, summaryId: summary.id };
         } catch (error) {
             this.logger.error(
@@ -151,6 +167,15 @@ export class SummaryWorker extends WorkerHost {
                 error.stack,
             );
             throw error;
+        } finally {
+            // ロック解放
+            try {
+                if (lockId) {
+                    await this.lock.release(`summary:${userId}`, lockId);
+                }
+            } catch {
+                // ロックIDを保持していないので個別解放はしない（acquire成功時のみ解放）
+            }
         }
     }
 

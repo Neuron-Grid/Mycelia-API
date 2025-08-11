@@ -40,14 +40,36 @@ export class SummaryScriptService {
             return { jobId: undefined };
         }
         // 仕様書のキューデータ: {userId}
-        const job = await this.summaryGenerateQueue.add("generateUserSummary", {
-            userId,
-            customPromptOverride, // カスタムプロンプトをワーカーに渡す場合
-        });
+        // 当日分の冪等性確保のため、JST日付ベースのjobIdを付与
+        const todayJst = this.formatDateJst(new Date());
+        const job = await this.summaryGenerateQueue.add(
+            "generateUserSummary",
+            {
+                userId,
+                customPromptOverride, // カスタムプロンプトをワーカーに渡す場合
+            },
+            {
+                jobId: `summary:${userId}:${todayJst}`,
+                removeOnComplete: 5,
+                removeOnFail: 10,
+                attempts: 3,
+                backoff: { type: "fixed", delay: 30_000 },
+            },
+        );
         this.logger.log(
             `Summary generation job ${job.id} added for user ${userId}`,
         );
         return { jobId: job.id };
+    }
+
+    // JST(UTC+9)基準でYYYY-MM-DDを返す
+    private formatDateJst(date: Date): string {
+        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+        const jst = new Date(utc + 9 * 60 * 60000);
+        const yyyy = jst.getFullYear();
+        const mm = String(jst.getMonth() + 1).padStart(2, "0");
+        const dd = String(jst.getDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
     }
 
     // サマリーIDに基づいて台本生成ジョブをキューに入れる

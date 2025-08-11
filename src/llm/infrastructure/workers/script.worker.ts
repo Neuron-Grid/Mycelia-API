@@ -1,4 +1,4 @@
-import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
+import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
@@ -13,6 +13,10 @@ export interface ScriptJobData {
     userId: string;
     summaryId: number;
 }
+export interface ScriptByDateJobData {
+    userId: string;
+    summaryDate: string; // YYYY-MM-DD (JST)
+}
 
 @Processor("script-generate")
 @Injectable()
@@ -22,14 +26,15 @@ export class ScriptWorker extends WorkerHost {
     constructor(
         private readonly dailySummaryRepository: DailySummaryRepository,
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
-        private readonly settingsRepo: UserSettingsRepository,
     ) {
         super();
     }
 
-    async process(job: Job<ScriptJobData>) {
-        const { userId, summaryId } = job.data;
+    async process(job: Job<ScriptJobData | ScriptByDateJobData>) {
+        if (job.name === "generateScriptForDate") {
+            return await this.processByDate(job as Job<ScriptByDateJobData>);
+        }
+        const { userId, summaryId } = job.data as ScriptJobData;
         this.logger.log(
             `Processing script generation job for user ${userId}, summary ID: ${summaryId}`,
         );
@@ -93,23 +98,9 @@ export class ScriptWorker extends WorkerHost {
                 `Script generated successfully for summary ID: ${summaryId}`,
             );
             // 設定が有効なら、ポッドキャスト生成を連鎖投入
-            const settings = await this.settingsRepo.getByUserId(userId);
-            if (settings?.podcast_enabled && settings?.summary_enabled) {
-                await this.podcastQueue.add(
-                    "generatePodcast",
-                    { userId, summaryId },
-                    {
-                        removeOnComplete: true,
-                        removeOnFail: 5,
-                        attempts: 3,
-                        backoff: { type: "fixed", delay: 30_000 },
-                        jobId: `podcast:${userId}:${summaryId}`,
-                    },
-                );
-                this.logger.log(
-                    `Enqueued podcast generation for user ${userId}, summary ${summaryId}`,
-                );
-            }
+            // フロー化時は子ジョブに任せるためここでは追加しない。
+            // 直接呼び出し経路（通常運用）では、Flowを使わないため従来通り投入してもよいが
+            // 現仕様ではフロー優先とし、ここではスキップする。
 
             return {
                 success: true,
@@ -120,6 +111,69 @@ export class ScriptWorker extends WorkerHost {
         } catch (error) {
             this.logger.error(
                 `Failed to process script job: ${error.message}`,
+                error.stack,
+            );
+            throw error;
+        }
+    }
+
+    private async processByDate(job: Job<ScriptByDateJobData>) {
+        const { userId, summaryDate } = job.data;
+        this.logger.log(
+            `Processing script generation by date for user ${userId}, date: ${summaryDate}`,
+        );
+        try {
+            const targetSummary =
+                await this.dailySummaryRepository.findByUserAndDate(
+                    userId,
+                    summaryDate,
+                );
+            if (!targetSummary) {
+                this.logger.warn(
+                    `No summary found for user ${userId} on ${summaryDate}`,
+                );
+                return { success: true, skipped: true } as const;
+            }
+            if (targetSummary.hasScript()) {
+                this.logger.log(
+                    `Script already exists for summary on ${summaryDate}`,
+                );
+                return {
+                    success: true,
+                    summaryId: targetSummary.id,
+                    hasExistingScript: true,
+                };
+            }
+
+            const summaryItems =
+                await this.dailySummaryRepository.getSummaryItems(
+                    targetSummary.id,
+                    userId,
+                );
+            const scriptRequest: GeminiScriptRequest = {
+                summaryText: targetSummary.markdown || "",
+                articlesForContext: summaryItems.map((item) => ({
+                    title: `Feed Item ${item.feed_item_id}`,
+                    url: `#${item.feed_item_id}`,
+                })),
+            };
+            const scriptResponse =
+                await this.llmService.generateScript(scriptRequest);
+            await this.dailySummaryRepository.update(targetSummary.id, userId, {
+                script_text: scriptResponse.script,
+            });
+            this.logger.log(
+                `Script generated successfully for date ${summaryDate}`,
+            );
+            return {
+                success: true,
+                summaryId: targetSummary.id,
+                scriptLength: scriptResponse.script.length,
+                hasExistingScript: false,
+            };
+        } catch (error) {
+            this.logger.error(
+                `Failed to process script job by date: ${error.message}`,
                 error.stack,
             );
             throw error;

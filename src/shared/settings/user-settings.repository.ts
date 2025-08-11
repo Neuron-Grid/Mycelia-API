@@ -77,13 +77,14 @@ export class UserSettingsRepository {
         summary_enabled: boolean;
         podcast_enabled: boolean;
         podcast_language?: "ja-JP" | "en-US";
+        podcast_schedule_time?: string | null;
     } | null> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .from("user_settings")
                 .select(
-                    "user_id, summary_enabled, podcast_enabled, podcast_language",
+                    "user_id, summary_enabled, podcast_enabled, podcast_language, podcast_schedule_time",
                 )
                 .eq("user_id", userId)
                 .single();
@@ -101,6 +102,9 @@ export class UserSettingsRepository {
                     | "ja-JP"
                     | "en-US"
                     | undefined,
+                podcast_schedule_time: (data.podcast_schedule_time ?? null) as
+                    | string
+                    | null,
             };
         } catch (e) {
             this.logger.warn(

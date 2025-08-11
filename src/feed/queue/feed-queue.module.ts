@@ -1,6 +1,9 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { EmbeddingModule } from "src/embedding/embedding.module";
+import { FavoriteRepository } from "src/favorite/infrastructure/favorite.repository";
 import { SupabaseRequestModule } from "src/supabase-request.module";
+import { TagRepository } from "src/tag/infrastructure/tag.repository";
 import { RedisModule } from "../../shared/redis/redis.module";
 import { RedisService } from "../../shared/redis/redis.service";
 import { FeedFetchService } from "../application/feed-fetch.service";
@@ -15,6 +18,7 @@ import { FeedQueueService } from "./feed-queue.service";
 @Module({
     imports: [
         SupabaseRequestModule,
+        EmbeddingModule,
         RedisModule,
         BullModule.registerQueueAsync({
             name: "feedQueue",
@@ -35,6 +39,8 @@ import { FeedQueueService } from "./feed-queue.service";
         FeedFetchService,
         SubscriptionRepository,
         FeedItemRepository,
+        FavoriteRepository,
+        TagRepository,
     ],
     exports: [FeedQueueService, BullModule],
 })

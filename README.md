@@ -252,4 +252,4 @@ docker-compose up -d
 
 ---
 
-このプロジェクトは[Apache License 2.0](./LICENSE)の下で提供されています。
+このプロジェクトは[Apache License 2.0](./LICENSE.txt)の下で提供されています。

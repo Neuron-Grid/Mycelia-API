@@ -6,6 +6,7 @@ import { MaintenanceQueueModule } from "src/maintenance/maintenance-queue.module
 import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 import { SupabaseRequestModule } from "src/supabase-request.module";
+import { FlowOrchestratorService } from "./flow-orchestrator.service";
 import { JobsService } from "./jobs.service";
 import { JobsAdminController } from "./jobs-admin.controller";
 
@@ -22,7 +23,7 @@ import { JobsAdminController } from "./jobs-admin.controller";
         MaintenanceQueueModule,
     ],
     controllers: [JobsAdminController],
-    providers: [JobsService, UserSettingsRepository],
-    exports: [JobsService],
+    providers: [JobsService, UserSettingsRepository, FlowOrchestratorService],
+    exports: [JobsService, FlowOrchestratorService],
 })
 export class JobsModule {}

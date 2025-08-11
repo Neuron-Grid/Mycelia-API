@@ -80,7 +80,8 @@ export class CloudflareR2Service {
                 Bucket: this.bucketName,
                 Key: key,
                 Body: buffer,
-                ContentType: "audio/mpeg",
+                // 仕様に合わせてOpus(OGG)で保存
+                ContentType: "audio/ogg",
                 Metadata: {
                     "user-id": userId,
                     "summary-id": metadata.summaryId.toString(),
@@ -264,7 +265,8 @@ export class CloudflareR2Service {
     ): string {
         const date = new Date(generatedAt).toISOString().split("T")[0]; // YYYY-MM-DD
         const timestamp = Date.now();
-        return `podcasts/${userId}/${date}/summary-${summaryId}-${timestamp}.mp3`;
+        // 仕様に合わせて .opus 拡張子に変更
+        return `podcasts/${userId}/${date}/summary-${summaryId}-${timestamp}.opus`;
     }
 
     // 公開URLを生成
