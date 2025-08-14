@@ -10,27 +10,14 @@ import { RedisService } from "./redis.service";
         {
             provide: "REDIS_CONNECTION_OPTIONS",
             useFactory: (config: ConfigService) => {
-                // URL解決ロジック
-                // 通常はREDIS_URL
-                // HerokuはHEROKU_REDIS_*_URLが入る場合がある
-                const url =
-                    config.get<string>("REDIS_URL") ||
-                    Object.entries(process.env).find(
-                        ([k]) =>
-                            k.startsWith("HEROKU_REDIS") && k.endsWith("_URL"),
-                    )?.[1];
-
+                // 必須: REDIS_URL のみを使用（Heroku固有検出は廃止）
+                const url = config.get<string>("REDIS_URL");
                 if (!url) throw new Error("REDIS_URL is required");
 
                 const u = new URL(url);
 
-                // Heroku Redisは自己署名証明書
-                const tls =
-                    u.protocol === "rediss:"
-                        ? {
-                              rejectUnauthorized: false,
-                          }
-                        : undefined;
+                // TLS は rediss:// の場合のみ有効化（自己署名の特別対応は行わない）
+                const tls = u.protocol === "rediss:" ? {} : undefined;
 
                 return {
                     host: u.hostname,

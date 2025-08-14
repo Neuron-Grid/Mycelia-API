@@ -15,7 +15,8 @@
       "Bash(supabase:*)",
       "WebFetch(domain:docs.nestjs.com)",
       "WebFetch(domain:www.postgresql.org)",
-      "WebFetch(domain:docs.bullmq.io)"
+      "WebFetch(domain:docs.bullmq.io)",
+      "Bash(redis-cli:*)"
     ],
     "deny": []
   }
