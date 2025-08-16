@@ -1,17 +1,17 @@
 services:
-  # mycelia-api:
-  #   build:
-  #     context: ./
-  #     dockerfile: Containerfile
-  #   container_name: rss-news-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   env_file: .env
-  #   volumes:
-  #     - ./container/mycelia-api:/data
-  #   depends_on:
-  #     - redis
+  mycelia-api:
+    build:
+      context: ./
+      dockerfile: Containerfile
+    container_name: rss-news-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    volumes:
+      - ./container/mycelia-api:/data
+    depends_on:
+      - redis
 
   redis:
     image: docker.io/library/redis:latest
