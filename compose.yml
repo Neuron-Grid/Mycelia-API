@@ -3,7 +3,8 @@ services:
     build:
       context: ./
       dockerfile: Containerfile
-    container_name: rss-news-api
+      network: host
+    container_name: mycelia-api
     restart: unless-stopped
     ports:
       - "3000:3000"
