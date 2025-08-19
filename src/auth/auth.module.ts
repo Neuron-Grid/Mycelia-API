@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { DomainConfigModule } from "src/domain-config/domain-config.module";
-import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
-import { SupabaseRequestModule } from "src/supabase-request.module";
+import { DomainConfigModule } from "@/domain-config/domain-config.module";
+import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { SupabaseRequestModule } from "@/supabase-request.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AuthRepositoryPort } from "./domain/auth.repository";
@@ -20,6 +21,7 @@ import { SupabaseAuthGuard } from "./supabase-auth.guard";
     providers: [
         AuthService,
         SupabaseAuthGuard,
+        SupabaseAdminService,
         // DI バインディング
         { provide: AuthRepositoryPort, useClass: SupabaseAuthRepository },
     ],

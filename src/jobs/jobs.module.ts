@@ -1,14 +1,14 @@
 import { Module } from "@nestjs/common";
-import { EmbeddingModule } from "src/embedding/embedding.module";
-import { FeedQueueModule } from "src/feed/queue/feed-queue.module";
-import { LlmModule } from "src/llm/llm.module";
-import { MaintenanceQueueModule } from "src/maintenance/maintenance-queue.module";
-import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
-import { SupabaseRequestModule } from "src/supabase-request.module";
-import { FlowOrchestratorService } from "./flow-orchestrator.service";
-import { JobsService } from "./jobs.service";
-import { JobsAdminController } from "./jobs-admin.controller";
+import { EmbeddingModule } from "@/embedding/embedding.module";
+import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
+import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
+import { JobsService } from "@/jobs/jobs.service";
+import { JobsAdminController } from "@/jobs/jobs-admin.controller";
+import { LlmModule } from "@/llm/llm.module";
+import { MaintenanceQueueModule } from "@/maintenance/maintenance-queue.module";
+import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
+import { SupabaseRequestModule } from "@/supabase-request.module";
 
 @Module({
     imports: [

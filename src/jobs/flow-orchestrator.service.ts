@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { FlowProducer } from "bullmq";
-import { RedisService } from "src/shared/redis/redis.service";
+import { RedisService } from "@/shared/redis/redis.service";
 
 @Injectable()
 export class FlowOrchestratorService implements OnApplicationShutdown {

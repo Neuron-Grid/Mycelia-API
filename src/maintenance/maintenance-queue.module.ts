@@ -8,6 +8,7 @@ import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { AccountDeletionModule } from "@/account-deletion/account-deletion.module";
 import { MaintenanceService } from "./maintenance.service";
 import { MaintenanceQueueProcessor } from "./maintenance-queue.processor";
 
@@ -19,6 +20,7 @@ import { MaintenanceQueueProcessor } from "./maintenance-queue.processor";
         PodcastQueueModule,
         FeedQueueModule,
         EmbeddingModule,
+        AccountDeletionModule,
         BullModule.registerQueueAsync({
             name: "maintenanceQueue",
             imports: [RedisModule],

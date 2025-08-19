@@ -6,10 +6,12 @@ import {
 } from "@nestjs/common";
 import { createClient } from "@supabase/supabase-js";
 import { Request } from "express";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { Database } from "@/types/schema";
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
+    constructor(private readonly admin: SupabaseAdminService) {}
     // @async
     // @public
     // @since 1.0.0
@@ -80,6 +82,24 @@ export class SupabaseAuthGuard implements CanActivate {
 
         if (!data.user) {
             throw new UnauthorizedException("No user found for this token");
+        }
+
+        // 追加チェック: アカウントがソフト削除されていないか（RLS無視のadminで確認）
+        try {
+            const { data: settings } = await this.admin
+                .getClient()
+                .from("user_settings")
+                .select("soft_deleted")
+                .eq("user_id", data.user.id)
+                .single();
+            if (
+                settings &&
+                (settings as { soft_deleted?: boolean }).soft_deleted
+            )
+                throw new UnauthorizedException("Account is deleted");
+        } catch (_e) {
+            // 行が見つからない場合やadmin経由の読み取り問題はスルー（トークン有効であれば継続）
+            // ただし soft_deleted=true のときのみ拒否
         }
 
         // request.user にユーザー情報をセット

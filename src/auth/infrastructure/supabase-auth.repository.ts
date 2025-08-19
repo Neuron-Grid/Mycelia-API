@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { createClient } from "@supabase/supabase-js";
-import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
-import { SupabaseRequestService } from "src/supabase-request.service";
+import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
+import { SupabaseRequestService } from "@/supabase-request.service";
 import { AuthRepositoryPort } from "../domain/auth.repository";
 
 @Injectable()
@@ -45,11 +45,74 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
     }
 
-    // アカウント削除
-    // RLSバイパス
+    // アカウント削除（アプリ側ソフトデリート対応）
+    // SQLは変更せず、既存のsoft_deleted列を持つ全テーブルで
+    // user_id に紐づくデータをsoft_deleted=trueへ更新する。
+    // 併せて user_settings を無効化し、セッションをサインアウトする。
     async deleteAccount(userId: string) {
+        const admin = this.supabaseReq.getAdminClient();
+        const nowIso = new Date().toISOString();
         try {
-            return await this.supabaseReq.deleteUserAccount(userId);
+            // 1) user_settings: 機能無効化 + soft_deleted
+            await admin
+                .from("user_settings")
+                .update({
+                    summary_enabled: false,
+                    podcast_enabled: false,
+                    soft_deleted: true,
+                    updated_at: nowIso,
+                } as Record<string, unknown>)
+                .eq("user_id", userId);
+
+            // 2) ユーザーデータ表 一括soft_delete
+            const tables = [
+                "user_subscriptions",
+                "feed_items",
+                "feed_item_favorites",
+                "tags",
+                "user_subscription_tags",
+                "feed_item_tags",
+                "daily_summaries",
+                "daily_summary_items",
+                "podcast_episodes",
+            ];
+
+            for (const t of tables) {
+                try {
+                    await admin
+                        .from(t)
+                        .update({
+                            soft_deleted: true,
+                            updated_at: nowIso,
+                        } as Record<string, unknown>)
+                        .eq("user_id", userId);
+                } catch (_e) {
+                    // best-effort: 個別失敗はログのみ（adminクライアント側ログに委ねる）
+                    // throwせず続行
+                }
+            }
+
+            // 3) BAN（ban_duration）。JWTは依然有効のため、ガード/BullMQ側で無効化を継続。
+            const BAN_DURATION = "87600h"; // 10年相当
+            try {
+                await admin.auth.admin.updateUserById(userId, {
+                    // ban_duration: サポートされる時間表記（例: "1h", "7d"相当は"168h"）
+                    // 公式の単位: ns, us, ms, s, m, h
+                    ban_duration: BAN_DURATION as unknown as string,
+                } as unknown as { ban_duration: string });
+            } catch {
+                // noop: BAN失敗は致命ではない（ガードで遮断済）
+            }
+
+            // 4) 現セッションをサインアウト（呼び出し元リクエストのセッション）
+            const sb = this.supabaseReq.getClient();
+            try {
+                await sb.auth.signOut();
+            } catch {
+                // noop
+            }
+
+            return { softDeleted: true };
         } catch (err: unknown) {
             if (err instanceof Error) {
                 throw new HttpException(err.message, HttpStatus.BAD_REQUEST);

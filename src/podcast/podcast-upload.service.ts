@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "../supabase-request.service";
-import { CloudflareR2Service } from "./cloudflare-r2.service";
+import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
+import { SupabaseRequestService } from "@/supabase-request.service";
 
 @Injectable()
 export class PodcastUploadService {

@@ -3,10 +3,10 @@ import {
     GeminiSummaryRequest,
     LLM_SERVICE,
     LlmService,
-} from "../../llm/application/services/llm.service";
-import { CloudflareR2Service } from "../../podcast/cloudflare-r2.service";
-import { CreateSummaryDto } from "../dto/create-summary.dto";
-import { SummaryRepository } from "../infrastructure/summary.repository";
+} from "@/llm/application/services/llm.service";
+import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
+import { CreateSummaryDto } from "@/summary/dto/create-summary.dto";
+import { SummaryRepository } from "@/summary/infrastructure/summary.repository";
 
 @Injectable()
 export class SummaryService {

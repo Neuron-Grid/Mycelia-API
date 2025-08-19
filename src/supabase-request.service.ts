@@ -7,7 +7,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // @see https://expressjs.com/
 import { Request } from "express";
 // @see ./types/schema
-import { Database } from "./types/schema";
+import { Database } from "@/types/schema";
 
 @Injectable({ scope: Scope.REQUEST })
 // @public

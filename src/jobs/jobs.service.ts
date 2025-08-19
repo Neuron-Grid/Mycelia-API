@@ -1,7 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 @Injectable()
 export class JobsService implements OnModuleInit {

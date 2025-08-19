@@ -6,8 +6,8 @@ import {
     ApiResponse,
     ApiTags,
 } from "@nestjs/swagger";
-import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
-import { UserId } from "../../../auth/user-id.decorator";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { UserId } from "@/auth/user-id.decorator";
 import { SearchResponseDto } from "../dto/search-response.dto";
 import { SearchService } from "../services/search.service";
 

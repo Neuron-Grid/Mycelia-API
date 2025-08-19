@@ -6,10 +6,10 @@ import {
     ApiTags,
 } from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
-import { SupabaseAuthGuard } from "../../auth/supabase-auth.guard";
-import { SupabaseUser } from "../../auth/supabase-user.decorator";
-import { CreateSummaryDto } from "../dto/create-summary.dto";
-import { SummaryService } from "./summary.service";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { SupabaseUser } from "@/auth/supabase-user.decorator";
+import { SummaryService } from "@/summary/application/summary.service";
+import { CreateSummaryDto } from "@/summary/dto/create-summary.dto";
 
 @ApiTags("Summary")
 @ApiBearerAuth()

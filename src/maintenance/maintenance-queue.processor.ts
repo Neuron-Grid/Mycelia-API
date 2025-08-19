@@ -16,6 +16,8 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
         @InjectQueue("script-generate") private readonly scriptQueue: Queue,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        @InjectQueue("accountDeletionQueue")
+        private readonly accountDeletionQueue: Queue,
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
         private readonly userSettingsRepo: UserSettingsRepository,
@@ -154,6 +156,19 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                 {},
                 {
                     jobId: `weekly-reindex:${dateStr}`,
+                    removeOnComplete: true,
+                    removeOnFail: 2,
+                },
+            );
+        }
+
+        // 5) 毎週月曜 03:00 にアカウント一括物理削除アグリゲータを投入
+        if (now.getDay() === 1 && h === 3 && m === 0) {
+            await this.accountDeletionQueue.add(
+                "aggregateDeletion",
+                {},
+                {
+                    jobId: `account-aggregate:${dateStr}`,
                     removeOnComplete: true,
                     removeOnFail: 2,
                 },

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { SupabaseRequestService } from "../../supabase-request.service";
-import type { Database } from "../../types/schema";
+import { SupabaseRequestService } from "@/supabase-request.service";
+import type { Database } from "@/types/schema";
 
 @Injectable()
 export class SummaryRepository {

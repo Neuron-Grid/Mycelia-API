@@ -18,8 +18,8 @@ import {
 } from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { Job, Queue } from "bullmq";
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
-import { SupabaseUser } from "src/auth/supabase-user.decorator";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { SupabaseUser } from "@/auth/supabase-user.decorator";
 
 type QueueName =
     | "embeddingQueue"
