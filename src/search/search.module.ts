@@ -6,6 +6,7 @@ import { OpenAIEmbeddingClient } from "@/search/infrastructure/clients/openai-em
 import { SupabaseSearchClient } from "@/search/infrastructure/clients/supabase-search.client";
 import { SearchRepositoryImpl } from "@/search/infrastructure/repositories/search.repository";
 import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { SEARCH_REPOSITORY } from "./domain/interfaces/search-repository.interface";
 
@@ -32,6 +33,7 @@ import { SEARCH_REPOSITORY } from "./domain/interfaces/search-repository.interfa
             provide: EMBEDDING_SERVICE,
             useClass: EmbeddingService,
         },
+        SupabaseAdminService,
     ],
     exports: [
         SearchService,

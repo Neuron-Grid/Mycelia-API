@@ -6,7 +6,7 @@ import { LlmModule } from "src/llm/llm.module";
 import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
 import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { AccountDeletionModule } from "@/account-deletion/account-deletion.module";
 import { MaintenanceService } from "./maintenance.service";
@@ -38,7 +38,7 @@ import { MaintenanceQueueProcessor } from "./maintenance-queue.processor";
     ],
     providers: [
         SupabaseAdminService,
-        UserSettingsRepository,
+        WorkerUserSettingsRepository,
         MaintenanceService,
         MaintenanceQueueProcessor,
     ],

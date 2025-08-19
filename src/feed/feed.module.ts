@@ -3,6 +3,7 @@ import { FavoriteRepository } from "src/favorite/infrastructure/favorite.reposit
 import { FeedQueueModule } from "src/feed/queue/feed-queue.module";
 import { LlmModule } from "src/llm/llm.module";
 import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { TagRepository } from "src/tag/infrastructure/tag.repository";
 import { EmbeddingModule } from "../embedding/embedding.module";
@@ -41,6 +42,7 @@ import { SubscriptionRepository } from "./infrastructure/subscription.repository
         SubscriptionRepository,
         FavoriteRepository,
         TagRepository,
+        SupabaseAdminService,
     ],
 })
 export class FeedModule {}

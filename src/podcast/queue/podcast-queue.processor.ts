@@ -5,7 +5,7 @@ import { validateDto } from "src/common/utils/validation";
 import { WorkerDailySummaryRepository } from "src/llm/infrastructure/repositories/worker-daily-summary.repository";
 import { WorkerPodcastEpisodeRepository } from "src/podcast/infrastructure/worker-podcast-episode.repository";
 import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
 import { PodcastTtsService } from "../podcast-tts.service";
@@ -29,7 +29,7 @@ export class PodcastQueueProcessor extends WorkerHost {
         private readonly embeddingService: EmbeddingService,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
         // 設定からTTS言語を取得
-        private readonly settingsRepo: UserSettingsRepository,
+        private readonly settingsRepo: WorkerUserSettingsRepository,
         private readonly lock: DistributedLockService,
     ) {
         super();
@@ -138,13 +138,11 @@ export class PodcastQueueProcessor extends WorkerHost {
                 };
             }
 
-            // 要約を取得
-            const summaries = await this.dailySummaryRepository.findByUser(
+            // 要約を取得（ID 指定で取得）
+            const summary = await this.dailySummaryRepository.findById(
+                summaryId,
                 userId,
-                100,
-                0,
             );
-            const summary = summaries.find((s) => s.id === summaryId);
 
             if (!summary) {
                 throw new Error(
@@ -180,13 +178,18 @@ export class PodcastQueueProcessor extends WorkerHost {
                     );
                 }
 
-                episode = await this.podcastEpisodeRepository.create(
+                episode = await this.podcastEpisodeRepository.upsert(
                     userId,
                     summaryId,
-                    {
-                        title: episodeTitle,
-                        title_emb: titleEmbedding,
-                    },
+                    episodeTitle,
+                    titleEmbedding,
+                );
+            }
+
+            // 生成に失敗している（あるいは既存取得に失敗している）場合は即座に中断
+            if (!episode) {
+                throw new Error(
+                    `Failed to initialize podcast episode for summary ${summaryId}`,
                 );
             }
 
@@ -250,6 +253,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                     episode.id,
                     userId,
                     audioUrl,
+                    estimatedDurationSec,
                 );
 
             // 要約にTTS音声の長さを記録

@@ -22,7 +22,8 @@ export class WorkerFeedItemRepository {
             p_title: title,
             p_link: link,
             p_description: description,
-            p_published_at: publishedAt ? publishedAt.toISOString() : null,
+            // RPC 型が string（非 null）であるため、null になる場合は既定値を設定
+            p_published_at: (publishedAt ?? new Date(0)).toISOString(),
         });
         if (error) {
             this.logger.error(`fn_insert_feed_item: ${error.message}`);

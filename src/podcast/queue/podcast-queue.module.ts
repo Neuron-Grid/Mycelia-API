@@ -8,7 +8,7 @@ import { PodcastQueueService } from "src/podcast/queue/podcast-queue.service";
 import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
 import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 
 @Module({
@@ -35,7 +35,7 @@ import { SupabaseAdminService } from "src/shared/supabase-admin.service";
     providers: [
         PodcastQueueProcessor,
         PodcastQueueService,
-        UserSettingsRepository,
+        WorkerUserSettingsRepository,
         WorkerDailySummaryRepository,
         WorkerPodcastEpisodeRepository,
         SupabaseAdminService,

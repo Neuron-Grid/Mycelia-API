@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { JobsModule } from "src/jobs/jobs.module";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { PodcastConfigController } from "./application/podcast-config.controller";
 import { PodcastConfigService } from "./application/podcast-config.service";
@@ -30,6 +31,7 @@ import { PodcastQueueModule } from "./queue/podcast-queue.module";
         PodcastEpisodeRepository,
         PodcastEpisodeMapper,
         CloudflareR2Service,
+        SupabaseAdminService,
     ],
     exports: [
         PodcastTtsService,

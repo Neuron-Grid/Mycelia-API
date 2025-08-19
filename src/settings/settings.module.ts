@@ -7,6 +7,7 @@ import { PodcastEpisodeRepository } from "src/podcast/infrastructure/podcast-epi
 import { PodcastModule } from "src/podcast/podcast.module";
 import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { SettingsController } from "./settings.controller";
 
@@ -25,6 +26,7 @@ import { SettingsController } from "./settings.controller";
         UserSettingsRepository,
         DailySummaryRepository,
         PodcastEpisodeRepository,
+        SupabaseAdminService,
     ],
 })
 export class SettingsModule {}

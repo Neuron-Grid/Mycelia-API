@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { createClient } from "@supabase/supabase-js";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
+import type { Database } from "@/types/schema";
 import { AuthRepositoryPort } from "../domain/auth.repository";
 
 @Injectable()
@@ -75,7 +76,9 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
                 "daily_summaries",
                 "daily_summary_items",
                 "podcast_episodes",
-            ];
+            ] as const satisfies ReadonlyArray<
+                keyof Database["public"]["Tables"]
+            >;
 
             for (const t of tables) {
                 try {

@@ -1,7 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
 import { MaintenanceService } from "./maintenance.service";
 
 @Processor("maintenanceQueue")
@@ -20,7 +20,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         private readonly accountDeletionQueue: Queue,
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
-        private readonly userSettingsRepo: UserSettingsRepository,
+        private readonly userSettingsRepo: WorkerUserSettingsRepository,
     ) {
         super();
     }
