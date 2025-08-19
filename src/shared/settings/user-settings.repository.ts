@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SupabaseRequestService } from "src/supabase-request.service";
-import { Tables } from "src/types/schema";
+import { Tables } from "@/types/schema";
 
 export type SummarySchedule = {
     userId: string;
@@ -108,7 +108,9 @@ export class UserSettingsRepository {
             };
         } catch (e) {
             this.logger.warn(
-                `Failed to load settings for user ${userId}: ${(e as Error).message}`,
+                `Failed to load settings for user ${userId}: ${
+                    (e as Error).message
+                }`,
             );
             return null;
         }

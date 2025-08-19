@@ -7,13 +7,11 @@ import {
     Matches,
 } from "class-validator";
 
-//  ポッドキャスト設定更新DTO
-//  @description クライアントからのポッドキャスト設定更新リクエスト用DTO
+//  Podcast settings update DTO
+//  @description DTO for updating podcast settings from the client
 export class UpdatePodcastConfigDto {
-    //  ポッドキャスト機能の有効/無効
-    //  @type {boolean}
     @ApiProperty({
-        description: "ポッドキャスト機能の有効/無効",
+        description: "Enable/disable the podcast feature",
         example: true,
         required: false,
     })
@@ -21,68 +19,56 @@ export class UpdatePodcastConfigDto {
     @IsOptional()
     podcast_enabled?: boolean;
 
-    //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
-    //  @type {string}
     @ApiProperty({
-        description: "ポッドキャスト生成スケジュール時刻（HH:MM形式）",
+        description: "Podcast generation schedule time (HH:MM)",
         example: "07:30",
         required: false,
     })
     @IsString()
     @IsOptional()
     @Matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, {
-        message: "スケジュール時刻はHH:MM形式で指定してください（例: 07:30）",
+        message: "Schedule time must be in HH:MM format (e.g., 07:30)",
     })
     podcast_schedule_time?: string;
 
-    //  ポッドキャスト言語
-    //  @type {'ja-JP' | 'en-US'}
     @ApiProperty({
-        description: "ポッドキャスト言語",
+        description: "Podcast language",
         example: "ja-JP",
         enum: ["ja-JP", "en-US"],
         required: false,
     })
     @IsEnum(["ja-JP", "en-US"], {
-        message: "言語は ja-JP または en-US のいずれかを指定してください",
+        message: "Language must be 'ja-JP' or 'en-US'",
     })
     @IsOptional()
     podcast_language?: "ja-JP" | "en-US";
 }
 
-//  ポッドキャスト設定レスポンスDTO
-//  @description サーバーから返却されるポッドキャスト設定情報
+//  Podcast settings response DTO
+//  @description Podcast settings returned from the server
 export class PodcastConfigResponseDto {
-    //  ポッドキャスト機能の有効/無効
-    //  @type {boolean}
     @ApiProperty({
-        description: "ポッドキャスト機能の有効/無効",
+        description: "Whether the podcast feature is enabled",
         example: true,
     })
     podcast_enabled: boolean;
 
-    //  ポッドキャスト生成スケジュール時刻（HH:MM形式）
-    //  @type {string | null}
     @ApiProperty({
-        description: "ポッドキャスト生成スケジュール時刻（HH:MM形式）",
+        description: "Podcast generation schedule time (HH:MM)",
         example: "07:30",
         nullable: true,
     })
     podcast_schedule_time: string | null;
 
-    //  ポッドキャスト言語
-    //  @type {'ja-JP' | 'en-US'}
     @ApiProperty({
-        description: "ポッドキャスト言語",
+        description: "Podcast language",
         example: "ja-JP",
         enum: ["ja-JP", "en-US"],
     })
     podcast_language: "ja-JP" | "en-US";
 
-    //  最終更新日時
-    //  @type {string}
     @ApiProperty({
-        description: "最終更新日時",
+        description: "Last updated timestamp",
         example: "2025-05-13T07:30:00.000Z",
     })
     updated_at: string;

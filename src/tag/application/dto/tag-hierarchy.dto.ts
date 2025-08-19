@@ -2,56 +2,57 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 export class TagHierarchyDto {
     @ApiProperty({
-        description: "タグID",
+        description: "Tag ID",
         example: 1,
     })
     id!: number;
 
     @ApiProperty({
-        description: "タグ名",
-        example: "テクノロジー",
+        description: "Tag name",
+        example: "Technology",
     })
     tag_name!: string;
 
     @ApiPropertyOptional({
-        description: "親タグID",
+        description: "Parent tag ID",
         example: null,
     })
     parent_tag_id!: number | null;
 
     @ApiPropertyOptional({
-        description: "タグの説明",
-        example: "プログラミング、AI、ガジェットなどの技術関連記事",
+        description: "Tag description",
+        example:
+            "Technology-related articles such as programming, AI, and gadgets",
     })
     description?: string;
 
     @ApiPropertyOptional({
-        description: "タグの色（Hex形式）",
+        description: "Tag color (Hex format)",
         example: "#3B82F6",
     })
     color?: string;
 
     @ApiProperty({
-        description: "子タグ一覧",
+        description: "Child tags",
         type: [Object],
     })
     children!: TagHierarchyDto[];
 
     @ApiProperty({
-        description: "ルートからのパス",
+        description: "Path from root",
         type: [String],
-        example: ["テクノロジー", "プログラミング"],
+        example: ["Technology", "Programming"],
     })
     path!: string[];
 
     @ApiProperty({
-        description: "階層レベル（0がルート）",
+        description: "Hierarchy level (0 = root)",
         example: 1,
     })
     level!: number;
 
     @ApiPropertyOptional({
-        description: "このタグに紐づくフィード数",
+        description: "Number of feeds associated with this tag",
         example: 5,
     })
     feed_count?: number;
@@ -59,38 +60,38 @@ export class TagHierarchyDto {
 
 export class TagWithPathDto {
     @ApiProperty({
-        description: "タグID",
+        description: "Tag ID",
         example: 1,
     })
     id!: number;
 
     @ApiProperty({
-        description: "タグ名",
+        description: "Tag name",
         example: "JavaScript",
     })
     tag_name!: string;
 
     @ApiPropertyOptional({
-        description: "親タグID",
+        description: "Parent tag ID",
         example: 2,
     })
     parent_tag_id!: number | null;
 
     @ApiProperty({
-        description: "フルパス（> で区切り）",
-        example: "テクノロジー > プログラミング > JavaScript",
+        description: "Full path (separated by >)",
+        example: "Technology > Programming > JavaScript",
     })
     full_path!: string;
 
     @ApiProperty({
-        description: "パス配列",
+        description: "Path array",
         type: [String],
-        example: ["テクノロジー", "プログラミング", "JavaScript"],
+        example: ["Technology", "Programming", "JavaScript"],
     })
     path_array!: string[];
 
     @ApiProperty({
-        description: "階層レベル（0がルート）",
+        description: "Hierarchy level (0 = root)",
         example: 2,
     })
     level!: number;
@@ -98,7 +99,7 @@ export class TagWithPathDto {
 
 export class MoveTagDto {
     @ApiPropertyOptional({
-        description: "新しい親タグのID（ルートに移動する場合はnull）",
+        description: "New parent tag ID (null to move to root)",
         example: 3,
     })
     new_parent_id?: number | null;

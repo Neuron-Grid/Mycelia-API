@@ -4,17 +4,17 @@ import { IsInt, IsOptional, IsString, Length, Min } from "class-validator";
 
 export class CreateHierarchicalTagDto {
     @ApiProperty({
-        description: "タグ名",
+        description: "Tag name",
         minLength: 1,
         maxLength: 100,
-        example: "テクノロジー",
+        example: "Technology",
     })
     @IsString()
     @Length(1, 100)
     tag_name!: string;
 
     @ApiPropertyOptional({
-        description: "親タグのID（ルートタグの場合はnull）",
+        description: "Parent tag ID (null for root)",
         example: 1,
     })
     @IsOptional()
@@ -24,9 +24,10 @@ export class CreateHierarchicalTagDto {
     parent_tag_id?: number;
 
     @ApiPropertyOptional({
-        description: "タグの説明",
+        description: "Tag description",
         maxLength: 500,
-        example: "プログラミング、AI、ガジェットなどの技術関連記事",
+        example:
+            "Technology-related articles such as programming, AI, and gadgets",
     })
     @IsOptional()
     @IsString()
@@ -34,7 +35,7 @@ export class CreateHierarchicalTagDto {
     description?: string;
 
     @ApiPropertyOptional({
-        description: "タグの色（Hex形式）",
+        description: "Tag color (Hex format)",
         pattern: "^#[0-9A-Fa-f]{6}$",
         example: "#3B82F6",
     })

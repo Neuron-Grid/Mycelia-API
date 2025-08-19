@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
-import { Database } from "src/types/schema";
+import { Database } from "@/types/schema";
 import { TagRepository } from "../infrastructure/tag.repository";
 
 type TagsUpdate = Database["public"]["Tables"]["tags"]["Update"];

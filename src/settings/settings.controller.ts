@@ -37,7 +37,7 @@ export class SettingsController {
     ) {}
 
     @Get("settings")
-    @ApiOperation({ summary: "ユーザー設定とスケジュールの統合ビュー" })
+    @ApiOperation({ summary: "User settings and schedule overview" })
     @ApiBearerAuth()
     async getSettings(@SupabaseUser() user: User) {
         const userId = user.id;
@@ -78,7 +78,9 @@ export class SettingsController {
     }
 
     @Post("schedule/reload")
-    @ApiOperation({ summary: "自身のrepeatable jobを再登録（即時反映）" })
+    @ApiOperation({
+        summary: "Reload your repeatable jobs (apply immediately)",
+    })
     @ApiBearerAuth()
     async reloadMySchedule(@SupabaseUser() user: User) {
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
@@ -88,7 +90,8 @@ export class SettingsController {
 
     @Post("schedule/preview")
     @ApiOperation({
-        summary: "指定JST時刻の次回実行（ジッター+固定オフセット適用）",
+        summary:
+            "Preview next run times at a given JST time (with jitter and fixed offset)",
     })
     @ApiBearerAuth()
     previewSchedule(
@@ -118,7 +121,7 @@ export class SettingsController {
     }
 
     @Get("jobs/status")
-    @ApiOperation({ summary: "当日の要約→台本→ポッドキャスト進捗" })
+    @ApiOperation({ summary: "Today's summary → script → podcast progress" })
     @ApiBearerAuth()
     async jobsStatus(@SupabaseUser() user: User) {
         const userId = user.id;
@@ -216,7 +219,7 @@ export class SettingsController {
     }
 
     @Put("settings/summary")
-    @ApiOperation({ summary: "要約機能の有効/無効を更新" })
+    @ApiOperation({ summary: "Update summary feature enabled/disabled" })
     @ApiBearerAuth()
     async updateSummarySetting(
         @SupabaseUser() user: User,
@@ -237,7 +240,7 @@ export class SettingsController {
 
     @Put("settings/podcast")
     @ApiOperation({
-        summary: "ポッドキャスト設定の更新（有効/無効・時刻・言語）",
+        summary: "Update podcast settings (enabled/time/language)",
     })
     @ApiBearerAuth()
     async updatePodcastSetting(
@@ -269,7 +272,8 @@ export class SettingsController {
 
     @Post("summaries/run-now")
     @ApiOperation({
-        summary: "当日分の要約→台本→ポッドキャストをFlowで即時投入（冪等）",
+        summary:
+            "Enqueue today's summary → script → podcast flow immediately (idempotent)",
     })
     @ApiBearerAuth()
     async runSummaryNow(
@@ -286,7 +290,8 @@ export class SettingsController {
 
     @Post("podcasts/run-now")
     @ApiOperation({
-        summary: "当日要約があればポッドキャスト生成を即時投入（冪等）",
+        summary:
+            "Enqueue podcast generation for today if a summary exists (idempotent)",
     })
     @ApiBearerAuth()
     async runPodcastNow(@SupabaseUser() user: User) {

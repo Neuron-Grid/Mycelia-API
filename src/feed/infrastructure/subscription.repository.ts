@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
 import { SupabaseRequestService } from "src/supabase-request.service";
-import { Database } from "src/types/schema";
+import { Database } from "@/types/schema";
 
 type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];
 type Update = Database["public"]["Tables"]["user_subscriptions"]["Update"];

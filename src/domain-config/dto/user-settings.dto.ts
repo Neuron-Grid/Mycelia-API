@@ -15,7 +15,7 @@ type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 
 export class UpdateUserSettingsDto {
     @ApiPropertyOptional({
-        description: "デフォルトのRSSフィード更新間隔",
+        description: "Default RSS feed refresh interval",
         type: IntervalDto,
     })
     @IsOptional()
@@ -24,7 +24,7 @@ export class UpdateUserSettingsDto {
     refresh_every?: IntervalDto;
 
     @ApiPropertyOptional({
-        description: "ポッドキャスト機能の有効/無効",
+        description: "Enable/disable the podcast feature",
         example: true,
     })
     @IsOptional()
@@ -32,7 +32,7 @@ export class UpdateUserSettingsDto {
     podcast_enabled?: boolean;
 
     @ApiPropertyOptional({
-        description: "ポッドキャスト生成スケジュール時刻（HH:MM形式）",
+        description: "Podcast generation schedule time (HH:MM)",
         pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
         example: "07:30",
     })
@@ -44,7 +44,7 @@ export class UpdateUserSettingsDto {
     podcast_schedule_time?: string;
 
     @ApiPropertyOptional({
-        description: "ポッドキャスト言語",
+        description: "Podcast language",
         enum: ["ja-JP", "en-US"],
         example: "ja-JP",
     })
@@ -128,43 +128,43 @@ export class UpdateUserSettingsDto {
 
 export class UserSettingsResponseDto {
     @ApiProperty({
-        description: "ユーザーID",
+        description: "User ID",
         example: "123e4567-e89b-12d3-a456-426614174000",
     })
     user_id!: string;
 
     @ApiProperty({
-        description: "RSSフィード更新間隔",
+        description: "RSS feed refresh interval",
         type: IntervalDto,
     })
     refresh_every!: IntervalDto;
 
     @ApiProperty({
-        description: "ポッドキャスト機能の有効/無効",
+        description: "Whether the podcast feature is enabled",
         example: true,
     })
     podcast_enabled!: boolean;
 
     @ApiProperty({
-        description: "ポッドキャスト生成スケジュール時刻",
+        description: "Podcast generation schedule time",
         example: "07:30",
     })
     podcast_schedule_time!: string | null;
 
     @ApiProperty({
-        description: "ポッドキャスト言語",
+        description: "Podcast language",
         example: "ja-JP",
     })
     podcast_language!: "ja-JP" | "en-US";
 
     @ApiProperty({
-        description: "作成日時",
+        description: "Created at",
         example: "2023-12-01T00:00:00Z",
     })
     created_at!: string;
 
     @ApiProperty({
-        description: "更新日時",
+        description: "Updated at",
         example: "2023-12-01T00:00:00Z",
     })
     updated_at!: string;

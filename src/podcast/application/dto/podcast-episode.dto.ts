@@ -1,14 +1,12 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNumber, IsOptional, IsString, Min } from "class-validator";
 
-// ポッドキャストエピソード更新DTO
-// @description クライアントからのポッドキャストエピソード更新リクエスト用DTO
+// Podcast episode update DTO
+// @description DTO for updating a podcast episode from the client
 export class UpdatePodcastEpisodeDto {
-    // エピソードタイトル
-    // @type {string}
     @ApiProperty({
-        description: "ポッドキャストエピソードのタイトル",
-        example: "今日のニュース要約 - 2025年5月13日",
+        description: "Podcast episode title",
+        example: "Today's news summary - 2025-05-13",
         required: false,
     })
     @IsString()
@@ -16,24 +14,20 @@ export class UpdatePodcastEpisodeDto {
     title?: string;
 }
 
-// ポッドキャストエピソード作成DTO
-// @description 新しいポッドキャストエピソード作成用DTO
+// Podcast episode creation DTO
+// @description DTO for creating a new podcast episode
 export class CreatePodcastEpisodeDto {
-    // 要約ID
-    // @type {number}
     @ApiProperty({
-        description: "関連する要約のID",
+        description: "Related summary ID",
         example: 123,
     })
     @IsNumber()
     @Min(1)
     summary_id: number;
 
-    // エピソードタイトル（オプション）
-    // @type {string}
     @ApiProperty({
-        description: "ポッドキャストエピソードのタイトル",
-        example: "今日のニュース要約 - 2025年5月13日",
+        description: "Podcast episode title",
+        example: "Today's news summary - 2025-05-13",
         required: false,
     })
     @IsString()
@@ -41,138 +35,108 @@ export class CreatePodcastEpisodeDto {
     title?: string;
 }
 
-// ポッドキャストエピソードレスポンスDTO
-// @description サーバーから返却されるポッドキャストエピソード情報
+// Podcast episode response DTO
+// @description Podcast episode information returned from the server
 export class PodcastEpisodeResponseDto {
-    // エピソードID
-    // @type {number}
     @ApiProperty({
-        description: "ポッドキャストエピソードのID",
+        description: "Podcast episode ID",
         example: 1,
     })
     id: number;
 
-    // ユーザーID
-    // @type {string}
     @ApiProperty({
-        description: "エピソードの所有者ユーザーID",
+        description: "Owner user ID",
         example: "user-uuid-123",
     })
     user_id: string;
 
-    // 要約ID
-    // @type {number}
     @ApiProperty({
-        description: "関連する要約のID",
+        description: "Related summary ID",
         example: 123,
     })
     summary_id: number;
 
-    // エピソードタイトル
-    // @type {string | null}
     @ApiProperty({
-        description: "ポッドキャストエピソードのタイトル",
-        example: "今日のニュース要約 - 2025年5月13日",
+        description: "Podcast episode title",
+        example: "Today's news summary - 2025-05-13",
         nullable: true,
     })
     title: string | null;
 
-    // 音声ファイルURL
-    // @type {string | null}
     @ApiProperty({
-        description: "音声ファイルのURL",
+        description: "Audio file URL",
         example: "https://storage.example.com/episodes/episode-123.mp3",
         nullable: true,
     })
     audio_url: string | null;
 
-    // ソフト削除フラグ
-    // @type {boolean}
     @ApiProperty({
-        description: "ソフト削除されているかどうか",
+        description: "Whether the episode is soft-deleted",
         example: false,
     })
     soft_deleted: boolean;
 
-    // 作成日時
-    // @type {string}
     @ApiProperty({
-        description: "作成日時",
+        description: "Created at",
         example: "2025-05-13T07:30:00.000Z",
     })
     created_at: string;
 
-    // 最終更新日時
-    // @type {string}
     @ApiProperty({
-        description: "最終更新日時",
+        description: "Updated at",
         example: "2025-05-13T07:30:00.000Z",
     })
     updated_at: string;
 }
 
-// ポッドキャストエピソード一覧レスポンスDTO
-// @description ページネーション対応のエピソード一覧
+// Podcast episodes list response DTO
+// @description Paginated list of episodes
 export class PodcastEpisodeListResponseDto {
-    // エピソード一覧
-    // @type {PodcastEpisodeResponseDto[]}
     @ApiProperty({
-        description: "ポッドキャストエピソード一覧",
+        description: "Podcast episode list",
         type: [PodcastEpisodeResponseDto],
     })
     episodes: PodcastEpisodeResponseDto[];
 
-    // 合計件数
-    // @type {number}
     @ApiProperty({
-        description: "合計エピソード数",
+        description: "Total number of episodes",
         example: 50,
     })
     total: number;
 
-    // 現在のページ
-    // @type {number}
     @ApiProperty({
-        description: "現在のページ番号（1から開始）",
+        description: "Current page number (1-based)",
         example: 1,
     })
     page: number;
 
-    // 1ページあたりの件数
-    // @type {number}
     @ApiProperty({
-        description: "1ページあたりの件数",
+        description: "Items per page",
         example: 20,
     })
     limit: number;
 
-    // 総ページ数
-    // @type {number}
     @ApiProperty({
-        description: "総ページ数",
+        description: "Total pages",
         example: 3,
     })
     total_pages: number;
 }
 
-// ポッドキャストエピソード生成リクエストDTO
-// @description ポッドキャストエピソード生成ジョブ用DTO
+// Podcast episode generation request DTO
+// @description DTO for a podcast episode generation job
 export class GeneratePodcastEpisodeDto {
-    // 要約ID
-    // @type {number}
     @ApiProperty({
-        description: "音声化したい要約のID",
+        description: "ID of the summary to generate audio from",
         example: 123,
     })
     @IsNumber()
     @Min(1)
     summary_id: number;
 
-    // カスタムプロンプト（オプション）
-    // @type {string}
     @ApiProperty({
-        description: "カスタムプロンプト（オプション）",
-        example: "もう少し詳しく解説してください",
+        description: "Custom prompt (optional)",
+        example: "Please provide more detailed explanations.",
         required: false,
     })
     @IsString()
@@ -180,31 +144,25 @@ export class GeneratePodcastEpisodeDto {
     prompt?: string;
 }
 
-// ポッドキャストエピソード生成ジョブレスポンスDTO
-// @description 生成ジョブの結果
+// Podcast episode generation job response DTO
+// @description Result of the generation job
 export class PodcastGenerationJobResponseDto {
-    // メッセージ
-    // @type {string}
     @ApiProperty({
-        description: "ジョブ開始メッセージ",
+        description: "Job start message",
         example:
             "Podcast generation job (ID: job-123) has been queued for summary ID 123.",
     })
     message: string;
 
-    // ジョブID
-    // @type {string}
     @ApiProperty({
-        description: "生成ジョブのID",
+        description: "Generation job ID",
         example: "job-123",
         required: false,
     })
     job_id?: string;
 
-    // エピソードID（すでに存在する場合）
-    // @type {number}
     @ApiProperty({
-        description: "作成されたエピソードのID",
+        description: "Created episode ID (if already exists)",
         example: 456,
         required: false,
     })

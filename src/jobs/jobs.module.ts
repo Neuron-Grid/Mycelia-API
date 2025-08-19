@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { EmbeddingModule } from "src/embedding/embedding.module";
+import { FeedQueueModule } from "src/feed/queue/feed-queue.module";
 import { LlmModule } from "src/llm/llm.module";
 import { MaintenanceQueueModule } from "src/maintenance/maintenance-queue.module";
 import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
@@ -15,6 +16,7 @@ import { JobsAdminController } from "./jobs-admin.controller";
         LlmModule,
         EmbeddingModule,
         PodcastQueueModule,
+        FeedQueueModule,
         MaintenanceQueueModule,
     ],
     controllers: [JobsAdminController],

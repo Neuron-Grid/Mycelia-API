@@ -16,10 +16,10 @@ export class PodcastConfigController {
     constructor(private readonly podcastConfigService: PodcastConfigService) {}
 
     @Get()
-    @ApiOperation({ summary: "ポッドキャスト設定を取得" })
+    @ApiOperation({ summary: "Get podcast settings" })
     @ApiResponse({
         status: 200,
-        description: "ポッドキャスト設定",
+        description: "Podcast settings",
         type: PodcastConfigResponseDto,
     })
     async getPodcastConfig(
@@ -29,10 +29,10 @@ export class PodcastConfigController {
     }
 
     @Put()
-    @ApiOperation({ summary: "ポッドキャスト設定を更新" })
+    @ApiOperation({ summary: "Update podcast settings" })
     @ApiResponse({
         status: 200,
-        description: "更新されたポッドキャスト設定",
+        description: "Updated podcast settings",
         type: PodcastConfigResponseDto,
     })
     async updatePodcastConfig(

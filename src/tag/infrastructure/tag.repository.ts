@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SupabaseRequestService } from "src/supabase-request.service";
-import { Database } from "src/types/schema";
+import { Database } from "@/types/schema";
 import { TagEntity } from "../domain/tag.entity";
 
 // tagsテーブル

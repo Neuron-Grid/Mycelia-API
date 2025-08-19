@@ -15,6 +15,7 @@ export class JobsService implements OnModuleInit {
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
+        @InjectQueue("feedQueue") private readonly feedQueue: Queue,
     ) {}
 
     async onModuleInit(): Promise<void> {
@@ -22,6 +23,7 @@ export class JobsService implements OnModuleInit {
         await this.registerDailyPodcastJobs();
         await this.registerWeeklyMaintenanceJobs();
         await this.registerPodcastCleanupJobs();
+        await this.registerMinutelyFeedScan();
     }
 
     private async registerDailySummaryJobs(): Promise<void> {
@@ -85,6 +87,24 @@ export class JobsService implements OnModuleInit {
         );
         this.logger.log(
             `Registered weekly maintenance job (vector reindex) at JST 03:00 on Sundays`,
+        );
+    }
+
+    private async registerMinutelyFeedScan(): Promise<void> {
+        // 毎分0秒に期限到達購読をスキャンし、feedQueueへ投入
+        const pattern = `0 * * * * *`;
+        await this.feedQueue.add(
+            "scanDueSubscriptions",
+            {},
+            {
+                repeat: { pattern, tz: "Asia/Tokyo" },
+                jobId: `feed-scan-minutely`,
+                removeOnComplete: true,
+                removeOnFail: 2,
+            },
+        );
+        this.logger.log(
+            `Registered minutely feed scan job on feedQueue (cron: ${pattern})`,
         );
     }
 

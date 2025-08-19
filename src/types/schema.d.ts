@@ -7,7 +7,7 @@ export type Json =
     | Json[];
 
 export type Database = {
-    // Allows to automatically instanciate createClient with right options
+    // Allows to automatically instantiate createClient with right options
     // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
     __InternalSupabase: {
         PostgrestVersion: "13.0.4";
@@ -22,10 +22,10 @@ export type Database = {
         Functions: {
             graphql: {
                 Args: {
+                    extensions?: Json;
                     operationName?: string;
                     query?: string;
                     variables?: Json;
-                    extensions?: Json;
                 };
                 Returns: Json;
             };
@@ -588,6 +588,209 @@ export type Database = {
                 Args: { "": string };
                 Returns: string;
             };
+            fn_add_summary_items: {
+                Args: {
+                    p_feed_item_ids: number[];
+                    p_summary_id: number;
+                    p_user_id: string;
+                };
+                Returns: number;
+            };
+            fn_find_due_subscriptions: {
+                Args: { p_cutoff: string };
+                Returns: {
+                    feed_title: string;
+                    feed_url: string;
+                    id: number;
+                    next_fetch_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_get_subscription_for_user: {
+                Args: { p_subscription_id: number; p_user_id: string };
+                Returns: {
+                    feed_title: string;
+                    feed_url: string;
+                    id: number;
+                    last_fetched_at: string;
+                    next_fetch_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_insert_feed_item: {
+                Args: {
+                    p_description: string;
+                    p_link: string;
+                    p_published_at: string;
+                    p_subscription_id: number;
+                    p_title: string;
+                    p_user_id: string;
+                };
+                Returns: {
+                    id: number;
+                    inserted: boolean;
+                }[];
+            };
+            fn_list_missing_feed_item_embeddings: {
+                Args: {
+                    p_last_id?: number;
+                    p_limit?: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    description: string;
+                    id: number;
+                    title: string;
+                }[];
+            };
+            fn_list_missing_podcast_embeddings: {
+                Args: {
+                    p_last_id?: number;
+                    p_limit?: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    id: number;
+                    title: string;
+                }[];
+            };
+            fn_list_missing_summary_embeddings: {
+                Args: {
+                    p_last_id?: number;
+                    p_limit?: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    id: number;
+                    markdown: string;
+                    summary_title: string;
+                }[];
+            };
+            fn_list_missing_tag_embeddings: {
+                Args: {
+                    p_last_id?: number;
+                    p_limit?: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    description: string;
+                    id: number;
+                    tag_name: string;
+                }[];
+            };
+            fn_list_old_podcast_episodes: {
+                Args: { p_cutoff: string; p_user_id: string };
+                Returns: {
+                    audio_url: string;
+                    id: number;
+                }[];
+            };
+            fn_list_recent_feed_items: {
+                Args: { p_limit?: number; p_since: string; p_user_id: string };
+                Returns: {
+                    description: string;
+                    feed_title: string;
+                    id: number;
+                    link: string;
+                    published_at: string;
+                    title: string;
+                }[];
+            };
+            fn_mark_subscription_fetched: {
+                Args: {
+                    p_fetched_at: string;
+                    p_subscription_id: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    feed_title: string;
+                    feed_url: string;
+                    id: number;
+                    last_fetched_at: string;
+                    next_fetch_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_soft_delete_podcast_episode: {
+                Args: { p_episode_id: number; p_user_id: string };
+                Returns: undefined;
+            };
+            fn_update_feed_item_embedding: {
+                Args: { p_id: number; p_user_id: string; p_vec: number[] };
+                Returns: undefined;
+            };
+            fn_update_podcast_audio_url: {
+                Args: {
+                    p_audio_url: string;
+                    p_duration_sec: number;
+                    p_episode_id: number;
+                    p_user_id: string;
+                };
+                Returns: {
+                    audio_url: string;
+                    created_at: string;
+                    id: number;
+                    soft_deleted: boolean;
+                    summary_id: number;
+                    title: string;
+                    title_emb: string | null;
+                    updated_at: string;
+                    user_id: string;
+                };
+            };
+            fn_update_podcast_embedding: {
+                Args: { p_id: number; p_user_id: string; p_vec: number[] };
+                Returns: undefined;
+            };
+            fn_update_summary_embedding: {
+                Args: { p_id: number; p_user_id: string; p_vec: number[] };
+                Returns: undefined;
+            };
+            fn_update_tag_embedding: {
+                Args: { p_id: number; p_user_id: string; p_vec: number[] };
+                Returns: undefined;
+            };
+            fn_upsert_daily_summary: {
+                Args: {
+                    p_markdown: string;
+                    p_summary_date: string;
+                    p_summary_emb: number[];
+                    p_summary_title: string;
+                    p_user_id: string;
+                };
+                Returns: {
+                    created_at: string;
+                    id: number;
+                    markdown: string;
+                    script_text: string | null;
+                    script_tts_duration_sec: number | null;
+                    soft_deleted: boolean;
+                    summary_date: string;
+                    summary_emb: string | null;
+                    summary_title: string;
+                    updated_at: string;
+                    user_id: string;
+                };
+            };
+            fn_upsert_podcast_episode: {
+                Args: {
+                    p_summary_id: number;
+                    p_title: string;
+                    p_title_emb: number[];
+                    p_user_id: string;
+                };
+                Returns: {
+                    audio_url: string;
+                    created_at: string;
+                    id: number;
+                    soft_deleted: boolean;
+                    summary_id: number;
+                    title: string;
+                    title_emb: string | null;
+                    updated_at: string;
+                    user_id: string;
+                };
+            };
             get_embedding_dimensions: {
                 Args: Record<PropertyKey, never>;
                 Returns: number;
@@ -595,10 +798,10 @@ export type Database = {
             get_tag_statistics: {
                 Args: Record<PropertyKey, never>;
                 Returns: {
-                    total_tags: number;
                     root_tags: number;
-                    total_subscriptions_tagged: number;
                     total_feed_items_tagged: number;
+                    total_subscriptions_tagged: number;
+                    total_tags: number;
                 }[];
             };
             halfvec_avg: {
@@ -655,7 +858,7 @@ export type Database = {
             };
             l2_normalize: {
                 Args: { "": string } | { "": unknown } | { "": unknown };
-                Returns: string;
+                Returns: unknown;
             };
             lca: {
                 Args: { "": unknown[] };
@@ -743,61 +946,61 @@ export type Database = {
             };
             search_feed_items_by_vector: {
                 Args: {
-                    query_embedding: string;
-                    match_threshold: number;
                     match_count: number;
+                    match_threshold: number;
+                    query_embedding: number[];
                 };
                 Returns: {
-                    id: number;
-                    title: string;
                     description: string;
+                    feed_title: string;
+                    id: number;
                     link: string;
                     published_at: string;
-                    feed_title: string;
                     similarity: number;
+                    title: string;
                 }[];
             };
             search_podcast_episodes_by_vector: {
                 Args: {
-                    query_embedding: string;
-                    match_threshold: number;
                     match_count: number;
+                    match_threshold: number;
+                    query_embedding: number[];
                 };
                 Returns: {
-                    id: number;
-                    title: string;
                     audio_url: string;
-                    summary_id: number;
                     created_at: string;
+                    id: number;
                     similarity: number;
+                    summary_id: number;
+                    title: string;
                 }[];
             };
             search_summaries_by_vector: {
                 Args: {
-                    query_embedding: string;
-                    match_threshold: number;
                     match_count: number;
+                    match_threshold: number;
+                    query_embedding: number[];
                 };
                 Returns: {
                     id: number;
-                    summary_title: string;
                     markdown: string;
-                    summary_date: string;
                     script_text: string;
                     similarity: number;
+                    summary_date: string;
+                    summary_title: string;
                 }[];
             };
             search_tags_by_vector: {
                 Args: {
-                    query_embedding: string;
-                    match_threshold: number;
                     match_count: number;
+                    match_threshold: number;
+                    query_embedding: number[];
                 };
                 Returns: {
                     id: number;
-                    tag_name: string;
                     parent_tag_id: number;
                     similarity: number;
+                    tag_name: string;
                 }[];
             };
             sparsevec_out: {

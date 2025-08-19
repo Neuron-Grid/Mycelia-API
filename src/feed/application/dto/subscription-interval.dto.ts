@@ -4,7 +4,7 @@ import { IsInt, IsOptional, Max, Min, ValidateNested } from "class-validator";
 
 export class IntervalDto {
     @ApiProperty({
-        description: "時間（0-23時間）",
+        description: "Hours (0-23)",
         minimum: 0,
         maximum: 23,
         required: false,
@@ -18,7 +18,7 @@ export class IntervalDto {
     hours = 0;
 
     @ApiProperty({
-        description: "分（0-59分）",
+        description: "Minutes (0-59)",
         minimum: 0,
         maximum: 59,
         required: false,
@@ -92,7 +92,7 @@ export class IntervalDto {
 
 export class UpdateSubscriptionIntervalDto {
     @ApiProperty({
-        description: "更新間隔設定",
+        description: "Refresh interval settings",
         type: IntervalDto,
     })
     @ValidateNested()
