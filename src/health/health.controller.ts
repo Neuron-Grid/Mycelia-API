@@ -5,8 +5,8 @@ import { Controller, Get } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
 import { Job, Queue } from "bullmq";
-import { RedisService } from "src/shared/redis/redis.service";
-import { SupabaseRequestService } from "src/supabase-request.service";
+import { RedisService } from "@/shared/redis/redis.service";
+import { SupabaseRequestService } from "@/supabase-request.service";
 import {
     HealthCheckResponseDto,
     JobCountsDto,

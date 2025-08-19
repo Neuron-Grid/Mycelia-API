@@ -1,8 +1,8 @@
 // @file フィードアイテムの取得・登録を行うサービス
 import { Injectable } from "@nestjs/common";
-import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
-import { FavoriteRepository } from "src/favorite/infrastructure/favorite.repository";
-import { TagRepository } from "src/tag/infrastructure/tag.repository";
+import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
+import { FavoriteRepository } from "@/favorite/infrastructure/favorite.repository";
+import { TagRepository } from "@/tag/infrastructure/tag.repository";
 import { FeedItemRepository } from "../infrastructure/feed-item.repository";
 import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
 

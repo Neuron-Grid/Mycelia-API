@@ -4,7 +4,7 @@ import {
     Logger,
     NotFoundException,
 } from "@nestjs/common";
-import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import { Database } from "@/types/schema";
 import { SubscriptionRepository } from "../infrastructure/subscription.repository";
 import {

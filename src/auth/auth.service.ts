@@ -2,7 +2,7 @@
 import { Injectable } from "@nestjs/common";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from "@supabase/supabase-js";
-import { DomainConfigService } from "src/domain-config/domain-config.service";
+import { DomainConfigService } from "@/domain-config/domain-config.service";
 import { AuthRepositoryPort } from "./domain/auth.repository";
 
 @Injectable()

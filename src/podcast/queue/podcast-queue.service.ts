@@ -1,7 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { PodcastGenerationJobDto } from "src/podcast/queue/dto/podcast-generation-job.dto";
+import { PodcastGenerationJobDto } from "@/podcast/queue/dto/podcast-generation-job.dto";
 
 @Injectable()
 export class PodcastQueueService {

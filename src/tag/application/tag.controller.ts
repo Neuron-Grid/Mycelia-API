@@ -20,8 +20,8 @@ import {
     ApiResponse,
     ApiTags,
 } from "@nestjs/swagger";
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
-import { UserId } from "src/auth/user-id.decorator";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { UserId } from "@/auth/user-id.decorator";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
 import { CreateTagDto } from "./dto/create-tag.dto";
 import {

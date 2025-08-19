@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { createClient } from "@supabase/supabase-js";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
@@ -10,6 +11,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
     constructor(
         private readonly supabaseReq: SupabaseRequestService,
         private readonly lockService: DistributedLockService,
+        private readonly cfg: ConfigService,
     ) {}
 
     // ... (other methods remain the same) ...
@@ -182,8 +184,8 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
 
         try {
-            const SUPABASE_URL = process.env.SUPABASE_URL;
-            const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+            const SUPABASE_URL = this.cfg.get<string>("SUPABASE_URL");
+            const SUPABASE_ANON_KEY = this.cfg.get<string>("SUPABASE_ANON_KEY");
 
             if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
                 throw new HttpException(

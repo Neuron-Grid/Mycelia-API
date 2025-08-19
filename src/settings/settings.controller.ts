@@ -11,14 +11,14 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
-import { SupabaseUser } from "src/auth/supabase-user.decorator";
-import { DomainConfigService } from "src/domain-config/domain-config.service";
-import { FlowOrchestratorService } from "src/jobs/flow-orchestrator.service";
-import { JobsService } from "src/jobs/jobs.service";
-import { DailySummaryRepository } from "src/llm/infrastructure/repositories/daily-summary.repository";
-import { PodcastEpisodeRepository } from "src/podcast/infrastructure/podcast-episode.repository";
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { SupabaseUser } from "@/auth/supabase-user.decorator";
+import { DomainConfigService } from "@/domain-config/domain-config.service";
+import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
+import { JobsService } from "@/jobs/jobs.service";
+import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
+import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 @ApiTags("settings")
 @Controller()

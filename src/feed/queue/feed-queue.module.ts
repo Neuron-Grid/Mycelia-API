@@ -1,10 +1,10 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { EmbeddingModule } from "src/embedding/embedding.module";
-import { SubscriptionAdminRepository } from "src/feed/infrastructure/subscription-admin.repository";
-import { WorkerFeedItemRepository } from "src/feed/infrastructure/worker-feed-item.repository";
-import { WorkerSubscriptionRepository } from "src/feed/infrastructure/worker-subscription.repository";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { EmbeddingModule } from "@/embedding/embedding.module";
+import { SubscriptionAdminRepository } from "@/feed/infrastructure/subscription-admin.repository";
+import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
+import { WorkerSubscriptionRepository } from "@/feed/infrastructure/worker-subscription.repository";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { RedisModule } from "../../shared/redis/redis.module";
 import { RedisService } from "../../shared/redis/redis.service";
 import { FeedFetchService } from "../application/feed-fetch.service";

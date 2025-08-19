@@ -14,7 +14,7 @@ import {
     ApiTags,
 } from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
-import { SupabaseAuthGuard } from "../auth/supabase-auth.guard";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "../auth/supabase-user.decorator";
 import { BatchProgressResponseDto } from "./dto/batch-progress-response.dto";
 import { BatchUpdateRequestDto } from "./dto/batch-update-request.dto";

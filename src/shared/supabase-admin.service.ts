@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "@/types/schema";
 
@@ -7,9 +8,11 @@ export class SupabaseAdminService {
     private readonly logger = new Logger(SupabaseAdminService.name);
     private readonly admin: SupabaseClient<Database>;
 
-    constructor() {
-        const url = process.env.SUPABASE_URL;
-        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    constructor(private readonly config: ConfigService) {
+        const url = this.config.get<string>("SUPABASE_URL");
+        const serviceRole = this.config.get<string>(
+            "SUPABASE_SERVICE_ROLE_KEY",
+        );
         if (!url || !serviceRole) {
             throw new Error("SUPABASE_URL or SERVICE_ROLE_KEY missing");
         }

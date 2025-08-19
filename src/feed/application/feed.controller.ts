@@ -29,10 +29,10 @@ import {
     ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
-import { UserId } from "src/auth/user-id.decorator";
-import { PaginationQueryDto } from "src/common/dto/pagination-query.dto";
-import { PaginatedResult } from "src/common/interfaces/paginated-result.interface";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { UserId } from "@/auth/user-id.decorator";
+import { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
+import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import { Database } from "../../types/schema";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
 import { FeedItemResponseDto } from "./dto/feed-item-response.dto";

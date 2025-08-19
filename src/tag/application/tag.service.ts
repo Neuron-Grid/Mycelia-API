@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { Database } from "@/types/schema";
 import { TagRepository } from "../infrastructure/tag.repository";
 

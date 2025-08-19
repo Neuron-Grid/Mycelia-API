@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { Database } from "@/types/schema";
 
 type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];

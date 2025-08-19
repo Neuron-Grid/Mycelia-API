@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { SupabaseRequestModule } from "src/supabase-request.module";
+import { SupabaseRequestModule } from "@/supabase-request.module";
 import { DomainConfigService } from "./domain-config.service";
 
 @Module({

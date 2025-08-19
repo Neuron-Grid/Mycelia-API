@@ -1,14 +1,14 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { EmbeddingModule } from "src/embedding/embedding.module";
-import { FeedQueueModule } from "src/feed/queue/feed-queue.module";
-import { LlmModule } from "src/llm/llm.module";
-import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
-import { RedisModule } from "src/shared/redis/redis.module";
-import { RedisService } from "src/shared/redis/redis.service";
-import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { AccountDeletionModule } from "@/account-deletion/account-deletion.module";
+import { EmbeddingModule } from "@/embedding/embedding.module";
+import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
+import { LlmModule } from "@/llm/llm.module";
+import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
+import { RedisModule } from "@/shared/redis/redis.module";
+import { RedisService } from "@/shared/redis/redis.service";
+import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { MaintenanceService } from "./maintenance.service";
 import { MaintenanceQueueProcessor } from "./maintenance-queue.processor";
 

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Item as FeedparserItem, Meta } from "feedparser";
-import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
-import { WorkerFeedItemRepository } from "src/feed/infrastructure/worker-feed-item.repository";
-import { WorkerSubscriptionRepository } from "src/feed/infrastructure/worker-subscription.repository";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
+import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
+import { WorkerSubscriptionRepository } from "@/feed/infrastructure/worker-subscription.repository";
 import { FeedFetchService } from "./feed-fetch.service";
 
 @Injectable()

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { JobsService } from "src/jobs/jobs.service";
+import { JobsService } from "@/jobs/jobs.service";
 import { PodcastConfigInput } from "../domain/podcast-config.entity";
 import { PodcastConfigRepository } from "../infrastructure/podcast-config.repository";
 import { PodcastConfigResponseDto } from "./dto/podcast-config.dto";

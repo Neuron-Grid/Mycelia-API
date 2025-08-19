@@ -29,7 +29,13 @@ async function bootstrap() {
     app.use(helmet());
 
     // global settings
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+    app.useGlobalPipes(
+        new ValidationPipe({
+            whitelist: true,
+            transform: true,
+            transformOptions: { enableImplicitConversion: true },
+        }),
+    );
     app.useGlobalFilters(new AllExceptionsFilter());
     app.setGlobalPrefix("api/v1");
     app.getHttpAdapter()
@@ -53,6 +59,7 @@ async function bootstrap() {
     }
 
     // start server
-    await app.listen(process.env.PORT ?? 3000, "0.0.0.0");
+    const port = Number(cfg.get<string>("PORT")) || 3000;
+    await app.listen(port, "0.0.0.0");
 }
 bootstrap();

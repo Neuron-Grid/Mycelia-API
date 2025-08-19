@@ -4,7 +4,7 @@ import {
     Logger,
     NotFoundException,
 } from "@nestjs/common";
-import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { TagEntity } from "../domain/tag.entity";
 import { TagRepository } from "../infrastructure/tag.repository";

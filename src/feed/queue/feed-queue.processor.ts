@@ -1,7 +1,7 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job } from "bullmq";
-import { validateDto } from "src/common/utils/validation";
+import { validateDto } from "@/common/utils/validation";
 import { FeedUseCaseService } from "../application/feed-usecase.service";
 import { FeedFetchJobDto } from "./dto/feed-fetch-job.dto";
 

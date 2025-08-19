@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { PodcastEpisodeEntity } from "src/podcast/domain/podcast-episode.entity";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { PodcastEpisodeEntity } from "@/podcast/domain/podcast-episode.entity";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
 @Injectable()
 export class WorkerPodcastEpisodeRepository {

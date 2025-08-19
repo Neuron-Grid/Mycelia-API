@@ -1,8 +1,8 @@
 import { Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job } from "bullmq";
-import { SubscriptionAdminRepository } from "src/feed/infrastructure/subscription-admin.repository";
-import { FeedQueueService } from "src/feed/queue/feed-queue.service";
+import { SubscriptionAdminRepository } from "@/feed/infrastructure/subscription-admin.repository";
+import { FeedQueueService } from "@/feed/queue/feed-queue.service";
 
 @Processor("feedQueue")
 @Injectable()

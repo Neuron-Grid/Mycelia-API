@@ -1,11 +1,11 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
-import { validateDto } from "src/common/utils/validation";
-import { WorkerDailySummaryRepository } from "src/llm/infrastructure/repositories/worker-daily-summary.repository";
-import { WorkerPodcastEpisodeRepository } from "src/podcast/infrastructure/worker-podcast-episode.repository";
-import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
-import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
+import { validateDto } from "@/common/utils/validation";
+import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/worker-daily-summary.repository";
+import { WorkerPodcastEpisodeRepository } from "@/podcast/infrastructure/worker-podcast-episode.repository";
+import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
+import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
 import { PodcastTtsService } from "../podcast-tts.service";

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
 @Injectable()
 export class WorkerFeedItemRepository {

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "src/supabase-request.service";
+import { SupabaseRequestService } from "@/supabase-request.service";
 import { Database } from "@/types/schema";
 
 // feed_item_favoritesテーブル

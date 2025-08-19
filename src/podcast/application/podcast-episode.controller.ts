@@ -22,7 +22,7 @@ import {
     ApiResponse,
     ApiTags,
 } from "@nestjs/swagger";
-import { SupabaseAuthGuard } from "../../auth/supabase-auth.guard";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "../../auth/user-id.decorator";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";

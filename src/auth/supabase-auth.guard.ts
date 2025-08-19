@@ -4,6 +4,7 @@ import {
     Injectable,
     UnauthorizedException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { createClient } from "@supabase/supabase-js";
 import { Request } from "express";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
@@ -11,7 +12,10 @@ import { Database } from "@/types/schema";
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
-    constructor(private readonly admin: SupabaseAdminService) {}
+    constructor(
+        private readonly admin: SupabaseAdminService,
+        private readonly cfg: ConfigService,
+    ) {}
     // @async
     // @public
     // @since 1.0.0
@@ -31,8 +35,8 @@ export class SupabaseAuthGuard implements CanActivate {
 
         // 新しいクライアントインスタンスを毎回作成
         // 完全キャッシュ回避
-        const supabaseUrl = process.env.SUPABASE_URL;
-        const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+        const supabaseUrl = this.cfg.get<string>("SUPABASE_URL");
+        const supabaseAnonKey = this.cfg.get<string>("SUPABASE_ANON_KEY");
 
         if (!supabaseUrl || !supabaseAnonKey) {
             throw new UnauthorizedException("Missing Supabase configuration");

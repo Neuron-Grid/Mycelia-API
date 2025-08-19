@@ -1,8 +1,8 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
-import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
-import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
+import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,

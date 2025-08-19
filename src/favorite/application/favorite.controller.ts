@@ -11,8 +11,8 @@ import {
 // @see https://docs.nestjs.com/openapi/introduction
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { SupabaseAuthGuard } from "src/auth/supabase-auth.guard";
-import { UserId } from "src/auth/user-id.decorator";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { UserId } from "@/auth/user-id.decorator";
 import { FavoriteService } from "./favorite.service";
 import { buildResponse } from "./response.util";
 

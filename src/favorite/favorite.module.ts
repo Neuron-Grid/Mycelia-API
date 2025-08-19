@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
-import { SupabaseRequestModule } from "src/supabase-request.module";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { SupabaseRequestModule } from "@/supabase-request.module";
 import { FavoriteController } from "./application/favorite.controller";
 import { FavoriteService } from "./application/favorite.service";
 import { FavoriteRepository } from "./infrastructure/favorite.repository";

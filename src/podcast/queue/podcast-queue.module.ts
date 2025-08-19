@@ -1,15 +1,15 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { WorkerDailySummaryRepository } from "src/llm/infrastructure/repositories/worker-daily-summary.repository";
-import { PodcastCoreModule } from "src/podcast/core/podcast-core.module";
-import { WorkerPodcastEpisodeRepository } from "src/podcast/infrastructure/worker-podcast-episode.repository";
-import { PodcastQueueProcessor } from "src/podcast/queue/podcast-queue.processor";
-import { PodcastQueueService } from "src/podcast/queue/podcast-queue.service";
-import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
-import { RedisModule } from "src/shared/redis/redis.module";
-import { RedisService } from "src/shared/redis/redis.service";
-import { WorkerUserSettingsRepository } from "src/shared/settings/worker-user-settings.repository";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/worker-daily-summary.repository";
+import { PodcastCoreModule } from "@/podcast/core/podcast-core.module";
+import { WorkerPodcastEpisodeRepository } from "@/podcast/infrastructure/worker-podcast-episode.repository";
+import { PodcastQueueProcessor } from "@/podcast/queue/podcast-queue.processor";
+import { PodcastQueueService } from "@/podcast/queue/podcast-queue.service";
+import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
+import { RedisModule } from "@/shared/redis/redis.module";
+import { RedisService } from "@/shared/redis/redis.service";
+import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
 @Module({
     imports: [

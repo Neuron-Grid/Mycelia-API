@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "src/supabase-request.service";
+import { SupabaseRequestService } from "@/supabase-request.service";
 import { Tables } from "@/types/schema";
 
 export type SummarySchedule = {

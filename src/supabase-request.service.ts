@@ -1,5 +1,6 @@
 // @file Supabaseクライアントのリクエストスコープサービス
 import { Inject, Injectable, Scope } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 // @see https://docs.nestjs.com/providers#injection-scopes
 import { REQUEST } from "@nestjs/core";
 // @see https://supabase.com/docs/reference/javascript/create-client
@@ -25,10 +26,13 @@ export class SupabaseRequestService {
     // @param {Request} req - Expressリクエスト
     // @since 1.0.0
     // @public
-    constructor(@Inject(REQUEST) private readonly req: Request) {
-        const url = process.env.SUPABASE_URL;
-        const anonKey = process.env.SUPABASE_ANON_KEY;
-        const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    constructor(
+        @Inject(REQUEST) private readonly req: Request,
+        private readonly cfg: ConfigService,
+    ) {
+        const url = this.cfg.get<string>("SUPABASE_URL");
+        const anonKey = this.cfg.get<string>("SUPABASE_ANON_KEY");
+        const serviceRole = this.cfg.get<string>("SUPABASE_SERVICE_ROLE_KEY");
         if (!url || !anonKey)
             throw new Error("SUPABASE_URL / ANON_KEY missing");
         if (!serviceRole) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing");

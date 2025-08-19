@@ -6,12 +6,12 @@
 
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { EmbeddingQueueModule } from "src/embedding/queue/embedding-queue.module";
-import { FeedQueueModule } from "src/feed/queue/feed-queue.module";
-import { LlmModule } from "src/llm/llm.module";
-import { PodcastQueueModule } from "src/podcast/queue/podcast-queue.module";
-import { RedisModule } from "src/shared/redis/redis.module";
-import { SupabaseRequestModule } from "src/supabase-request.module";
+import { EmbeddingQueueModule } from "@/embedding/queue/embedding-queue.module";
+import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
+import { LlmModule } from "@/llm/llm.module";
+import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
+import { RedisModule } from "@/shared/redis/redis.module";
+import { SupabaseRequestModule } from "@/supabase-request.module";
 import { HealthController } from "./health.controller";
 
 @Module({

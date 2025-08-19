@@ -1,8 +1,8 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
-import { validateDto } from "src/common/utils/validation";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { validateDto } from "@/common/utils/validation";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";

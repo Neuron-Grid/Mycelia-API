@@ -1,7 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { validateDto } from "src/common/utils/validation";
+import { validateDto } from "@/common/utils/validation";
 import { FeedFetchJobDto } from "./dto/feed-fetch-job.dto";
 
 @Injectable()

@@ -3,7 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
 // import { SupabaseRequestService } from '../supabase-request.service'; // DB直接操作はしない
 // import { GeminiService } from './gemini.service'; // LLM直接呼び出しはしない
-import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 // 仕様書にあるキュー名
 export const SUMMARY_GENERATE_QUEUE = "summary-generate";

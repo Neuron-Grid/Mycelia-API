@@ -1,8 +1,8 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { RedisModule } from "src/shared/redis/redis.module";
-import { RedisService } from "src/shared/redis/redis.service";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
+import { RedisModule } from "@/shared/redis/redis.module";
+import { RedisService } from "@/shared/redis/redis.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SearchModule } from "../../search/search.module";
 import { EMBEDDING_BATCH_CONFIG } from "../config/embedding-batch.config";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";

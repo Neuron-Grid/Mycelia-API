@@ -15,7 +15,7 @@ import {
     ApiTags,
 } from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
-import { SupabaseAuthGuard } from "../../../auth/supabase-auth.guard";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "../../../auth/supabase-user.decorator";
 import { DailySummaryRepository } from "../../infrastructure/repositories/daily-summary.repository";
 import { SummaryScriptService } from "../services/summary-script.service";

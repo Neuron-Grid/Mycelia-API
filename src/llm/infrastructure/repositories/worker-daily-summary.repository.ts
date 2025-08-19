@@ -2,9 +2,9 @@ import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import {
     DailySummaryEntity,
     DailySummaryItemEntity,
-} from "src/llm/domain/entities/daily-summary.entity";
-import { SupabaseAdminService } from "src/shared/supabase-admin.service";
-import { Database, TablesUpdate } from "src/types/schema";
+} from "@/llm/domain/entities/daily-summary.entity";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { Database, TablesUpdate } from "@/types/schema";
 
 @Injectable()
 export class WorkerDailySummaryRepository {

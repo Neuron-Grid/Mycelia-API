@@ -1,5 +1,6 @@
 import { HttpService } from "@nestjs/axios";
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
 
 // Gemini 2.5 Flash Preview API クライアントサービス
@@ -7,12 +8,18 @@ import { firstValueFrom } from "rxjs";
 @Injectable()
 export class GeminiService {
     private readonly logger = new Logger(GeminiService.name);
-    private readonly apiUrl =
-        process.env.GEMINI_API_URL ||
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent";
-    private readonly apiKey = process.env.GEMINI_API_KEY;
+    private readonly apiUrl: string;
+    private readonly apiKey: string | undefined;
 
-    constructor(private readonly http: HttpService) {}
+    constructor(
+        private readonly http: HttpService,
+        private readonly config: ConfigService,
+    ) {
+        this.apiUrl =
+            this.config.get<string>("GEMINI_API_URL") ||
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent";
+        this.apiKey = this.config.get<string>("GEMINI_API_KEY");
+    }
 
     // Gemini 2.5 Flashで台本（script_text）を生成
     // @param prompt プロンプト
