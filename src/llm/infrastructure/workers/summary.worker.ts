@@ -9,7 +9,7 @@ import {
     LlmService,
 } from "../../application/services/llm.service";
 import { SCRIPT_GENERATE_QUEUE } from "../../application/services/summary-script.service";
-import { DailySummaryRepository } from "../repositories/daily-summary.repository";
+import { WorkerDailySummaryRepository } from "../repositories/worker-daily-summary.repository";
 
 export interface SummaryJobData {
     userId: string;
@@ -22,7 +22,7 @@ export class SummaryWorker extends WorkerHost {
     private readonly logger = new Logger(SummaryWorker.name);
 
     constructor(
-        private readonly dailySummaryRepository: DailySummaryRepository,
+        private readonly dailySummaryRepository: WorkerDailySummaryRepository,
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
         @InjectQueue(SCRIPT_GENERATE_QUEUE)
         private readonly scriptQueue: Queue,

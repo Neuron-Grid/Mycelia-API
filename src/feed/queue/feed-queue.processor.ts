@@ -7,7 +7,7 @@ import { FeedFetchJobDto } from "./dto/feed-fetch-job.dto";
 
 // キュー名: 'feedQueue'
 // 購読ID + ユーザIDを受け取り、RSSを取得してDB更新する
-@Processor("feedQueue")
+@Processor("feedQueue", { concurrency: 4 })
 export class FeedQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(FeedQueueProcessor.name);
 

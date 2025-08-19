@@ -6,7 +6,7 @@ import {
     LLM_SERVICE,
     LlmService,
 } from "../../application/services/llm.service";
-import { DailySummaryRepository } from "../repositories/daily-summary.repository";
+import { WorkerDailySummaryRepository } from "../repositories/worker-daily-summary.repository";
 
 export interface ScriptJobData {
     userId: string;
@@ -23,7 +23,7 @@ export class ScriptWorker extends WorkerHost {
     private readonly logger = new Logger(ScriptWorker.name);
 
     constructor(
-        private readonly dailySummaryRepository: DailySummaryRepository,
+        private readonly dailySummaryRepository: WorkerDailySummaryRepository,
         @Inject(LLM_SERVICE) private readonly llmService: LlmService,
     ) {
         super();

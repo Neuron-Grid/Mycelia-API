@@ -3,8 +3,9 @@ import { Module } from "@nestjs/common";
 import { EmbeddingModule } from "src/embedding/embedding.module";
 import { FavoriteRepository } from "src/favorite/infrastructure/favorite.repository";
 import { SubscriptionAdminRepository } from "src/feed/infrastructure/subscription-admin.repository";
+import { WorkerFeedItemRepository } from "src/feed/infrastructure/worker-feed-item.repository";
+import { WorkerSubscriptionRepository } from "src/feed/infrastructure/worker-subscription.repository";
 import { SupabaseAdminService } from "src/shared/supabase-admin.service";
-import { SupabaseRequestModule } from "src/supabase-request.module";
 import { TagRepository } from "src/tag/infrastructure/tag.repository";
 import { RedisModule } from "../../shared/redis/redis.module";
 import { RedisService } from "../../shared/redis/redis.service";
@@ -20,7 +21,6 @@ import { FeedQueueService } from "./feed-queue.service";
 
 @Module({
     imports: [
-        SupabaseRequestModule,
         EmbeddingModule,
         RedisModule,
         BullModule.registerQueueAsync({
@@ -44,6 +44,8 @@ import { FeedQueueService } from "./feed-queue.service";
         SubscriptionRepository,
         SubscriptionAdminRepository,
         FeedItemRepository,
+        WorkerSubscriptionRepository,
+        WorkerFeedItemRepository,
         FavoriteRepository,
         TagRepository,
         SupabaseAdminService,

@@ -2,8 +2,8 @@ import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { SearchModule } from "../../search/search.module";
-import { SupabaseRequestModule } from "../../supabase-request.module";
 import { EMBEDDING_BATCH_CONFIG } from "../config/embedding-batch.config";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
@@ -32,13 +32,13 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
             inject: [RedisService],
         }),
         SearchModule,
-        SupabaseRequestModule,
     ],
     providers: [
         EmbeddingQueueService,
         EmbeddingQueueProcessor,
         EmbeddingBatchDataService,
         EmbeddingBatchUpdateService,
+        SupabaseAdminService,
     ],
     exports: [EmbeddingQueueService, BullModule],
 })

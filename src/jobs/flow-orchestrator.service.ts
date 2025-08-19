@@ -1,9 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { FlowProducer } from "bullmq";
 import { RedisService } from "src/shared/redis/redis.service";
 
 @Injectable()
-export class FlowOrchestratorService {
+export class FlowOrchestratorService implements OnApplicationShutdown {
     private readonly logger = new Logger(FlowOrchestratorService.name);
     private readonly flow: FlowProducer;
 
@@ -57,5 +57,16 @@ export class FlowOrchestratorService {
             `Created flow for user ${userId} on ${dateJst}: ${job.id}`,
         );
         return { flowId: String(job.id) };
+    }
+
+    async onApplicationShutdown() {
+        try {
+            await this.flow.close();
+            this.logger.log("FlowProducer closed gracefully");
+        } catch (e) {
+            this.logger.warn(
+                `Failed to close FlowProducer: ${(e as Error).message}`,
+            );
+        }
     }
 }

@@ -11,19 +11,15 @@ export class SubscriptionAdminRepository {
 
     async findDueSubscriptions(cutoff: Date): Promise<Row[]> {
         const sb = this.admin.getClient();
-        const { data, error } = await sb
-            .from("user_subscriptions")
-            .select("*")
-            .lte("next_fetch_at", cutoff.toISOString())
-            .eq("soft_deleted", false)
-            .order("next_fetch_at", { ascending: true });
-
+        const { data, error } = await sb.rpc("fn_find_due_subscriptions", {
+            p_cutoff: cutoff.toISOString(),
+        });
         if (error) {
             this.logger.error(
-                `findDueSubscriptions(admin): ${JSON.stringify(error)}`,
+                `fn_find_due_subscriptions(admin): ${JSON.stringify(error)}`,
             );
             throw error as Error;
         }
-        return data ?? [];
+        return (data as Row[]) ?? [];
     }
 }

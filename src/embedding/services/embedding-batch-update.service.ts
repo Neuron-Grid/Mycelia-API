@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "../../supabase-request.service";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import {
     EmbeddingBatchException,
     InvalidTableTypeException,
@@ -11,22 +11,20 @@ import { EmbeddingUpdateItem, TableType } from "../types/embedding-batch.types";
 export class EmbeddingBatchUpdateService implements IBatchUpdateService {
     private readonly logger = new Logger(EmbeddingBatchUpdateService.name);
 
-    constructor(
-        private readonly supabaseRequestService: SupabaseRequestService,
-    ) {}
+    constructor(private readonly admin: SupabaseAdminService) {}
 
     async updateFeedItemsEmbeddings(
         userId: string,
         items: EmbeddingUpdateItem[],
     ): Promise<void> {
         try {
+            const sb = this.admin.getClient();
             const updatePromises = items.map((item) =>
-                this.supabaseRequestService
-                    .getClient()
-                    .from("feed_items")
-                    .update({ title_emb: JSON.stringify(item.embedding) })
-                    .eq("id", item.id)
-                    .eq("user_id", userId),
+                sb.rpc("fn_update_feed_item_embedding", {
+                    p_user_id: userId,
+                    p_id: item.id,
+                    p_vec: item.embedding as number[],
+                }),
             );
 
             const results = await Promise.allSettled(updatePromises);
@@ -62,15 +60,13 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         items: EmbeddingUpdateItem[],
     ): Promise<void> {
         try {
+            const sb = this.admin.getClient();
             const updatePromises = items.map((item) =>
-                this.supabaseRequestService
-                    .getClient()
-                    .from("daily_summaries")
-                    .update({
-                        summary_emb: JSON.stringify(item.embedding),
-                    })
-                    .eq("id", item.id)
-                    .eq("user_id", userId),
+                sb.rpc("fn_update_summary_embedding", {
+                    p_user_id: userId,
+                    p_id: item.id,
+                    p_vec: item.embedding as number[],
+                }),
             );
 
             const results = await Promise.allSettled(updatePromises);
@@ -106,13 +102,13 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         items: EmbeddingUpdateItem[],
     ): Promise<void> {
         try {
+            const sb = this.admin.getClient();
             const updatePromises = items.map((item) =>
-                this.supabaseRequestService
-                    .getClient()
-                    .from("podcast_episodes")
-                    .update({ title_emb: JSON.stringify(item.embedding) })
-                    .eq("id", item.id)
-                    .eq("user_id", userId),
+                sb.rpc("fn_update_podcast_embedding", {
+                    p_user_id: userId,
+                    p_id: item.id,
+                    p_vec: item.embedding as number[],
+                }),
             );
 
             const results = await Promise.allSettled(updatePromises);
@@ -148,13 +144,13 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
         items: EmbeddingUpdateItem[],
     ): Promise<void> {
         try {
+            const sb = this.admin.getClient();
             const updatePromises = items.map((item) =>
-                this.supabaseRequestService
-                    .getClient()
-                    .from("tags")
-                    .update({ tag_emb: JSON.stringify(item.embedding) })
-                    .eq("id", item.id)
-                    .eq("user_id", userId),
+                sb.rpc("fn_update_tag_embedding", {
+                    p_user_id: userId,
+                    p_id: item.id,
+                    p_vec: item.embedding as number[],
+                }),
             );
 
             const results = await Promise.allSettled(updatePromises);

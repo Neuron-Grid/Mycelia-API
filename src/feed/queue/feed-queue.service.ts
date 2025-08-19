@@ -27,7 +27,8 @@ export class FeedQueueService {
 
         await this.feedQueue.add("default", dto, {
             removeOnComplete: true,
-            removeOnFail: false,
+            // 失敗ジョブは一定数保持（デバッグ用）
+            removeOnFail: 20,
             attempts: 5,
             backoff: { type: "fixed", delay: 60_000 },
             jobId: `feed-${dto.subscriptionId}`,

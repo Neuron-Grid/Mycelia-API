@@ -1,6 +1,5 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import { Queue } from "bullmq";
 
 export interface FeedFetchJobData {
@@ -30,114 +29,18 @@ export class FeedSchedulerService {
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
         @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
-        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
     ) {}
 
-    // 毎分実行: 期限到達したRSSフィードをチェック
-    @Cron(CronExpression.EVERY_MINUTE)
+    // Cron禁止により、スケジュールはJobsServiceのrepeat.everyに集約。
+    // 当メソッドは未使用のノップです。
     scheduleFeedUpdates() {
-        // NOTE: 本メソッドは静的プロバイダ要件に合わせるため、
-        // リクエストスコープ依存を排除しています。
-        // 実際の期限到来購読のスキャンは、BullMQの別ジョブや
-        // 既存のJobsServiceのリピートジョブで行う想定です。
-        this.logger.debug("Cron tick: scheduleFeedUpdates (noop)");
+        // no-op by design
+        return;
     }
 
-    // 毎時0分に実行: 自動要約生成をチェック
-    @Cron("0 0 * * * *") // 毎時0分
-    async scheduleAutoSummaries() {
-        this.logger.log("Checking for auto summary generation...");
-
-        try {
-            // アクティブなユーザーを取得（最近24時間でフィードアイテムがあるユーザー）
-            const activeUsers = await this.getActiveUsersForSummary();
-
-            for (const userId of activeUsers) {
-                const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-
-                const jobData: SummaryGenerationJobData = {
-                    userId,
-                    summaryDate: today,
-                };
-
-                await this.summaryQueue.add("generateSummary", jobData, {
-                    jobId: `summary-${userId}-${today}`,
-                    attempts: 2,
-                    backoff: {
-                        type: "exponential",
-                        delay: 5000,
-                    },
-                    // 要約は長時間かかる可能性があるため長めのタイムアウト
-                    removeOnComplete: 3,
-                    removeOnFail: 3,
-                });
-
-                this.logger.debug(
-                    `Queued summary generation for user ${userId}`,
-                );
-            }
-        } catch (error) {
-            this.logger.error(
-                `Failed to schedule auto summaries: ${error.message}`,
-                error.stack,
-            );
-        }
-    }
-
-    // 毎日午前7時と午後6時に実行: ポッドキャスト生成
-    @Cron("0 0 7,18 * * *") // 7時と18時
-    async scheduleAutoPodcasts() {
-        this.logger.log("Checking for auto podcast generation...");
-
-        try {
-            // ポッドキャスト設定が有効なユーザーの要約を取得
-            const podcastUsers = await this.getActiveUsersForPodcast();
-
-            for (const { userId, summaryId } of podcastUsers) {
-                const jobData: PodcastGenerationJobData = {
-                    userId,
-                    summaryId,
-                };
-
-                await this.podcastQueue.add("generatePodcast", jobData, {
-                    jobId: `podcast-${userId}-${summaryId}`,
-                    attempts: 2,
-                    backoff: {
-                        type: "exponential",
-                        delay: 10000,
-                    },
-                    removeOnComplete: 5,
-                    removeOnFail: 3,
-                });
-
-                this.logger.debug(
-                    `Queued podcast generation for user ${userId}, summary ${summaryId}`,
-                );
-            }
-        } catch (error) {
-            this.logger.error(
-                `Failed to schedule auto podcasts: ${error.message}`,
-                error.stack,
-            );
-        }
-    }
-
-    // 週1回深夜に実行: 全ユーザーの埋め込み生成
-    @Cron("0 0 2 * * 0") // 毎週日曜日午前2時
-    async scheduleWeeklyEmbeddingUpdate() {
-        this.logger.log("Starting weekly embedding update for all users...");
-
-        try {
-            // グローバル埋め込み更新ジョブをキューに直接追加
-            await this.embeddingQueue.add("global-update", {}, { priority: 1 });
-            this.logger.log("Weekly embedding update job queued successfully");
-        } catch (error) {
-            this.logger.error(
-                `Failed to schedule weekly embedding update: ${error.message}`,
-                error.stack,
-            );
-        }
-    }
+    // 以前は自動要約/ポッドキャスト/埋め込みのCronをここで投入していましたが、
+    // スケジューリングは JobsService（repeatable jobs）に集約しました。
+    // 当クラスのCronはフィード走査のノップ用途のみ残します。
 
     // 手動でフィード更新をトリガー
     async triggerFeedUpdate(subscriptionId: number, userId: string) {
@@ -162,7 +65,7 @@ export class FeedSchedulerService {
         return { jobId: job.id, message: "Feed update job queued" };
     }
 
-    // 手動で要約生成をトリガー
+    // 手動で要約生成をトリガー（必要時のみ利用）
     async triggerSummaryGeneration(userId: string, date?: string) {
         const summaryDate = date || new Date().toISOString().split("T")[0];
 
@@ -184,7 +87,7 @@ export class FeedSchedulerService {
         return { jobId: job.id, message: "Summary generation job queued" };
     }
 
-    // 手動でポッドキャスト生成をトリガー
+    // 手動でポッドキャスト生成をトリガー（必要時のみ利用）
     async triggerPodcastGeneration(userId: string, summaryId: number) {
         this.logger.log(
             `Manually triggering podcast generation for user ${userId}, summary ${summaryId}`,
@@ -204,30 +107,7 @@ export class FeedSchedulerService {
         return { jobId: job.id, message: "Podcast generation job queued" };
     }
 
-    // 要約生成対象のアクティブユーザーを取得
-    private getActiveUsersForSummary(): Promise<string[]> {
-        // 実装例: 最近24時間でフィードアイテムが追加されたユーザー
-        // この実装は簡略化されており、実際のクエリが必要
-
-        // TODO: RepositoryまたはDatabaseサービスから取得
-        // const activeUsers = await this.someRepository.getActiveUsers()
-
-        // 暫定的に空配列を返す
-        return Promise.resolve([]);
-    }
-
-    // ポッドキャスト生成対象のユーザーと要約を取得
-    private getActiveUsersForPodcast(): Promise<
-        Array<{ userId: string; summaryId: number }>
-    > {
-        // 実装例: ポッドキャスト設定が有効で、当日の要約があるユーザー
-
-        // TODO: RepositoryまたはDatabaseサービスから取得
-        // const podcastUsers = await this.someRepository.getPodcastEnabledUsers()
-
-        // 暫定的に空配列を返す
-        return Promise.resolve([]);
-    }
+    // 以前のサンプルメソッドはCron廃止に伴い削除しました。
 
     // キューの統計情報を取得
     async getQueueStats() {

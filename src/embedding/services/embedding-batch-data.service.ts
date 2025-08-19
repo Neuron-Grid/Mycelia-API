@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "../../supabase-request.service";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import {
     EmbeddingBatchException,
     InvalidTableTypeException,
@@ -18,9 +18,7 @@ import {
 export class EmbeddingBatchDataService implements IBatchDataService {
     private readonly logger = new Logger(EmbeddingBatchDataService.name);
 
-    constructor(
-        private readonly supabaseRequestService: SupabaseRequestService,
-    ) {}
+    constructor(private readonly admin: SupabaseAdminService) {}
 
     async getFeedItemsBatch(
         userId: string,
@@ -28,21 +26,15 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         lastId?: number,
     ): Promise<FeedItemBatch[]> {
         try {
-            const query = this.supabaseRequestService
-                .getClient()
-                .from("feed_items")
-                .select("id, title, description")
-                .eq("user_id", userId)
-                .is("title_emb", null)
-                .eq("soft_deleted", false)
-                .limit(batchSize)
-                .order("id");
-
-            if (lastId) {
-                query.gt("id", lastId);
-            }
-
-            const { data, error } = await query;
+            const sb = this.admin.getClient();
+            const { data, error } = await sb.rpc(
+                "fn_list_missing_feed_item_embeddings",
+                {
+                    p_user_id: userId,
+                    p_limit: batchSize,
+                    p_last_id: lastId,
+                },
+            );
 
             if (error) {
                 this.logger.error(
@@ -77,21 +69,15 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         lastId?: number,
     ): Promise<SummaryBatch[]> {
         try {
-            const query = this.supabaseRequestService
-                .getClient()
-                .from("daily_summaries")
-                .select("id, summary_title, markdown")
-                .eq("user_id", userId)
-                .is("summary_emb", null)
-                .eq("soft_deleted", false)
-                .limit(batchSize)
-                .order("id");
-
-            if (lastId) {
-                query.gt("id", lastId);
-            }
-
-            const { data, error } = await query;
+            const sb = this.admin.getClient();
+            const { data, error } = await sb.rpc(
+                "fn_list_missing_summary_embeddings",
+                {
+                    p_user_id: userId,
+                    p_limit: batchSize,
+                    p_last_id: lastId,
+                },
+            );
 
             if (error) {
                 this.logger.error(
@@ -125,21 +111,15 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         lastId?: number,
     ): Promise<PodcastBatch[]> {
         try {
-            const query = this.supabaseRequestService
-                .getClient()
-                .from("podcast_episodes")
-                .select("id, title")
-                .eq("user_id", userId)
-                .is("title_emb", null)
-                .eq("soft_deleted", false)
-                .limit(batchSize)
-                .order("id");
-
-            if (lastId) {
-                query.gt("id", lastId);
-            }
-
-            const { data, error } = await query;
+            const sb = this.admin.getClient();
+            const { data, error } = await sb.rpc(
+                "fn_list_missing_podcast_embeddings",
+                {
+                    p_user_id: userId,
+                    p_limit: batchSize,
+                    p_last_id: lastId,
+                },
+            );
 
             if (error) {
                 this.logger.error(
@@ -172,21 +152,15 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         lastId?: number,
     ): Promise<TagBatch[]> {
         try {
-            const query = this.supabaseRequestService
-                .getClient()
-                .from("tags")
-                .select("id, tag_name, description")
-                .eq("user_id", userId)
-                .is("tag_emb", null)
-                .eq("soft_deleted", false)
-                .limit(batchSize)
-                .order("id");
-
-            if (lastId) {
-                query.gt("id", lastId);
-            }
-
-            const { data, error } = await query;
+            const sb = this.admin.getClient();
+            const { data, error } = await sb.rpc(
+                "fn_list_missing_tag_embeddings",
+                {
+                    p_user_id: userId,
+                    p_limit: batchSize,
+                    p_last_id: lastId,
+                },
+            );
 
             if (error) {
                 this.logger.error(
@@ -218,8 +192,8 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         tableType: TableType,
     ): Promise<number> {
         try {
-            const { count, error } = await this.supabaseRequestService
-                .getClient()
+            const sb = this.admin.getClient();
+            const { count, error } = await sb
                 .from(tableType)
                 .select("*", { count: "exact", head: true })
                 .eq("user_id", userId)

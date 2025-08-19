@@ -2,12 +2,12 @@ import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
+import { WorkerDailySummaryRepository } from "src/llm/infrastructure/repositories/worker-daily-summary.repository";
+import { WorkerPodcastEpisodeRepository } from "src/podcast/infrastructure/worker-podcast-episode.repository";
 import { DistributedLockService } from "src/shared/lock/distributed-lock.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
-import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
-import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";
 import { PodcastTtsService } from "../podcast-tts.service";
 import { GeneratePodcastForTodayJobDto } from "./dto/generate-today-job.dto";
 import {
@@ -22,8 +22,8 @@ export class PodcastQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(PodcastQueueProcessor.name);
 
     constructor(
-        private readonly dailySummaryRepository: DailySummaryRepository,
-        private readonly podcastEpisodeRepository: PodcastEpisodeRepository,
+        private readonly dailySummaryRepository: WorkerDailySummaryRepository,
+        private readonly podcastEpisodeRepository: WorkerPodcastEpisodeRepository,
         private readonly podcastTtsService: PodcastTtsService,
         private readonly cloudflareR2Service: CloudflareR2Service,
         private readonly embeddingService: EmbeddingService,

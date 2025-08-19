@@ -2,6 +2,7 @@ import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { validateDto } from "src/common/utils/validation";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
@@ -11,21 +12,29 @@ import {
     TableType,
 } from "../types/embedding-batch.types";
 import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
+import { EmbeddingQueueService } from "./embedding-queue.service";
 
-@Processor("embeddingQueue")
+@Processor("embeddingQueue", { concurrency: 2 })
 export class EmbeddingQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(EmbeddingQueueProcessor.name);
 
     constructor(
         @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
+        private readonly embeddingQueueService: EmbeddingQueueService,
         private readonly batchDataService: EmbeddingBatchDataService,
         private readonly batchUpdateService: EmbeddingBatchUpdateService,
         private readonly embeddingService: EmbeddingService,
+        private readonly admin: SupabaseAdminService,
     ) {
         super();
     }
 
     async process(job: Job<VectorUpdateJobDto>): Promise<BatchProcessResult> {
+        // グローバル更新（全ユーザー分の埋め込み更新を後続ジョブとして投入）
+        if (job.name === "global-update") {
+            await this.handleGlobalUpdate(job);
+            return { processedCount: 0, hasMore: false };
+        }
         // DTO バリデーション – 破損データを早期検出
         await validateDto(VectorUpdateJobDto, job.data);
         const { userId, tableType, batchSize = 50, lastProcessedId } = job.data;
@@ -92,8 +101,17 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 lastProcessedId: lastId,
             };
         } catch (error) {
+            // OpenAIクライアントのHTTPエラー（4xxは即時打ち切り、429は再試行、5xxは再試行）
+            const status = (error as { status?: number }).status;
+            if (status && status >= 400 && status < 500 && status !== 429) {
+                try {
+                    await job.discard();
+                } catch {
+                    /* noop */
+                }
+            }
             this.logger.error(
-                `Batch processing failed for user ${userId}: ${error.message}`,
+                `Batch processing failed for user ${userId}: ${(error as Error).message}`,
             );
             throw error;
         }
@@ -150,5 +168,40 @@ export class EmbeddingQueueProcessor extends WorkerHost {
 
     private delay(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    private async handleGlobalUpdate(job: Job): Promise<void> {
+        this.logger.log("Starting global embedding update scheduling...");
+        try {
+            const sb = this.admin.getClient();
+            const { data, error } = await sb
+                .from("users")
+                .select("id")
+                .order("id");
+            if (error) throw error as Error;
+            const users: { id: string }[] = (data as { id: string }[]) || [];
+            let enqueued = 0;
+            for (const u of users) {
+                try {
+                    await this.embeddingQueueService.addUserEmbeddingBatchJob(
+                        u.id,
+                    );
+                    enqueued++;
+                } catch (e) {
+                    this.logger.warn(
+                        `Failed to enqueue embedding batch for user ${u.id}: ${(e as Error).message}`,
+                    );
+                }
+            }
+            await job.updateProgress(100);
+            this.logger.log(
+                `Enqueued embedding batch jobs for ${enqueued} user(s)`,
+            );
+        } catch (e) {
+            this.logger.error(
+                `Global embedding update scheduling failed: ${(e as Error).message}`,
+            );
+            throw e;
+        }
     }
 }

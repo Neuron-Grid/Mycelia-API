@@ -1,7 +1,6 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Queue } from "bullmq";
-import { SUMMARY_GENERATE_QUEUE } from "src/llm/application/services/summary-script.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
 
 @Injectable()
@@ -10,126 +9,67 @@ export class JobsService implements OnModuleInit {
 
     constructor(
         private readonly settingsRepo: UserSettingsRepository,
-        @InjectQueue(SUMMARY_GENERATE_QUEUE)
-        private readonly summaryQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        // Summary/Podcastのrepeatableは中央スケジューラで管理するためキュー注入は不要
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
     ) {}
 
     async onModuleInit(): Promise<void> {
-        await this.registerDailySummaryJobs();
-        await this.registerDailyPodcastJobs();
-        await this.registerWeeklyMaintenanceJobs();
-        await this.registerPodcastCleanupJobs();
+        // Cron式を使わず、repeat.everyベースの軽量ハートビートで集中管理
+        await this.registerMinutelySchedulerTick();
         await this.registerMinutelyFeedScan();
+        await this.registerHourlyFailedCleanup();
     }
 
-    private async registerDailySummaryJobs(): Promise<void> {
-        const schedules =
-            await this.settingsRepo.getAllEnabledSummarySchedules();
-        for (const { userId, timeJst } of schedules) {
-            const base = this.parseTimeWithStableJitter(timeJst, userId);
-            const { hour, minute } = this.addOffset(base.hour, base.minute, 10);
-            const pattern = `${minute} ${hour} * * *`;
-            await this.summaryQueue.add(
-                "generateUserSummary",
-                { userId },
-                {
-                    repeat: { pattern, tz: "Asia/Tokyo" },
-                    jobId: `summary-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-            this.logger.log(
-                `Registered daily summary: user=${userId}, timeJST=${timeJst}, pattern=${pattern}`,
-            );
-        }
-    }
+    // Cron式のrepeatable jobは廃止（中央スケジューラにより置換）。
 
-    private async registerDailyPodcastJobs(): Promise<void> {
-        const schedules =
-            await this.settingsRepo.getAllEnabledPodcastSchedules();
-        for (const { userId, timeJst } of schedules) {
-            const base = this.parseTimeWithStableJitter(timeJst, userId);
-            const { hour, minute } = this.addOffset(base.hour, base.minute, 10);
-            const pattern = `${minute} ${hour} * * *`;
-            await this.podcastQueue.add(
-                "generatePodcastForToday",
-                { userId },
-                {
-                    repeat: { pattern, tz: "Asia/Tokyo" },
-                    jobId: `podcast-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-            this.logger.log(
-                `Registered daily podcast: user=${userId}, timeJST=${timeJst}, pattern=${pattern}`,
-            );
-        }
-    }
-
-    private async registerWeeklyMaintenanceJobs(): Promise<void> {
-        // 毎週日曜日 3:00 JST
-        const pattern = `0 3 * * 0`;
+    private async registerMinutelySchedulerTick(): Promise<void> {
+        // 1分毎にスケジューラのティックをメンテナンスキューへ投入
         await this.maintenanceQueue.add(
-            "weeklyReindex",
+            "scheduleTick",
             {},
             {
-                repeat: { pattern, tz: "Asia/Tokyo" },
-                jobId: `weekly-reindex`,
+                repeat: { every: 60_000 },
+                jobId: `scheduler-tick`,
                 removeOnComplete: true,
                 removeOnFail: 2,
             },
         );
-        this.logger.log(
-            `Registered weekly maintenance job (vector reindex) at JST 03:00 on Sundays`,
+        this.logger.log(`Registered minutely scheduler tick`);
+    }
+
+    private async registerHourlyFailedCleanup(): Promise<void> {
+        // 1時間毎に全キューの失敗ジョブをクリーンアップ
+        await this.maintenanceQueue.add(
+            "cleanupQueues",
+            {},
+            {
+                repeat: { every: 60 * 60 * 1000 },
+                jobId: `cleanup-hourly`,
+                removeOnComplete: true,
+                removeOnFail: 2,
+            },
         );
+        this.logger.log(`Registered hourly failed jobs cleanup`);
     }
 
     private async registerMinutelyFeedScan(): Promise<void> {
-        // 毎分0秒に期限到達購読をスキャンし、feedQueueへ投入
-        const pattern = `0 * * * * *`;
+        // 毎分、期限到達購読をスキャンし、feedQueueへ投入
         await this.feedQueue.add(
             "scanDueSubscriptions",
             {},
             {
-                repeat: { pattern, tz: "Asia/Tokyo" },
+                repeat: { every: 60_000 },
                 jobId: `feed-scan-minutely`,
                 removeOnComplete: true,
                 removeOnFail: 2,
             },
         );
-        this.logger.log(
-            `Registered minutely feed scan job on feedQueue (cron: ${pattern})`,
-        );
+        this.logger.log(`Registered minutely feed scan job on feedQueue`);
     }
 
-    private async registerPodcastCleanupJobs(): Promise<void> {
-        // 毎日 04:00 JST に30日以上前のエピソードをユーザー毎にクリーンアップ
-        const pattern = `0 4 * * *`;
-        const daysOld = 30;
-        const schedules =
-            await this.settingsRepo.getAllEnabledPodcastSchedules();
-        for (const { userId } of schedules) {
-            await this.podcastQueue.add(
-                "cleanupOldPodcasts",
-                { userId, daysOld },
-                {
-                    repeat: { pattern, tz: "Asia/Tokyo" },
-                    jobId: `podcast-cleanup-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-        }
-        this.logger.log(
-            `Registered daily podcast cleanup (>${daysOld} days) for ${schedules.length} users at JST 04:00`,
-        );
-    }
+    // クリーニングは中央スケジューラ（scheduleTick）で行います。
 
     // HH:mm に対し userId ハッシュベースの0-4分ジッターを追加（安定）
     private parseTimeWithStableJitter(
@@ -171,85 +111,11 @@ export class JobsService implements OnModuleInit {
     }
 
     // 設定更新後に、対象ユーザーのrepeatable jobのみを再登録
-    async rescheduleUserRepeatableJobs(userId: string): Promise<void> {
-        // 既存のrepeatable jobを削除
-        const removeByPattern = async (queue: Queue, prefix: string) => {
-            const jobs = await queue.getRepeatableJobs();
-            for (const job of jobs) {
-                // BullMQのRepeatableJobは key フィールドで一意に削除できる
-                if (job.id?.startsWith(prefix)) {
-                    await queue.removeRepeatableByKey(job.key);
-                }
-            }
-        };
-
-        await removeByPattern(this.summaryQueue, `summary-daily:${userId}`);
-        await removeByPattern(this.podcastQueue, `podcast-daily:${userId}`);
-        await removeByPattern(
-            this.podcastQueue,
-            `podcast-cleanup-daily:${userId}`,
+    rescheduleUserRepeatableJobs(_userId: string): void {
+        // Cron式のrepeatable jobは廃止。中央のscheduleTickで実行管理するため、ここでは何もしない。
+        this.logger.log(
+            "Using central scheduler tick. No per-user repeatable jobs to reschedule.",
         );
-
-        // 再登録（現在のユーザー設定に基づく）
-        const settings = await this.settingsRepo.getByUserId(userId);
-        if (settings?.summary_enabled) {
-            // 要約の再登録
-            const timeJst =
-                (await this.settingsRepo.getAllEnabledSummarySchedules()).find(
-                    (s) => s.userId === userId,
-                )?.timeJst || "06:00";
-            const { hour, minute } = this.parseTimeWithStableJitter(
-                timeJst,
-                userId,
-            );
-            const pattern = `${minute} ${hour} * * *`;
-            await this.summaryQueue.add(
-                "generateUserSummary",
-                { userId },
-                {
-                    repeat: { pattern, tz: "Asia/Tokyo" },
-                    jobId: `summary-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-        }
-
-        if (settings?.summary_enabled && settings?.podcast_enabled) {
-            // ポッドキャストの再登録
-            const timeJst =
-                (await this.settingsRepo.getAllEnabledPodcastSchedules()).find(
-                    (s) => s.userId === userId,
-                )?.timeJst || "07:00";
-            const { hour, minute } = this.parseTimeWithStableJitter(
-                timeJst,
-                userId,
-            );
-            const pattern = `${minute} ${hour} * * *`;
-            await this.podcastQueue.add(
-                "generatePodcastForToday",
-                { userId },
-                {
-                    repeat: { pattern, tz: "Asia/Tokyo" },
-                    jobId: `podcast-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-
-            // クリーニングも再登録
-            const cleanupPattern = `0 4 * * *`;
-            await this.podcastQueue.add(
-                "cleanupOldPodcasts",
-                { userId, daysOld: 30 },
-                {
-                    repeat: { pattern: cleanupPattern, tz: "Asia/Tokyo" },
-                    jobId: `podcast-cleanup-daily:${userId}`,
-                    removeOnComplete: true,
-                    removeOnFail: 5,
-                },
-            );
-        }
     }
 
     // ユーザーの次回実行時刻（repeatable job）を参照
@@ -257,19 +123,46 @@ export class JobsService implements OnModuleInit {
         next_run_at_summary: string | null;
         next_run_at_podcast: string | null;
     }> {
-        const toIso = (ms?: number): string | null =>
-            ms && Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+        const settings = await this.settingsRepo.getByUserId(userId);
+        const now = new Date();
+        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+        const jst = new Date(utc + 9 * 60 * 60000);
 
-        const summaryRepeat = (
-            await this.summaryQueue.getRepeatableJobs()
-        ).find((j) => j.id === `summary-daily:${userId}`);
-        const podcastRepeat = (
-            await this.podcastQueue.getRepeatableJobs()
-        ).find((j) => j.id === `podcast-daily:${userId}`);
+        const toNextIso = (hhmm: string | undefined, offsetMin = 0) => {
+            if (!hhmm) return null;
+            const base = this.parseTimeWithStableJitter(hhmm, userId);
+            const { hour, minute } = this.addOffset(
+                base.hour,
+                base.minute,
+                offsetMin,
+            );
+            const candidate = new Date(jst);
+            candidate.setHours(hour, minute, 0, 0);
+            if (candidate.getTime() <= jst.getTime()) {
+                candidate.setDate(candidate.getDate() + 1);
+            }
+            return candidate.toISOString();
+        };
 
         return {
-            next_run_at_summary: toIso(summaryRepeat?.next),
-            next_run_at_podcast: toIso(podcastRepeat?.next),
+            next_run_at_summary: settings?.summary_enabled
+                ? toNextIso(
+                      (
+                          await this.settingsRepo.getAllEnabledSummarySchedules()
+                      ).find((s) => s.userId === userId)?.timeJst || "06:00",
+                      10,
+                  )
+                : null,
+            next_run_at_podcast:
+                settings?.summary_enabled && settings?.podcast_enabled
+                    ? toNextIso(
+                          (
+                              await this.settingsRepo.getAllEnabledPodcastSchedules()
+                          ).find((s) => s.userId === userId)?.timeJst ||
+                              "07:00",
+                          10,
+                      )
+                    : null,
         };
     }
 }

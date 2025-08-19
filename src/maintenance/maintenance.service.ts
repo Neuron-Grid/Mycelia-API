@@ -1,11 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { SupabaseRequestService } from "src/supabase-request.service";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 
 @Injectable()
 export class MaintenanceService {
     private readonly logger = new Logger(MaintenanceService.name);
 
-    constructor(private readonly supabase: SupabaseRequestService) {}
+    constructor(private readonly admin: SupabaseAdminService) {}
 
     // 週次のベクトルインデックス再構築（アプローチB: 個別RPCを順次呼ぶ）
     async rebuildVectorIndexes(): Promise<void> {
@@ -20,7 +20,9 @@ export class MaintenanceService {
         );
 
         // service-roleでのみEXECUTEがGRANTされているため、adminクライアント必須
-        const adminRpc = this.supabase.getAdminClient().rpc as unknown as (
+        const adminRpc = this.admin
+            .getClient()
+            .rpc.bind(this.admin.getClient()) as unknown as (
             fn: string,
             args?: Record<string, unknown>,
         ) => Promise<{ data: unknown; error: unknown }>;

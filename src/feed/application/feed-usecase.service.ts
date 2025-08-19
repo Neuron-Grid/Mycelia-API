@@ -1,9 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Item as FeedparserItem, Meta } from "feedparser";
-import { EmbeddingQueueService } from "../../embedding/queue/embedding-queue.service";
+import { EmbeddingQueueService } from "src/embedding/queue/embedding-queue.service";
+import { WorkerFeedItemRepository } from "src/feed/infrastructure/worker-feed-item.repository";
+import { WorkerSubscriptionRepository } from "src/feed/infrastructure/worker-subscription.repository";
 import { FeedFetchService } from "./feed-fetch.service";
-import { FeedItemService } from "./feed-item.service";
-import { SubscriptionService } from "./subscription.service";
 
 @Injectable()
 export class FeedUseCaseService {
@@ -11,8 +11,8 @@ export class FeedUseCaseService {
 
     constructor(
         private readonly fetchSvc: FeedFetchService,
-        private readonly subSvc: SubscriptionService,
-        private readonly itemSvc: FeedItemService,
+        private readonly workerSubs: WorkerSubscriptionRepository,
+        private readonly workerItems: WorkerFeedItemRepository,
         private readonly embeddingQueueService: EmbeddingQueueService,
     ) {}
 
@@ -24,7 +24,7 @@ export class FeedUseCaseService {
 
     // RSSをfetch→DB反映→last_fetched_at更新
     async fetchFeedItems(subscriptionId: number, userId: string) {
-        const sub = await this.subSvc.getSubscriptionById(
+        const sub = await this.workerSubs.getByIdForUser(
             userId,
             subscriptionId,
         );
@@ -44,7 +44,7 @@ export class FeedUseCaseService {
             ).substring(0, 8192);
             const published = item.pubdate ? new Date(item.pubdate) : null;
             try {
-                const err = await this.itemSvc.insertFeedItem(
+                const res = await this.workerItems.insertFeedItem(
                     subscriptionId,
                     userId,
                     title,
@@ -52,16 +52,14 @@ export class FeedUseCaseService {
                     description,
                     published,
                 );
-                if (!err) inserted++;
-                else if (err.message.includes("duplicate"))
-                    this.logger.verbose(`dup: ${link}`);
-                else this.logger.warn(`insert error: ${err.message}`);
+                if (res.inserted) inserted++;
+                else this.logger.verbose(`dup: ${link}`);
             } catch (e) {
                 this.logger.warn(`failed: ${link} – ${e}`);
             }
         }
         const fetchedAt = new Date();
-        await this.subSvc.markFetched(subscriptionId, userId, fetchedAt);
+        await this.workerSubs.markFetched(userId, subscriptionId, fetchedAt);
 
         // 新しいフィードアイテムが追加された場合、埋め込み生成ジョブをキューに追加
         if (inserted > 0) {

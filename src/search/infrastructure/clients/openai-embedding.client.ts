@@ -16,6 +16,13 @@ export class OpenAIEmbeddingClient {
         }
     }
 
+    // エラー種別を明確化するための簡易HTTPエラー
+    private httpError(status: number, message: string): Error {
+        const err = new Error(message) as Error & { status?: number };
+        err.status = status;
+        return err;
+    }
+
     async generateEmbedding(text: string): Promise<number[]> {
         if (!this.apiKey) {
             throw new Error("OpenAI API key is not configured");
@@ -40,9 +47,16 @@ export class OpenAIEmbeddingClient {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    `OpenAI API error: ${response.status} - ${errorData.error?.message || "Unknown error"}`,
+                let detail: string | undefined;
+                try {
+                    const errorData = await response.json();
+                    detail = errorData.error?.message;
+                } catch {
+                    /* ignore parse error */
+                }
+                throw this.httpError(
+                    response.status,
+                    `OpenAI API error: ${response.status} - ${detail || "Unknown error"}`,
                 );
             }
 
@@ -59,8 +73,9 @@ export class OpenAIEmbeddingClient {
 
             return embedding;
         } catch (error) {
-            this.logger.error(`Failed to generate embedding: ${error.message}`);
-            throw error;
+            const msg = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Failed to generate embedding: ${msg}`);
+            throw error as Error;
         }
     }
 
@@ -95,9 +110,16 @@ export class OpenAIEmbeddingClient {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(
-                    `OpenAI API error: ${response.status} - ${errorData.error?.message || "Unknown error"}`,
+                let detail: string | undefined;
+                try {
+                    const errorData = await response.json();
+                    detail = errorData.error?.message;
+                } catch {
+                    /* ignore parse error */
+                }
+                throw this.httpError(
+                    response.status,
+                    `OpenAI API error: ${response.status} - ${detail || "Unknown error"}`,
                 );
             }
 
@@ -114,10 +136,9 @@ export class OpenAIEmbeddingClient {
 
             return embeddings;
         } catch (error) {
-            this.logger.error(
-                `Failed to generate embeddings: ${error.message}`,
-            );
-            throw error;
+            const msg = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Failed to generate embeddings: ${msg}`);
+            throw error as Error;
         }
     }
 }

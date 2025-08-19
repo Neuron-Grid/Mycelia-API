@@ -27,7 +27,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc("search_feed_items_by_vector", {
-                    query_embedding: JSON.stringify(queryEmbedding),
+                    query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
                 });
@@ -66,7 +66,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc("search_summaries_by_vector", {
-                    query_embedding: JSON.stringify(queryEmbedding),
+                    query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
                 });
@@ -104,7 +104,7 @@ export class SupabaseSearchClient {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .rpc("search_podcast_episodes_by_vector", {
-                    query_embedding: JSON.stringify(queryEmbedding),
+                    query_embedding: queryEmbedding,
                     match_threshold: threshold,
                     match_count: limit,
                 });

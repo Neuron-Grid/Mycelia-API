@@ -1,17 +1,18 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { WorkerDailySummaryRepository } from "src/llm/infrastructure/repositories/worker-daily-summary.repository";
 import { PodcastCoreModule } from "src/podcast/core/podcast-core.module";
+import { WorkerPodcastEpisodeRepository } from "src/podcast/infrastructure/worker-podcast-episode.repository";
 import { PodcastQueueProcessor } from "src/podcast/queue/podcast-queue.processor";
 import { PodcastQueueService } from "src/podcast/queue/podcast-queue.service";
 import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
-import { SupabaseRequestModule } from "src/supabase-request.module";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 
 @Module({
     imports: [
-        SupabaseRequestModule,
         RedisModule,
         DistributedLockModule,
         // Queue側はPodcastModuleには依存せず、Coreにのみ依存させる
@@ -35,6 +36,9 @@ import { SupabaseRequestModule } from "src/supabase-request.module";
         PodcastQueueProcessor,
         PodcastQueueService,
         UserSettingsRepository,
+        WorkerDailySummaryRepository,
+        WorkerPodcastEpisodeRepository,
+        SupabaseAdminService,
     ],
     exports: [PodcastQueueService, BullModule],
 })

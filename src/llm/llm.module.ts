@@ -7,6 +7,7 @@ import { DistributedLockModule } from "src/shared/lock/distributed-lock.module";
 import { RedisModule } from "src/shared/redis/redis.module";
 import { RedisService } from "src/shared/redis/redis.service";
 import { UserSettingsRepository } from "src/shared/settings/user-settings.repository";
+import { SupabaseAdminService } from "src/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "src/supabase-request.module";
 import { SummaryController } from "./application/controllers/summary.controller";
 import { LLM_SERVICE } from "./application/services/llm.service";
@@ -18,6 +19,7 @@ import {
 import { GeminiFlashClient } from "./infrastructure/clients/gemini-flash.client";
 import { MockLlmService } from "./infrastructure/clients/mock-llm.service";
 import { DailySummaryRepository } from "./infrastructure/repositories/daily-summary.repository";
+import { WorkerDailySummaryRepository } from "./infrastructure/repositories/worker-daily-summary.repository";
 import { ScriptWorker } from "./infrastructure/workers/script.worker";
 import { SummaryWorker } from "./infrastructure/workers/summary.worker";
 
@@ -72,6 +74,8 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
     ],
     providers: [
         DailySummaryRepository,
+        WorkerDailySummaryRepository,
+        SupabaseAdminService,
         UserSettingsRepository,
         {
             provide: LLM_SERVICE,
