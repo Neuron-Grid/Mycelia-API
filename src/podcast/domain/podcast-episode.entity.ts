@@ -47,6 +47,8 @@ export class PodcastEpisodeEntity {
 
         // タイトルから時間情報を抽出（例：「15分のニュース要約」）
         const durationMatch = this.title.match(/(\d+)分/);
-        return durationMatch ? Number.parseInt(durationMatch[1]) * 60 : null;
+        return durationMatch
+            ? Number.parseInt(durationMatch[1], 10) * 60
+            : null;
     }
 }

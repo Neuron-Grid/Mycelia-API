@@ -73,14 +73,14 @@ export class IntervalDto {
         // "HH:MM:SS" または "X minutes" または "X hours Y minutes" 形式を解析
         const timeMatch = intervalString.match(/(\d{1,2}):(\d{2})/);
         if (timeMatch) {
-            dto.hours = Number.parseInt(timeMatch[1]);
-            dto.minutes = Number.parseInt(timeMatch[2]);
+            dto.hours = Number.parseInt(timeMatch[1], 10);
+            dto.minutes = Number.parseInt(timeMatch[2], 10);
             return dto;
         }
 
         const minutesMatch = intervalString.match(/(\d+)\s*minutes?/);
         if (minutesMatch) {
-            const totalMinutes = Number.parseInt(minutesMatch[1]);
+            const totalMinutes = Number.parseInt(minutesMatch[1], 10);
             dto.hours = Math.floor(totalMinutes / 60);
             dto.minutes = totalMinutes % 60;
             return dto;

@@ -2,420 +2,424 @@ openapi: 3.0.0
 paths:
   /api/v1:
     get:
-      operationId: AppController_getHello_v1
+      operationId: AppController_getHello
       parameters: []
       responses:
         '200':
           description: ''
       tags:
         - App
-  /api/v1/feed/subscriptions:
+  /api/v1/feed:
     get:
-      description: ログインユーザーが登録している購読を、クエリ `page` と `limit` でページネーションして取得します。
-      operationId: FeedController_getSubscriptions_v1
+      description: Returns the logged-in user's subscriptions paginated by page and limit.
+      operationId: FeedController_getSubscriptions
       parameters:
         - name: limit
           required: false
           in: query
-          description: 1ページあたりの件数 (最大 100)
+          description: Items per page (max 100)
           schema:
-            example: 100
             type: number
         - name: page
           required: false
           in: query
-          description: ページ番号 (1 から始まる)
+          description: Page number (1-based)
           schema:
-            example: 1
             type: number
       responses:
         '200':
-          description: PaginatedResult<UserSubscription> 形式で返却します。
-          content:
-            application/json:
-              schema:
-                type: object
+          description: Returns PaginatedResult<UserSubscription>.
+        '400':
+          description: Bad request
         '401':
-          description: 認証エラー (Bearer トークン未設定など)
+          description: Unauthorized
       security: &ref_0
         - bearer: []
-      summary: 購読一覧を取得 (ページネーション対応)
+      summary: List subscriptions (paginated)
       tags: &ref_1
         - Feed
     post:
       description: >-
-        送信された feedUrl を解析し、自動で feed_title を設定して購読を作成します。同じ URL が既に登録されている場合は 400
-        を返します。
-      operationId: FeedController_addSubscription_v1
+        Parses the provided feedUrl and auto-sets feed_title; returns 400 if the
+        URL is invalid or already subscribed.
+      operationId: FeedController_addSubscription
       parameters: []
       requestBody:
         required: true
-        description: 購読追加リクエスト
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/AddSubscriptionDto'
-            examples:
-              default:
-                value:
-                  feedUrl: https://example.com/rss.xml
       responses:
         '201':
-          description: 購読が作成されました
+          description: Subscription created
         '400':
-          description: 無効な URL または重複購読
+          description: Invalid URL or duplicate subscription
         '401':
-          description: 認証エラー
+          description: Unauthorized
       security: *ref_0
-      summary: 新しい RSS を購読
+      summary: Subscribe to a new RSS feed
       tags: *ref_1
-  /api/v1/feed/subscriptions/{id}/fetch:
+  /api/v1/feed/{id}/fetch:
     post:
-      description: 指定した購読 ID の RSS を即時取得し、DB に反映します。バックグラウンドで重い処理が走るため、完了まで数秒かかる場合があります。
-      operationId: FeedController_fetchSubscription_v1
+      description: >-
+        Fetches the RSS feed for the specified subscription ID and persists
+        items. Processing may take a few seconds.
+      operationId: FeedController_fetchSubscription
       parameters:
         - name: id
           required: true
           in: path
-          description: 購読 ID
+          description: Subscription ID
           schema:
-            example: 123
             type: number
       responses:
         '202':
-          description: ジョブを受け付けました (同期実行の場合は 200 で返す実装でも可)
+          description: Job accepted
         '400':
-          description: 不正な ID または処理中の例外
+          description: Bad request
         '401':
-          description: 認証エラー
+          description: Unauthorized
+        '404':
+          description: Subscription not found
       security: *ref_0
-      summary: 購読を手動でフェッチ
+      summary: Fetch subscription now
       tags: *ref_1
-  /api/v1/feed/subscriptions/{id}/items:
+  /api/v1/feed/{id}/items:
     get:
-      description: 指定した購読 ID に紐づくフィードアイテムを、`page` と `limit` でページネーションして取得します。
-      operationId: FeedController_getSubscriptionItems_v1
+      description: >-
+        Returns feed items for the specified subscription ID paginated by page
+        and limit.
+      operationId: FeedController_getSubscriptionItems
       parameters:
         - name: id
           required: true
           in: path
-          description: 購読 ID
+          description: Subscription ID
           schema:
-            example: 123
             type: number
         - name: limit
           required: false
           in: query
-          description: 1ページあたりの件数 (最大 100)
+          description: Items per page (max 100)
           schema:
-            example: 100
             type: number
         - name: page
           required: false
           in: query
-          description: ページ番号 (1 から始まる)
+          description: Page number (1-based)
           schema:
-            example: 1
             type: number
       responses:
         '200':
-          description: PaginatedResult<FeedItem> 形式で返却します。
-          content:
-            application/json:
-              schema:
-                type: object
+          description: Returns PaginatedResult<FeedItem>.
+        '400':
+          description: Bad request
         '401':
-          description: 認証エラー
+          description: Unauthorized
         '404':
-          description: 購読が見つからない場合
+          description: Subscription not found
       security: *ref_0
-      summary: 購読のフィードアイテムを取得 (ページネーション対応)
+      summary: List feed items for a subscription (paginated)
       tags: *ref_1
-  /api/v1/feed/subscriptions/{id}:
+  /api/v1/feed/{id}:
     patch:
-      description: feed_title などのフィールドを部分更新します。
-      operationId: FeedController_updateSubscription_v1
+      description: Partially update fields such as feed_title.
+      operationId: FeedController_updateSubscription
       parameters:
         - name: id
           required: true
           in: path
-          description: 購読 ID
+          description: Subscription ID
           schema:
-            example: 123
             type: number
       requestBody:
         required: true
-        description: 更新するフィールド
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateSubscriptionDto'
       responses:
         '200':
-          description: 購読が更新されました
+          description: Subscription updated
         '400':
-          description: バリデーションエラーなど
+          description: Validation error
         '401':
-          description: 認証エラー
+          description: Unauthorized
         '404':
-          description: 購読が見つからない場合
+          description: Subscription not found
       security: *ref_0
-      summary: 購読情報を更新
+      summary: Update subscription
       tags: *ref_1
     delete:
-      description: 指定した購読を削除します。関連するフィードアイテムは ON DELETE CASCADE で自動削除されます。
-      operationId: FeedController_deleteSubscription_v1
+      description: >-
+        Deletes the specified subscription. Related feed items are removed via
+        ON DELETE CASCADE.
+      operationId: FeedController_deleteSubscription
       parameters:
         - name: id
           required: true
           in: path
-          description: 購読 ID
+          description: Subscription ID
           schema:
-            example: 123
             type: number
       responses:
         '200':
-          description: 購読が削除されました
+          description: Subscription deleted
         '400':
-          description: 削除時の例外
+          description: Deletion error
         '401':
-          description: 認証エラー
+          description: Unauthorized
         '404':
-          description: 購読が見つからない場合
+          description: Subscription not found
       security: *ref_0
-      summary: 購読を削除
+      summary: Delete subscription
       tags: *ref_1
-  /api/v1/auth/signup:
+  /api/v1/embeddings/batch-update:
     post:
-      operationId: AuthController_signUp_v1
+      description: Start batch update of embeddings for specified table types
+      operationId: EmbeddingController_triggerBatchUpdate
       parameters: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SignUpDto'
+              $ref: '#/components/schemas/BatchUpdateRequestDto'
       responses:
-        '201':
-          description: User successfully registered
-        '400':
-          description: Bad request
-      summary: Register a new user
-      tags: &ref_2
-        - Authentication
-  /api/v1/auth/login:
-    post:
-      operationId: AuthController_signIn_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SignInDto'
-      responses:
-        '200':
-          description: Login successful
-        '401':
-          description: Unauthorized
-      summary: Login with email and password
-      tags: *ref_2
-  /api/v1/auth/forgot-password:
-    post:
-      operationId: AuthController_forgotPassword_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ForgotPasswordDto'
-      responses:
-        '200':
-          description: Password reset email sent
-        '400':
-          description: Bad request
-      summary: Request password reset email
-      tags: *ref_2
-  /api/v1/auth/reset-password:
-    post:
-      operationId: AuthController_resetPassword_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ResetPasswordDto'
-      responses:
-        '200':
-          description: Password has been reset
-        '400':
-          description: Bad request
-      summary: Reset password with token
-      tags: *ref_2
-  /api/v1/auth/verify-email:
-    post:
-      operationId: AuthController_verifyEmail_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifyEmailDto'
-      responses:
-        '200':
-          description: Email verified successfully
-        '400':
-          description: Bad request
-      summary: Verify email with token
-      tags: *ref_2
-  /api/v1/auth/logout:
-    post:
-      operationId: AuthController_signOut_v1
-      parameters: []
-      responses:
-        '200':
-          description: Logout successful
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Logout current user
-      tags: *ref_2
-  /api/v1/auth/delete:
-    delete:
-      operationId: AuthController_deleteAccount_v1
-      parameters: []
-      responses:
-        '200':
-          description: Account deleted
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Delete user account
-      tags: *ref_2
-  /api/v1/auth/update-email:
-    patch:
-      operationId: AuthController_updateEmail_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateEmailDto'
-      responses:
-        '200':
-          description: Email updated successfully
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Update user email
-      tags: *ref_2
-  /api/v1/auth/update-username:
-    patch:
-      operationId: AuthController_updateUsername_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateUsernameDto'
-      responses:
-        '200':
-          description: Username updated successfully
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Update username
-      tags: *ref_2
-  /api/v1/auth/update-password:
-    patch:
-      operationId: AuthController_updatePassword_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdatePasswordDto'
-      responses:
-        '200':
-          description: Password updated successfully
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Update password
-      tags: *ref_2
-  /api/v1/auth/profile:
-    get:
-      operationId: AuthController_getProfile_v1
-      parameters: []
-      responses:
-        '200':
-          description: User profile fetched successfully
-        '401':
-          description: Unauthorized
-      security:
-        - bearer: []
-      summary: Get user profile
-      tags: *ref_2
-  /api/v1/auth/verify-totp:
-    post:
-      operationId: AuthController_verifyTotp_v1
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerifyTotpDto'
-      responses:
-        '200':
-          description: TOTP verified successfully
-        '400':
-          description: Bad request
-      summary: Verify TOTP code
-      tags: *ref_2
-  /api/v1/health:
-    get:
-      operationId: HealthController_checkHealth_v1
-      parameters: []
-      responses:
-        '200':
-          description: System is healthy
+        '202':
+          description: Batch update initiated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthCheckResponseDto'
-        '503':
-          description: Service unavailable
-      summary: Check system health
-      tags:
-        - Health
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Batch update initiated
+                  userId:
+                    type: string
+                    example: user-uuid-123
+        '400':
+          description: Bad Request - Invalid table types
+        '401':
+          description: Unauthorized
+      security: &ref_2
+        - bearer: []
+      summary: Trigger batch embedding update
+      tags: &ref_3
+        - Embeddings
+  /api/v1/embeddings/progress:
+    get:
+      description: Get current progress of batch embedding updates
+      operationId: EmbeddingController_getBatchProgress
+      parameters: []
+      responses:
+        '200':
+          description: Progress information returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchProgressResponseDto'
+        '401':
+          description: Unauthorized
+      security: *ref_2
+      summary: Get batch progress
+      tags: *ref_3
+  /api/v1/search/all:
+    get:
+      description: >-
+        Search across feed items, summaries, and podcast episodes using vector
+        similarity
+      operationId: SearchController_searchAll
+      parameters:
+        - name: q
+          required: true
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          description: 'Maximum number of results (default: 20)'
+          schema:
+            type: string
+        - name: threshold
+          required: false
+          in: query
+          description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
+          schema:
+            type: string
+        - name: types
+          required: false
+          in: query
+          description: 'Content types to search (comma-separated: feed_item,summary,podcast)'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results returned successfully
+      security: &ref_4
+        - bearer: []
+      summary: Search across all content types
+      tags: &ref_5
+        - Search
+  /api/v1/search/feed-items:
+    get:
+      description: Search only feed items using vector similarity
+      operationId: SearchController_searchFeedItems
+      parameters:
+        - name: q
+          required: true
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          description: 'Maximum number of results (default: 20)'
+          schema:
+            type: string
+        - name: threshold
+          required: false
+          in: query
+          description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Feed item search results returned successfully
+      security: *ref_4
+      summary: Search feed items
+      tags: *ref_5
+  /api/v1/search/summaries:
+    get:
+      description: Search only daily summaries using vector similarity
+      operationId: SearchController_searchSummaries
+      parameters:
+        - name: q
+          required: true
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          description: 'Maximum number of results (default: 20)'
+          schema:
+            type: string
+        - name: threshold
+          required: false
+          in: query
+          description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Summary search results returned successfully
+      security: *ref_4
+      summary: Search summaries
+      tags: *ref_5
+  /api/v1/search/podcasts:
+    get:
+      description: Search only podcast episodes using vector similarity
+      operationId: SearchController_searchPodcasts
+      parameters:
+        - name: q
+          required: true
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          description: 'Maximum number of results (default: 20)'
+          schema:
+            type: string
+        - name: threshold
+          required: false
+          in: query
+          description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Podcast search results returned successfully
+      security: *ref_4
+      summary: Search podcast episodes
+      tags: *ref_5
+  /api/v1/favorites:
+    get:
+      operationId: FavoriteController_getUserFavorites
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security: &ref_6
+        - bearer: []
+      tags: &ref_7
+        - Favorites
+  /api/v1/favorites/{feedItemId}/is-favorited:
+    get:
+      operationId: FavoriteController_checkFavorite
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      security: *ref_6
+      tags: *ref_7
+  /api/v1/favorites/{feedItemId}:
+    post:
+      operationId: FavoriteController_favoriteItem
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '201':
+          description: ''
+      security: *ref_6
+      tags: *ref_7
+    delete:
+      operationId: FavoriteController_unfavoriteItem
+      parameters:
+        - name: feedItemId
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      security: *ref_6
+      tags: *ref_7
   /api/v1/tags:
     get:
-      operationId: TagController_getAllTags_v1
+      operationId: TagController_getAllTags
       parameters: []
       responses:
         '200':
           description: Returns all tags for the user
         '401':
           description: Unauthorized
-      security: &ref_3
+      security: &ref_8
         - bearer: []
       summary: Get all tags for current user
-      tags: &ref_4
+      tags: &ref_9
         - Tags
     post:
-      operationId: TagController_createTag_v1
+      operationId: TagController_createTag
       parameters: []
       requestBody:
         required: true
@@ -430,12 +434,12 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Create a new tag
-      tags: *ref_4
+      tags: *ref_9
   /api/v1/tags/{tagId}:
     patch:
-      operationId: TagController_updateTag_v1
+      operationId: TagController_updateTag
       parameters:
         - name: tagId
           required: true
@@ -456,11 +460,11 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Update a tag
-      tags: *ref_4
+      tags: *ref_9
     delete:
-      operationId: TagController_deleteTag_v1
+      operationId: TagController_deleteTag
       parameters:
         - name: tagId
           required: true
@@ -475,12 +479,12 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Delete a tag
-      tags: *ref_4
+      tags: *ref_9
   /api/v1/tags/feed-items/{feedItemId}:
     get:
-      operationId: TagController_getFeedItemTags_v1
+      operationId: TagController_getFeedItemTags
       parameters:
         - name: feedItemId
           required: true
@@ -493,11 +497,11 @@ paths:
           description: Returns tags associated with the feed item
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Get tags for a feed item
-      tags: *ref_4
+      tags: *ref_9
     post:
-      operationId: TagController_attachTagToFeedItem_v1
+      operationId: TagController_attachTagToFeedItem
       parameters:
         - name: feedItemId
           required: true
@@ -512,11 +516,11 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Attach a tag to a feed item
-      tags: *ref_4
+      tags: *ref_9
     delete:
-      operationId: TagController_detachTagFromFeedItem_v1
+      operationId: TagController_detachTagFromFeedItem
       parameters:
         - name: feedItemId
           required: true
@@ -537,12 +541,12 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Detach a tag from a feed item
-      tags: *ref_4
+      tags: *ref_9
   /api/v1/tags/subscriptions/{subscriptionId}:
     get:
-      operationId: TagController_getSubscriptionTags_v1
+      operationId: TagController_getSubscriptionTags
       parameters:
         - name: subscriptionId
           required: true
@@ -555,11 +559,11 @@ paths:
           description: Returns tags associated with the subscription
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Get tags for a subscription
-      tags: *ref_4
+      tags: *ref_9
     post:
-      operationId: TagController_attachTagToSubscription_v1
+      operationId: TagController_attachTagToSubscription
       parameters:
         - name: subscriptionId
           required: true
@@ -574,11 +578,11 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Attach a tag to a subscription
-      tags: *ref_4
+      tags: *ref_9
     delete:
-      operationId: TagController_detachTagFromSubscription_v1
+      operationId: TagController_detachTagFromSubscription
       parameters:
         - name: subscriptionId
           required: true
@@ -599,84 +603,770 @@ paths:
           description: Bad request
         '401':
           description: Unauthorized
-      security: *ref_3
+      security: *ref_8
       summary: Detach a tag from a subscription
-      tags: *ref_4
-  /api/v1/favorites:
+      tags: *ref_9
+  /api/v1/tags/hierarchical:
+    post:
+      operationId: TagController_createHierarchicalTag
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHierarchicalTagDto'
+      responses:
+        '201':
+          description: Hierarchical tag created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_8
+      summary: Create a hierarchical tag with advanced features
+      tags: *ref_9
+  /api/v1/tags/hierarchy:
     get:
-      operationId: FavoriteController_getUserFavorites_v1
+      operationId: TagController_getTagHierarchy
       parameters: []
       responses:
         '200':
-          description: Returns all favorited feed items for the user
+          description: Returns tag hierarchy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagHierarchyDto'
         '401':
           description: Unauthorized
-      security: &ref_5
-        - bearer: []
-      summary: Get all favorites for current user
-      tags: &ref_6
-        - Favorites
-  /api/v1/favorites/{feedItemId}/is-favorited:
+      security: *ref_8
+      summary: Get all tags in hierarchical structure
+      tags: *ref_9
+  /api/v1/tags/{tagId}/subtree:
     get:
-      operationId: FavoriteController_checkFavorite_v1
+      operationId: TagController_getTagSubtree
       parameters:
-        - name: feedItemId
+        - name: tagId
           required: true
           in: path
-          description: ID of the feed item to check
+          description: ID of the root tag
           schema:
             type: number
       responses:
         '200':
-          description: Returns whether the feed item is favorited
+          description: Returns tag subtree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagHierarchyDto'
         '401':
           description: Unauthorized
-      security: *ref_5
-      summary: Check if a feed item is favorited
-      tags: *ref_6
-  /api/v1/favorites/{feedItemId}:
+        '404':
+          description: Tag not found
+      security: *ref_8
+      summary: Get tag subtree (tag and all its descendants)
+      tags: *ref_9
+  /api/v1/tags/{tagId}/path:
+    get:
+      operationId: TagController_getTagPath
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Returns tag path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagWithPathDto'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Tag not found
+      security: *ref_8
+      summary: Get tag path from root to specified tag
+      tags: *ref_9
+  /api/v1/tags/{tagId}/move:
+    patch:
+      operationId: TagController_moveTag
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag to move
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveTagDto'
+      responses:
+        '200':
+          description: Tag moved successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '404':
+          description: Tag not found
+      security: *ref_8
+      summary: Move tag to a new parent (change hierarchy)
+      tags: *ref_9
+  /api/v1/tags/{tagId}/feed-items:
+    get:
+      operationId: TagController_getFeedItemsByTag
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag
+          schema:
+            type: number
+        - name: includeChildren
+          required: false
+          in: query
+          description: Include child tags in filter
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Returns filtered feed items
+        '401':
+          description: Unauthorized
+      security: *ref_8
+      summary: Get feed items filtered by tag (with optional child inclusion)
+      tags: *ref_9
+  /api/v1/tags/{tagId}/subscriptions:
+    get:
+      operationId: TagController_getSubscriptionsByTag
+      parameters:
+        - name: tagId
+          required: true
+          in: path
+          description: ID of the tag
+          schema:
+            type: number
+        - name: includeChildren
+          required: false
+          in: query
+          description: Include child tags in filter
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Returns filtered subscriptions
+        '401':
+          description: Unauthorized
+      security: *ref_8
+      summary: Get subscriptions filtered by tag (with optional child inclusion)
+      tags: *ref_9
+  /api/v1/tags/feed-items/{feedItemId}/bulk:
     post:
-      operationId: FavoriteController_favoriteItem_v1
+      operationId: TagController_tagFeedItem
       parameters:
         - name: feedItemId
           required: true
           in: path
-          description: ID of the feed item to favorite
+          description: ID of the feed item
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Feed item tagged successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_8
+      summary: Tag multiple feed items with multiple tags
+      tags: *ref_9
+  /api/v1/tags/subscriptions/{subscriptionId}/bulk:
+    post:
+      operationId: TagController_tagSubscription
+      parameters:
+        - name: subscriptionId
+          required: true
+          in: path
+          description: ID of the subscription
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Subscription tagged successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+      security: *ref_8
+      summary: Tag subscription with multiple tags
+      tags: *ref_9
+  /api/v1/summaries/users/{userId}/regenerate:
+    post:
+      operationId: SummaryController_regenerateSummary
+      parameters:
+        - name: userId
+          required: true
+          in: path
+          description: User ID for whom to regenerate summary
+          schema:
+            type: string
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      summary: Regenerate summary for a user (typically for today or a specific date)
+      tags: &ref_10
+        - Summary & Script Regeneration
+  /api/v1/scripts/summaries/{summaryId}/regenerate:
+    post:
+      operationId: SummaryController_regenerateScript
+      parameters:
+        - name: summaryId
+          required: true
+          in: path
+          description: ID of the daily_summary to regenerate script for
           schema:
             type: number
       responses:
         '201':
-          description: Feed item favorited successfully
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-      security: *ref_5
-      summary: Add a feed item to favorites
-      tags: *ref_6
+          description: ''
+      security:
+        - bearer: []
+      summary: Regenerate script_text for a specific summary
+      tags: *ref_10
+  /api/v1/auth/signup:
+    post:
+      operationId: AuthController_signUp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpDto'
+      responses:
+        '201':
+          description: ''
+      tags: &ref_11
+        - Authentication
+  /api/v1/auth/login:
+    post:
+      operationId: AuthController_signIn
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/forgot-password:
+    post:
+      operationId: AuthController_forgotPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/reset-password:
+    post:
+      operationId: AuthController_resetPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/verify-email:
+    post:
+      operationId: AuthController_verifyEmail
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/logout:
+    post:
+      operationId: AuthController_signOut
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/delete:
     delete:
-      operationId: FavoriteController_unfavoriteItem_v1
+      operationId: AuthController_deleteAccount
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/update-email:
+    patch:
+      operationId: AuthController_updateEmail
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEmailDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/update-username:
+    patch:
+      operationId: AuthController_updateUsername
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUsernameDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/update-password:
+    patch:
+      operationId: AuthController_updatePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePasswordDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/profile:
+    get:
+      operationId: AuthController_getProfile
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/verify-totp:
+    post:
+      operationId: AuthController_verifyTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTotpDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/health:
+    get:
+      operationId: HealthController_checkHealth
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - Health
+  /api/v1/podcast/config:
+    get:
+      operationId: PodcastConfigController_getPodcastConfig
+      parameters: []
+      responses:
+        '200':
+          description: Podcast settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastConfigResponseDto'
+      summary: Get podcast settings
+      tags: &ref_12
+        - podcast
+    put:
+      operationId: PodcastConfigController_updatePodcastConfig
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePodcastConfigDto'
+      responses:
+        '200':
+          description: Updated podcast settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastConfigResponseDto'
+      summary: Update podcast settings
+      tags: *ref_12
+  /api/v1/podcast-episodes:
+    get:
+      operationId: PodcastEpisodeController_getEpisodes
       parameters:
-        - name: feedItemId
+        - name: limit
+          required: false
+          in: query
+          description: Number of episodes per page
+          schema:
+            example: 20
+            type: number
+        - name: page
+          required: false
+          in: query
+          description: Page number (1-based)
+          schema:
+            example: 1
+            type: number
+      responses:
+        '200':
+          description: User podcast episodes retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastEpisodeListResponseDto'
+      security: &ref_13
+        - bearer: []
+      summary: Get user podcast episodes with pagination
+      tags: &ref_14
+        - Podcast Episodes
+    post:
+      operationId: PodcastEpisodeController_createEpisode
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePodcastEpisodeDto'
+      responses:
+        '201':
+          description: Podcast episode created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastEpisodeResponseDto'
+        '400':
+          description: Invalid request data
+        '404':
+          description: Related summary not found or access denied
+      security: *ref_13
+      summary: Create a new podcast episode
+      tags: *ref_14
+  /api/v1/podcast-episodes/{id}:
+    get:
+      operationId: PodcastEpisodeController_getEpisodeById
+      parameters:
+        - name: id
           required: true
           in: path
-          description: ID of the feed item to unfavorite
+          description: Podcast episode ID
           schema:
             type: number
       responses:
         '200':
-          description: Feed item unfavorited successfully
+          description: Podcast episode retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastEpisodeResponseDto'
+        '404':
+          description: Podcast episode not found or access denied
+      security: *ref_13
+      summary: Get a specific podcast episode by ID
+      tags: *ref_14
+    put:
+      operationId: PodcastEpisodeController_updateEpisode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: Podcast episode ID
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePodcastEpisodeDto'
+      responses:
+        '200':
+          description: Podcast episode updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastEpisodeResponseDto'
+        '404':
+          description: Podcast episode not found or access denied
+      security: *ref_13
+      summary: Update a podcast episode
+      tags: *ref_14
+    delete:
+      operationId: PodcastEpisodeController_deleteEpisode
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: Podcast episode ID
+          schema:
+            type: number
+      responses:
+        '204':
+          description: Podcast episode deleted successfully
+        '404':
+          description: Podcast episode not found or access denied
+      security: *ref_13
+      summary: Soft delete a podcast episode
+      tags: *ref_14
+  /api/v1/podcast-episodes/generate:
+    post:
+      operationId: PodcastEpisodeController_generateEpisode
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratePodcastEpisodeDto'
+      responses:
+        '202':
+          description: Podcast generation job queued successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PodcastGenerationJobResponseDto'
         '400':
-          description: Bad request
+          description: Invalid request data
+        '404':
+          description: Related summary not found or access denied
+      security: *ref_13
+      summary: Generate a new podcast episode from a summary
+      tags: *ref_14
+  /api/v1/jobs/failed:
+    get:
+      operationId: JobsAdminController_listFailed
+      parameters:
+        - name: queue
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+      security: &ref_15
+        - bearer: []
+      summary: List failed jobs for current user in a queue
+      tags: &ref_16
+        - Jobs Admin
+  /api/v1/jobs/{jobId}/retry:
+    post:
+      operationId: JobsAdminController_retryJob
+      parameters:
+        - name: jobId
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: queue
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        '201':
+          description: ''
+      security: *ref_15
+      summary: Retry a specific failed job if it belongs to the user
+      tags: *ref_16
+  /api/v1/jobs/failed/retry:
+    post:
+      operationId: JobsAdminController_retryAll
+      parameters:
+        - name: queue
+          required: true
+          in: query
+          schema:
+            type: string
+      responses:
+        '201':
+          description: ''
+      security: *ref_15
+      summary: Retry all failed jobs for current user in the queue
+      tags: *ref_16
+  /api/v1/summary:
+    post:
+      operationId: SummaryController_createSummary
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSummaryDto'
+      responses:
+        '201':
+          description: The summary has been successfully created.
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Bad Request.
         '401':
-          description: Unauthorized
-      security: *ref_5
-      summary: Remove a feed item from favorites
-      tags: *ref_6
+          description: Unauthorized.
+      security:
+        - bearer: []
+      summary: Create a new summary
+      tags:
+        - Summary
+  /api/v1/settings:
+    get:
+      operationId: SettingsController_getSettings
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      summary: User settings and schedule overview
+      tags: &ref_17
+        - settings
+  /api/v1/schedule/reload:
+    post:
+      operationId: SettingsController_reloadMySchedule
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      summary: Reload your repeatable jobs (apply immediately)
+      tags: *ref_17
+  /api/v1/schedule/preview:
+    post:
+      operationId: SettingsController_previewSchedule
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      summary: >-
+        Preview next run times at a given JST time (with jitter and fixed
+        offset)
+      tags: *ref_17
+  /api/v1/jobs/status:
+    get:
+      operationId: SettingsController_jobsStatus
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      summary: Today's summary → script → podcast progress
+      tags: *ref_17
+  /api/v1/settings/summary:
+    put:
+      operationId: SettingsController_updateSummarySetting
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      summary: Update summary feature enabled/disabled
+      tags: *ref_17
+  /api/v1/settings/podcast:
+    put:
+      operationId: SettingsController_updatePodcastSetting
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      summary: Update podcast settings (enabled/time/language)
+      tags: *ref_17
+  /api/v1/summaries/run-now:
+    post:
+      operationId: SettingsController_runSummaryNow
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      summary: Enqueue today's summary → script → podcast flow immediately (idempotent)
+      tags: *ref_17
+  /api/v1/podcasts/run-now:
+    post:
+      operationId: SettingsController_runPodcastNow
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      summary: Enqueue podcast generation for today if a summary exists (idempotent)
+      tags: *ref_17
 info:
-  title: Mycelia API
-  description: NestJS + Supabase implementation
-  version: 1.0.0
+  title: API Documentation
+  description: API Documentation
+  version: '1.0'
   contact: {}
 tags: []
 servers: []
@@ -703,6 +1393,220 @@ components:
           type: string
           example: My custom feed title
           description: Custom title for the feed (max 100 chars)
+    BatchUpdateRequestDto:
+      type: object
+      properties:
+        tableTypes:
+          type: array
+          description: Table types to update embeddings for
+          example:
+            - feed_items
+            - daily_summaries
+          items:
+            type: string
+            enum:
+              - feed_items
+              - daily_summaries
+              - podcast_episodes
+              - tags
+    BatchProgressItemDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: user-uuid-123
+        tableType:
+          type: string
+          enum:
+            - feed_items
+            - daily_summaries
+            - podcast_episodes
+            - tags
+          example: feed_items
+        status:
+          type: string
+          enum:
+            - waiting
+            - running
+            - completed
+            - failed
+          example: running
+        progress:
+          type: number
+          example: 75.5
+          description: Progress percentage (0-100)
+        totalRecords:
+          type: number
+          example: 1000
+        processedRecords:
+          type: number
+          example: 755
+        estimatedCompletion:
+          format: date-time
+          type: string
+      required:
+        - userId
+        - tableType
+        - status
+        - progress
+    BatchProgressResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Progress retrieved successfully
+        data:
+          description: Array of batch progress information
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchProgressItemDto'
+      required:
+        - message
+        - data
+    CreateTagDto:
+      type: object
+      properties:
+        tagName:
+          type: string
+          example: Technology
+          description: Name of the tag
+        parentTagId:
+          type: number
+          example: 1
+          description: ID of the parent tag (if this is a subtag)
+      required:
+        - tagName
+    UpdateTagDto:
+      type: object
+      properties:
+        newName:
+          type: string
+          example: Updated Tag Name
+          description: New name for the tag
+        newParentTagId:
+          type: object
+          example: 2
+          description: New parent tag ID, or null to remove parent
+    CreateHierarchicalTagDto:
+      type: object
+      properties:
+        tag_name:
+          type: string
+          description: Tag name
+          minLength: 1
+          maxLength: 100
+          example: Technology
+        parent_tag_id:
+          type: number
+          description: Parent tag ID (null for root)
+          example: 1
+        description:
+          type: string
+          description: Tag description
+          maxLength: 500
+          example: Technology-related articles such as programming, AI, and gadgets
+        color:
+          type: string
+          description: Tag color (Hex format)
+          pattern: ^#[0-9A-Fa-f]{6}$
+          example: '#3B82F6'
+      required:
+        - tag_name
+    TagHierarchyDto:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Tag ID
+          example: 1
+        tag_name:
+          type: string
+          description: Tag name
+          example: Technology
+        parent_tag_id:
+          type: object
+          description: Parent tag ID
+          example: null
+        description:
+          type: string
+          description: Tag description
+          example: Technology-related articles such as programming, AI, and gadgets
+        color:
+          type: string
+          description: Tag color (Hex format)
+          example: '#3B82F6'
+        children:
+          description: Child tags
+          type: array
+          items:
+            type: object
+        path:
+          description: Path from root
+          example:
+            - Technology
+            - Programming
+          type: array
+          items:
+            type: string
+        level:
+          type: number
+          description: Hierarchy level (0 = root)
+          example: 1
+        feed_count:
+          type: number
+          description: Number of feeds associated with this tag
+          example: 5
+      required:
+        - id
+        - tag_name
+        - children
+        - path
+        - level
+    TagWithPathDto:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Tag ID
+          example: 1
+        tag_name:
+          type: string
+          description: Tag name
+          example: JavaScript
+        parent_tag_id:
+          type: object
+          description: Parent tag ID
+          example: 2
+        full_path:
+          type: string
+          description: Full path (separated by >)
+          example: Technology > Programming > JavaScript
+        path_array:
+          description: Path array
+          example:
+            - Technology
+            - Programming
+            - JavaScript
+          type: array
+          items:
+            type: string
+        level:
+          type: number
+          description: Hierarchy level (0 = root)
+          example: 2
+      required:
+        - id
+        - tag_name
+        - full_path
+        - path_array
+        - level
+    MoveTagDto:
+      type: object
+      properties:
+        new_parent_id:
+          type: object
+          description: New parent tag ID (null to move to root)
+          example: 3
     SignUpDto:
       type: object
       properties:
@@ -819,84 +1723,192 @@ components:
       required:
         - factorId
         - code
-    JobCountsDto:
+    PodcastConfigResponseDto:
       type: object
       properties:
-        waiting:
-          type: number
-          example: 0
-        active:
-          type: number
-          example: 0
-        completed:
-          type: number
-          example: 10
-        failed:
-          type: number
-          example: 0
-        delayed:
-          type: number
-          example: 0
-      required:
-        - waiting
-        - active
-        - completed
-        - failed
-        - delayed
-    BullQueueDto:
-      type: object
-      properties:
-        status:
-          type: string
-          example: OK
-        jobCounts:
-          $ref: '#/components/schemas/JobCountsDto'
-      required:
-        - status
-        - jobCounts
-    HealthCheckResponseDto:
-      type: object
-      properties:
-        status:
-          type: string
-          example: OK
-          description: Overall system status
-        db:
-          type: string
-          example: OK
-          description: DB connection status
-        bullQueue:
-          $ref: '#/components/schemas/BullQueueDto'
-        redis:
-          type: string
-          example: OK
-          description: 'Status of Redis connectivity (OK or NG: <error-message>)'
-      required:
-        - status
-        - db
-        - bullQueue
-        - redis
-    CreateTagDto:
-      type: object
-      properties:
-        tagName:
-          type: string
-          example: Technology
-          description: Name of the tag
-        parentTagId:
-          type: number
-          example: 1
-          description: ID of the parent tag (if this is a subtag)
-      required:
-        - tagName
-    UpdateTagDto:
-      type: object
-      properties:
-        newName:
-          type: string
-          example: Updated Tag Name
-          description: New name for the tag
-        newParentTagId:
+        podcast_enabled:
+          type: boolean
+          description: Whether the podcast feature is enabled
+          example: true
+        podcast_schedule_time:
           type: object
-          example: 2
-          description: New parent tag ID, or null to remove parent
+          description: Podcast generation schedule time (HH:MM)
+          example: '07:30'
+          nullable: true
+        podcast_language:
+          type: string
+          description: Podcast language
+          example: ja-JP
+          enum:
+            - ja-JP
+            - en-US
+        updated_at:
+          type: string
+          description: Last updated timestamp
+          example: '2025-05-13T07:30:00.000Z'
+      required:
+        - podcast_enabled
+        - podcast_schedule_time
+        - podcast_language
+        - updated_at
+    UpdatePodcastConfigDto:
+      type: object
+      properties:
+        podcast_enabled:
+          type: boolean
+          description: Enable/disable the podcast feature
+          example: true
+        podcast_schedule_time:
+          type: string
+          description: Podcast generation schedule time (HH:MM)
+          example: '07:30'
+        podcast_language:
+          type: string
+          description: Podcast language
+          example: ja-JP
+          enum:
+            - ja-JP
+            - en-US
+    PodcastEpisodeResponseDto:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Podcast episode ID
+          example: 1
+        user_id:
+          type: string
+          description: Owner user ID
+          example: user-uuid-123
+        summary_id:
+          type: number
+          description: Related summary ID
+          example: 123
+        title:
+          type: object
+          description: Podcast episode title
+          example: Today's news summary - 2025-05-13
+          nullable: true
+        audio_url:
+          type: object
+          description: Audio file URL
+          example: https://storage.example.com/episodes/episode-123.mp3
+          nullable: true
+        soft_deleted:
+          type: boolean
+          description: Whether the episode is soft-deleted
+          example: false
+        created_at:
+          type: string
+          description: Created at
+          example: '2025-05-13T07:30:00.000Z'
+        updated_at:
+          type: string
+          description: Updated at
+          example: '2025-05-13T07:30:00.000Z'
+      required:
+        - id
+        - user_id
+        - summary_id
+        - title
+        - audio_url
+        - soft_deleted
+        - created_at
+        - updated_at
+    PodcastEpisodeListResponseDto:
+      type: object
+      properties:
+        episodes:
+          description: Podcast episode list
+          type: array
+          items:
+            $ref: '#/components/schemas/PodcastEpisodeResponseDto'
+        total:
+          type: number
+          description: Total number of episodes
+          example: 50
+        page:
+          type: number
+          description: Current page number (1-based)
+          example: 1
+        limit:
+          type: number
+          description: Items per page
+          example: 20
+        total_pages:
+          type: number
+          description: Total pages
+          example: 3
+      required:
+        - episodes
+        - total
+        - page
+        - limit
+        - total_pages
+    CreatePodcastEpisodeDto:
+      type: object
+      properties:
+        summary_id:
+          type: number
+          description: Related summary ID
+          example: 123
+        title:
+          type: string
+          description: Podcast episode title
+          example: Today's news summary - 2025-05-13
+      required:
+        - summary_id
+    UpdatePodcastEpisodeDto:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Podcast episode title
+          example: Today's news summary - 2025-05-13
+    GeneratePodcastEpisodeDto:
+      type: object
+      properties:
+        summary_id:
+          type: number
+          description: ID of the summary to generate audio from
+          example: 123
+        prompt:
+          type: string
+          description: Custom prompt (optional)
+          example: Please provide more detailed explanations.
+      required:
+        - summary_id
+    PodcastGenerationJobResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Job start message
+          example: >-
+            Podcast generation job (ID: job-123) has been queued for summary ID
+            123.
+        job_id:
+          type: string
+          description: Generation job ID
+          example: job-123
+        episode_id:
+          type: number
+          description: Created episode ID (if already exists)
+          example: 456
+      required:
+        - message
+    CreateSummaryDto:
+      type: object
+      properties:
+        text:
+          type: string
+          description: The text to summarize. Either text or fileRef must be provided.
+        fileRef:
+          type: string
+          description: >-
+            The file reference to summarize. Either text or fileRef must be
+            provided.
+        save:
+          type: boolean
+          description: If true, the summary will be saved to the database.
+          default: false
