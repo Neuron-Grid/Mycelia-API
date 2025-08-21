@@ -4,6 +4,7 @@ import {
     Controller,
     Delete,
     Get,
+    HttpCode,
     HttpException,
     HttpStatus,
     Logger,
@@ -263,6 +264,7 @@ export class PodcastEpisodeController {
         status: 404,
         description: "Podcast episode not found or access denied",
     })
+    @HttpCode(HttpStatus.NO_CONTENT)
     async deleteEpisode(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
@@ -300,6 +302,7 @@ export class PodcastEpisodeController {
         status: 404,
         description: "Related summary not found or access denied",
     })
+    @HttpCode(HttpStatus.ACCEPTED)
     async generateEpisode(
         @UserId() userId: string,
         @Body() generateDto: GeneratePodcastEpisodeDto,

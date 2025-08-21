@@ -53,7 +53,6 @@ export class HealthController {
     // await healthController.checkHealth()
     // @see HealthCheckResponseDto
     @Get()
-    @Get()
     async checkHealth(): Promise<HealthCheckResponseDto> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();

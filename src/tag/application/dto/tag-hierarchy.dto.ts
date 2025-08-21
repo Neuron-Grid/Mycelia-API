@@ -16,6 +16,8 @@ export class TagHierarchyDto {
     @ApiPropertyOptional({
         description: "Parent tag ID",
         example: null,
+        type: Number,
+        nullable: true,
     })
     parent_tag_id!: number | null;
 
@@ -74,6 +76,8 @@ export class TagWithPathDto {
     @ApiPropertyOptional({
         description: "Parent tag ID",
         example: 2,
+        type: Number,
+        nullable: true,
     })
     parent_tag_id!: number | null;
 
@@ -101,6 +105,8 @@ export class MoveTagDto {
     @ApiPropertyOptional({
         description: "New parent tag ID (null to move to root)",
         example: 3,
+        type: Number,
+        nullable: true,
     })
     new_parent_id?: number | null;
 }

@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
-import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+    ApiBearerAuth,
+    ApiOperation,
+    ApiResponse,
+    ApiTags,
+} from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "../../auth/supabase-user.decorator";
@@ -12,6 +17,7 @@ import { PodcastConfigService } from "./podcast-config.service";
 @ApiTags("podcast")
 @Controller("podcast/config")
 @UseGuards(SupabaseAuthGuard)
+@ApiBearerAuth()
 export class PodcastConfigController {
     constructor(private readonly podcastConfigService: PodcastConfigService) {}
 

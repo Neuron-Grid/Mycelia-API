@@ -33,11 +33,13 @@ export class SearchController {
         name: "limit",
         description: "Maximum number of results (default: 20)",
         required: false,
+        type: Number,
     })
     @ApiQuery({
         name: "threshold",
         description: "Similarity threshold 0.0-1.0 (default: 0.7)",
         required: false,
+        type: Number,
     })
     @ApiQuery({
         name: "types",
@@ -95,11 +97,13 @@ export class SearchController {
         name: "limit",
         description: "Maximum number of results (default: 20)",
         required: false,
+        type: Number,
     })
     @ApiQuery({
         name: "threshold",
         description: "Similarity threshold 0.0-1.0 (default: 0.7)",
         required: false,
+        type: Number,
     })
     async searchFeedItems(
         @UserId() userId: string,
@@ -145,11 +149,13 @@ export class SearchController {
         name: "limit",
         description: "Maximum number of results (default: 20)",
         required: false,
+        type: Number,
     })
     @ApiQuery({
         name: "threshold",
         description: "Similarity threshold 0.0-1.0 (default: 0.7)",
         required: false,
+        type: Number,
     })
     async searchSummaries(
         @UserId() userId: string,

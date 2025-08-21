@@ -60,6 +60,7 @@ export class PodcastEpisodeResponseDto {
         description: "Podcast episode title",
         example: "Today's news summary - 2025-05-13",
         nullable: true,
+        type: String,
     })
     title: string | null;
 
@@ -67,6 +68,7 @@ export class PodcastEpisodeResponseDto {
         description: "Audio file URL",
         example: "https://storage.example.com/episodes/episode-123.mp3",
         nullable: true,
+        type: String,
     })
     audio_url: string | null;
 

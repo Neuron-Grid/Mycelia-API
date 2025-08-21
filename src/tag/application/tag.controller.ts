@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import {
     ApiBearerAuth,
+    ApiBody,
     ApiOperation,
     ApiParam,
     ApiQuery,
@@ -22,6 +23,8 @@ import {
 } from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
+import { AttachTagDto } from "./dto/attach-tag.dto";
+import { BulkTagDto } from "./dto/bulk-tag.dto";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
 import { CreateTagDto } from "./dto/create-tag.dto";
 import {
@@ -136,10 +139,11 @@ export class TagController {
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
     @Post("feed-items/:feedItemId")
+    @ApiBody({ type: AttachTagDto })
     async attachTagToFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Body() body: { tagId: number },
+        @Body() body: AttachTagDto,
     ) {
         if (!body.tagId) {
             throw new HttpException(
@@ -157,7 +161,11 @@ export class TagController {
 
     @ApiOperation({ summary: "Detach a tag from a feed item" })
     @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiQuery({ name: "tagId", description: "ID of the tag to detach" })
+    @ApiQuery({
+        name: "tagId",
+        description: "ID of the tag to detach",
+        type: Number,
+    })
     @ApiResponse({ status: 200, description: "Tag detached from feed item" })
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
@@ -208,10 +216,11 @@ export class TagController {
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
     @Post("subscriptions/:subscriptionId")
+    @ApiBody({ type: AttachTagDto })
     async attachTagToSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Body() body: { tagId: number },
+        @Body() body: AttachTagDto,
     ) {
         if (!body.tagId) {
             throw new HttpException(
@@ -229,7 +238,11 @@ export class TagController {
 
     @ApiOperation({ summary: "Detach a tag from a subscription" })
     @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiQuery({ name: "tagId", description: "ID of the tag to detach" })
+    @ApiQuery({
+        name: "tagId",
+        description: "ID of the tag to detach",
+        type: Number,
+    })
     @ApiResponse({ status: 200, description: "Tag detached from subscription" })
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
@@ -423,10 +436,11 @@ export class TagController {
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
     @Post("feed-items/:feedItemId/bulk")
+    @ApiBody({ type: BulkTagDto })
     async tagFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Body() body: { tagIds: number[] },
+        @Body() body: BulkTagDto,
     ) {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(
@@ -451,10 +465,11 @@ export class TagController {
     @ApiResponse({ status: 400, description: "Bad request" })
     @ApiResponse({ status: 401, description: "Unauthorized" })
     @Post("subscriptions/:subscriptionId/bulk")
+    @ApiBody({ type: BulkTagDto })
     async tagSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Body() body: { tagIds: number[] },
+        @Body() body: BulkTagDto,
     ) {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(

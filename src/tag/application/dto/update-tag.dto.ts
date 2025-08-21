@@ -13,6 +13,8 @@ export class UpdateTagDto {
     @ApiPropertyOptional({
         example: 2,
         description: "New parent tag ID, or null to remove parent",
+        type: Number,
+        nullable: true,
     })
     @IsOptional()
     @IsNumber()

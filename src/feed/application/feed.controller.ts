@@ -4,6 +4,7 @@ import {
     Controller,
     Delete,
     Get,
+    HttpCode,
     HttpException,
     HttpStatus,
     Param,
@@ -184,6 +185,7 @@ export class FeedController {
     @ApiUnauthorizedResponse({ description: "Unauthorized" })
     @ApiBadRequestResponse({ description: "Bad request" })
     @ApiNotFoundResponse({ description: "Subscription not found" })
+    @HttpCode(HttpStatus.ACCEPTED)
     async fetchSubscription(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
