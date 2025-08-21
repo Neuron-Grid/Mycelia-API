@@ -39,10 +39,17 @@ export class SupabaseRequestService {
 
         // 通常クライアント
         // RLS 適用
-        const token = (this.req.headers.authorization ?? "").replace(
+        // Authorizationヘッダが無ければCookieのaccess_tokenを利用
+        const headerToken = (this.req.headers.authorization ?? "").replace(
             /^Bearer\s+/i,
             "",
         );
+        const cookieToken =
+            (this.req as unknown as { cookies?: Record<string, string> })
+                .cookies?.["__Host-access_token"] ??
+            (this.req as unknown as { cookies?: Record<string, string> })
+                .cookies?.access_token;
+        const token = headerToken || cookieToken || "";
         this.sbAnon = createClient<Database>(url, anonKey, {
             auth: { autoRefreshToken: false, persistSession: false },
             global: {

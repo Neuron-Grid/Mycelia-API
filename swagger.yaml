@@ -244,13 +244,13 @@ paths:
           in: query
           description: 'Maximum number of results (default: 20)'
           schema:
-            type: string
+            type: number
         - name: threshold
           required: false
           in: query
           description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
           schema:
-            type: string
+            type: number
         - name: types
           required: false
           in: query
@@ -281,13 +281,13 @@ paths:
           in: query
           description: 'Maximum number of results (default: 20)'
           schema:
-            type: string
+            type: number
         - name: threshold
           required: false
           in: query
           description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
           schema:
-            type: string
+            type: number
       responses:
         '200':
           description: Feed item search results returned successfully
@@ -310,13 +310,13 @@ paths:
           in: query
           description: 'Maximum number of results (default: 20)'
           schema:
-            type: string
+            type: number
         - name: threshold
           required: false
           in: query
           description: 'Similarity threshold 0.0-1.0 (default: 0.7)'
           schema:
-            type: string
+            type: number
       responses:
         '200':
           description: Summary search results returned successfully
@@ -509,6 +509,12 @@ paths:
           description: ID of the feed item
           schema:
             type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachTagDto'
       responses:
         '200':
           description: Tag attached to feed item
@@ -533,7 +539,7 @@ paths:
           in: query
           description: ID of the tag to detach
           schema:
-            type: string
+            type: number
       responses:
         '200':
           description: Tag detached from feed item
@@ -571,6 +577,12 @@ paths:
           description: ID of the subscription
           schema:
             type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachTagDto'
       responses:
         '200':
           description: Tag attached to subscription
@@ -595,7 +607,7 @@ paths:
           in: query
           description: ID of the tag to detach
           schema:
-            type: string
+            type: number
       responses:
         '200':
           description: Tag detached from subscription
@@ -782,6 +794,12 @@ paths:
           description: ID of the feed item
           schema:
             type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTagDto'
       responses:
         '200':
           description: Feed item tagged successfully
@@ -802,6 +820,12 @@ paths:
           description: ID of the subscription
           schema:
             type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkTagDto'
       responses:
         '200':
           description: Subscription tagged successfully
@@ -1030,8 +1054,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PodcastConfigResponseDto'
+      security: &ref_12
+        - bearer: []
       summary: Get podcast settings
-      tags: &ref_12
+      tags: &ref_13
         - podcast
     put:
       operationId: PodcastConfigController_updatePodcastConfig
@@ -1049,8 +1075,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PodcastConfigResponseDto'
+      security: *ref_12
       summary: Update podcast settings
-      tags: *ref_12
+      tags: *ref_13
   /api/v1/podcast-episodes:
     get:
       operationId: PodcastEpisodeController_getEpisodes
@@ -1076,10 +1103,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PodcastEpisodeListResponseDto'
-      security: &ref_13
+      security: &ref_14
         - bearer: []
       summary: Get user podcast episodes with pagination
-      tags: &ref_14
+      tags: &ref_15
         - Podcast Episodes
     post:
       operationId: PodcastEpisodeController_createEpisode
@@ -1101,9 +1128,9 @@ paths:
           description: Invalid request data
         '404':
           description: Related summary not found or access denied
-      security: *ref_13
+      security: *ref_14
       summary: Create a new podcast episode
-      tags: *ref_14
+      tags: *ref_15
   /api/v1/podcast-episodes/{id}:
     get:
       operationId: PodcastEpisodeController_getEpisodeById
@@ -1123,9 +1150,9 @@ paths:
                 $ref: '#/components/schemas/PodcastEpisodeResponseDto'
         '404':
           description: Podcast episode not found or access denied
-      security: *ref_13
+      security: *ref_14
       summary: Get a specific podcast episode by ID
-      tags: *ref_14
+      tags: *ref_15
     put:
       operationId: PodcastEpisodeController_updateEpisode
       parameters:
@@ -1150,9 +1177,9 @@ paths:
                 $ref: '#/components/schemas/PodcastEpisodeResponseDto'
         '404':
           description: Podcast episode not found or access denied
-      security: *ref_13
+      security: *ref_14
       summary: Update a podcast episode
-      tags: *ref_14
+      tags: *ref_15
     delete:
       operationId: PodcastEpisodeController_deleteEpisode
       parameters:
@@ -1167,9 +1194,9 @@ paths:
           description: Podcast episode deleted successfully
         '404':
           description: Podcast episode not found or access denied
-      security: *ref_13
+      security: *ref_14
       summary: Soft delete a podcast episode
-      tags: *ref_14
+      tags: *ref_15
   /api/v1/podcast-episodes/generate:
     post:
       operationId: PodcastEpisodeController_generateEpisode
@@ -1191,9 +1218,9 @@ paths:
           description: Invalid request data
         '404':
           description: Related summary not found or access denied
-      security: *ref_13
+      security: *ref_14
       summary: Generate a new podcast episode from a summary
-      tags: *ref_14
+      tags: *ref_15
   /api/v1/jobs/failed:
     get:
       operationId: JobsAdminController_listFailed
@@ -1206,10 +1233,10 @@ paths:
       responses:
         '200':
           description: ''
-      security: &ref_15
+      security: &ref_16
         - bearer: []
       summary: List failed jobs for current user in a queue
-      tags: &ref_16
+      tags: &ref_17
         - Jobs Admin
   /api/v1/jobs/{jobId}/retry:
     post:
@@ -1228,9 +1255,9 @@ paths:
       responses:
         '201':
           description: ''
-      security: *ref_15
+      security: *ref_16
       summary: Retry a specific failed job if it belongs to the user
-      tags: *ref_16
+      tags: *ref_17
   /api/v1/jobs/failed/retry:
     post:
       operationId: JobsAdminController_retryAll
@@ -1243,9 +1270,9 @@ paths:
       responses:
         '201':
           description: ''
-      security: *ref_15
+      security: *ref_16
       summary: Retry all failed jobs for current user in the queue
-      tags: *ref_16
+      tags: *ref_17
   /api/v1/summary:
     post:
       operationId: SummaryController_createSummary
@@ -1282,7 +1309,7 @@ paths:
       security:
         - bearer: []
       summary: User settings and schedule overview
-      tags: &ref_17
+      tags: &ref_18
         - settings
   /api/v1/schedule/reload:
     post:
@@ -1294,7 +1321,7 @@ paths:
       security:
         - bearer: []
       summary: Reload your repeatable jobs (apply immediately)
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/schedule/preview:
     post:
       operationId: SettingsController_previewSchedule
@@ -1307,7 +1334,7 @@ paths:
       summary: >-
         Preview next run times at a given JST time (with jitter and fixed
         offset)
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/jobs/status:
     get:
       operationId: SettingsController_jobsStatus
@@ -1318,7 +1345,7 @@ paths:
       security:
         - bearer: []
       summary: Today's summary → script → podcast progress
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/settings/summary:
     put:
       operationId: SettingsController_updateSummarySetting
@@ -1329,7 +1356,7 @@ paths:
       security:
         - bearer: []
       summary: Update summary feature enabled/disabled
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/settings/podcast:
     put:
       operationId: SettingsController_updatePodcastSetting
@@ -1340,7 +1367,7 @@ paths:
       security:
         - bearer: []
       summary: Update podcast settings (enabled/time/language)
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/summaries/run-now:
     post:
       operationId: SettingsController_runSummaryNow
@@ -1351,7 +1378,7 @@ paths:
       security:
         - bearer: []
       summary: Enqueue today's summary → script → podcast flow immediately (idempotent)
-      tags: *ref_17
+      tags: *ref_18
   /api/v1/podcasts/run-now:
     post:
       operationId: SettingsController_runPodcastNow
@@ -1362,7 +1389,7 @@ paths:
       security:
         - bearer: []
       summary: Enqueue podcast generation for today if a summary exists (idempotent)
-      tags: *ref_17
+      tags: *ref_18
 info:
   title: API Documentation
   description: API Documentation
@@ -1484,9 +1511,19 @@ components:
           example: Updated Tag Name
           description: New name for the tag
         newParentTagId:
-          type: object
+          type: number
           example: 2
           description: New parent tag ID, or null to remove parent
+          nullable: true
+    AttachTagDto:
+      type: object
+      properties:
+        tagId:
+          type: number
+          description: ID of the tag
+          example: 1
+      required:
+        - tagId
     CreateHierarchicalTagDto:
       type: object
       properties:
@@ -1524,9 +1561,10 @@ components:
           description: Tag name
           example: Technology
         parent_tag_id:
-          type: object
+          type: number
           description: Parent tag ID
           example: null
+          nullable: true
         description:
           type: string
           description: Tag description
@@ -1574,9 +1612,10 @@ components:
           description: Tag name
           example: JavaScript
         parent_tag_id:
-          type: object
+          type: number
           description: Parent tag ID
           example: 2
+          nullable: true
         full_path:
           type: string
           description: Full path (separated by >)
@@ -1604,9 +1643,24 @@ components:
       type: object
       properties:
         new_parent_id:
-          type: object
+          type: number
           description: New parent tag ID (null to move to root)
           example: 3
+          nullable: true
+    BulkTagDto:
+      type: object
+      properties:
+        tagIds:
+          description: IDs of tags to apply
+          example:
+            - 1
+            - 2
+            - 3
+          type: array
+          items:
+            type: number
+      required:
+        - tagIds
     SignUpDto:
       type: object
       properties:
@@ -1785,12 +1839,12 @@ components:
           description: Related summary ID
           example: 123
         title:
-          type: object
+          type: string
           description: Podcast episode title
           example: Today's news summary - 2025-05-13
           nullable: true
         audio_url:
-          type: object
+          type: string
           description: Audio file URL
           example: https://storage.example.com/episodes/episode-123.mp3
           nullable: true

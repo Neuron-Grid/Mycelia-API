@@ -6,12 +6,15 @@ import {
     Get,
     Patch,
     Post,
+    Req,
+    Res,
     UseGuards,
 } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from "@supabase/supabase-js";
+import type { Request, Response } from "express";
 import { AuthService } from "./auth.service";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -66,10 +69,65 @@ export class AuthController {
     // await authController.signIn({ email, password })
     // @see AuthService.signIn
     @Post("login")
-    async signIn(@Body() signInDto: SignInDto) {
+    async signIn(
+        @Body() signInDto: SignInDto,
+        @Res({ passthrough: true }) res: Response,
+    ) {
         const { email, password } = signInDto;
         const result = await this.authService.signIn(email, password);
-        return buildResponse("Login successful", result);
+        const authRes = result as {
+            user?: User | null;
+            session?: { access_token?: string; refresh_token?: string } | null;
+        };
+
+        // Supabase Sessionからアクセストークン/リフレッシュトークンを取得
+        const accessToken = authRes.session?.access_token ?? "";
+        const refreshToken = authRes.session?.refresh_token ?? "";
+
+        if (!accessToken || !refreshToken) {
+            // ありえないが保険
+            return buildResponse("Login successful (no session)", {
+                user: authRes.user ?? null,
+            });
+        }
+
+        // 認証系レスポンスはキャッシュ禁止
+        res.setHeader("Cache-Control", "no-store, private");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+
+        // Cookie属性
+        const accessCookieOptions = {
+            httpOnly: true as const,
+            secure: true as const,
+            sameSite: "lax" as const,
+            path: "/",
+            maxAge: 15 * 60 * 1000, // 15 min
+        };
+        const refreshCookieOptions = {
+            httpOnly: true as const,
+            secure: true as const,
+            sameSite: "lax" as const,
+            // APIへのプレフィックスに合わせる
+            path: "/api/v1/auth/refresh",
+            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        };
+
+        // Set-Cookie を設定
+        // 強化: Cookie名プリフィックスを利用
+        // - アクセス: __Host- 前提 (Secure/Path=/、Domain未指定)
+        // - リフレッシュ: __Secure- 前提（Path制限あり）
+        res.cookie("__Host-access_token", accessToken, accessCookieOptions);
+        res.cookie(
+            "__Secure-refresh_token",
+            refreshToken,
+            refreshCookieOptions,
+        );
+
+        // トークンはレスポンスボディに含めない
+        return buildResponse("Login successful", {
+            user: authRes.user ?? null,
+        });
     }
 
     // @async
@@ -132,11 +190,106 @@ export class AuthController {
     // await authController.signOut()
     // @see AuthService.signOut
     @Post("logout")
-    @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
-    async signOut() {
-        const result = await this.authService.signOut();
+    async signOut(@Res({ passthrough: true }) res: Response) {
+        // 認証が無くてもCookie破棄は必ず実施可能に
+        // 可能ならSupabase側セッション失効も試行
+        let result: unknown = { signedOut: false };
+        try {
+            result = await this.authService.signOut();
+        } catch {
+            // アクセストークン期限切れ等は無視してCookie破棄を継続
+        }
+
+        // 認証系レスポンスはキャッシュ禁止
+        res.setHeader("Cache-Control", "no-store, private");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+
+        // Cookie無効化（Pathが一致しないと削除されない点に注意）
+        res.cookie("__Host-access_token", "", {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 0,
+        });
+        res.cookie("__Secure-refresh_token", "", {
+            httpOnly: true,
+            secure: true,
+            sameSite: "lax",
+            path: "/api/v1/auth/refresh",
+            maxAge: 0,
+        });
+
         return buildResponse("Logout successful", result);
+    }
+
+    // リフレッシュ
+    // refresh_token Cookie を検証し、新しい access_token Cookie を返す
+    @Post("refresh")
+    async refresh(
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const cookies = (req as unknown as { cookies?: Record<string, string> })
+            .cookies;
+        const refreshToken =
+            cookies?.["__Secure-refresh_token"] ?? cookies?.refresh_token;
+        if (!refreshToken) {
+            res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
+            res.setHeader("Cache-Control", "no-store, private");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+            res.status(401);
+            return buildResponse("No refresh token", { refreshed: false });
+        }
+
+        // リポジトリ経由でリフレッシュ
+        let access_token = "";
+        let refresh_token: string | undefined;
+        try {
+            const resTokens =
+                await this.authService.refreshAccessToken(refreshToken);
+            access_token = resTokens.access_token;
+            refresh_token = resTokens.refresh_token;
+        } catch (e) {
+            // 401系は明示的にチャレンジヘッダを返す
+            res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
+            throw e;
+        }
+
+        // 認証系レスポンスはキャッシュ禁止
+        res.setHeader("Cache-Control", "no-store, private");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+
+        // Cookie属性
+        const accessCookieOptions = {
+            httpOnly: true as const,
+            secure: true as const,
+            sameSite: "lax" as const,
+            path: "/",
+            maxAge: 15 * 60 * 1000,
+        };
+        const refreshCookieOptions = {
+            httpOnly: true as const,
+            secure: true as const,
+            sameSite: "lax" as const,
+            path: "/api/v1/auth/refresh",
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+        };
+
+        // 新しいアクセストークンを返す（必要に応じてリフレッシュも更新）
+        res.cookie("__Host-access_token", access_token, accessCookieOptions);
+        if (refresh_token) {
+            res.cookie(
+                "__Secure-refresh_token",
+                refresh_token,
+                refreshCookieOptions,
+            );
+        }
+
+        return buildResponse("Token refreshed", { refreshed: true });
     }
 
     // @async

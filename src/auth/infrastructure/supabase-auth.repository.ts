@@ -328,4 +328,25 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
         return data;
     }
+
+    // リフレッシュトークンからアクセストークンを再発行
+    async refreshAccessToken(refreshToken: string) {
+        const sb = this.supabaseReq.getClient();
+        // v2のAuth API: refreshSession({ refresh_token }) を利用
+        const { data, error } = await sb.auth.refreshSession({
+            refresh_token: refreshToken,
+        });
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.UNAUTHORIZED);
+        }
+        const access_token = data.session?.access_token ?? "";
+        const refresh_token = data.session?.refresh_token ?? undefined;
+        if (!access_token) {
+            throw new HttpException(
+                "Failed to refresh access token",
+                HttpStatus.UNAUTHORIZED,
+            );
+        }
+        return { access_token, refresh_token };
+    }
 }

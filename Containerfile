@@ -1,4 +1,4 @@
-FROM node:22-alpine AS builder
+FROM --platform=linux/x86_64 node:22-alpine AS builder
 WORKDIR /app
 RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml ./
@@ -6,7 +6,7 @@ RUN pnpm install --frozen-lockfile
 COPY ./ ./
 RUN pnpm build
 
-FROM node:22-alpine AS production
+FROM --platform=linux/x86_64 node:22-alpine AS production
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app/dist         ./dist

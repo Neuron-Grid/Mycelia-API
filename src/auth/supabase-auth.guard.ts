@@ -24,13 +24,32 @@ export class SupabaseAuthGuard implements CanActivate {
         const request = context.switchToHttp().getRequest<Request>();
         const authHeader = request.headers.authorization;
 
-        // トークン未指定時の早期リターン
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw new UnauthorizedException("No valid Bearer token");
+        // Authorizationヘッダー or Cookieからアクセストークンを取得
+        let token: string | undefined;
+        if (authHeader?.startsWith("Bearer ")) {
+            token = authHeader.substring("Bearer ".length).trim();
         }
-        const token = authHeader.substring("Bearer ".length).trim();
         if (!token) {
-            throw new UnauthorizedException("Empty token after Bearer prefix");
+            const cookies = (
+                request as unknown as { cookies?: Record<string, string> }
+            ).cookies;
+            const cookieToken =
+                cookies?.["__Host-access_token"] ?? cookies?.access_token;
+            if (
+                cookieToken &&
+                typeof cookieToken === "string" &&
+                cookieToken.length > 0
+            ) {
+                token = cookieToken;
+                // DownstreamのSupabaseRequestServiceがAuthorizationを見るため、ヘッダーにも反映
+                request.headers.authorization = `Bearer ${cookieToken}`;
+            }
+        }
+
+        if (!token) {
+            throw new UnauthorizedException(
+                "No valid token (header or cookie)",
+            );
         }
 
         // 新しいクライアントインスタンスを毎回作成

@@ -5,6 +5,7 @@ import { ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 // @see https://docs.nestjs.com/
 import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
 // @see https://www.npmjs.com/package/helmet
 import helmet from "helmet";
 import { dump as yamlDump } from "js-yaml";
@@ -24,11 +25,19 @@ async function bootstrap() {
 
     // config
     const cfg = app.get(ConfigService);
-    const allowed = (cfg.get<string>("CORS_ORIGIN") ?? "").split(" ");
-    app.enableCors({ origin: allowed, credentials: true });
+    const originsRaw = cfg.get<string>("CORS_ORIGIN")?.trim() ?? "";
+    const allowed = originsRaw.length
+        ? originsRaw.split(/\s+/).filter(Boolean)
+        : [];
+    app.enableCors({
+        origin: allowed.length ? allowed : false,
+        credentials: true,
+    });
 
     // helmet
     app.use(helmet());
+    // cookie
+    app.use(cookieParser());
 
     // global settings
     app.useGlobalPipes(

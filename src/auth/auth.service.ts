@@ -177,4 +177,9 @@ export class AuthService {
     async verifyTotp(factorId: string, code: string) {
         return await this.authRepo.verifyTotp(factorId, code);
     }
+
+    // リフレッシュトークンからアクセストークンを再発行
+    async refreshAccessToken(refreshToken: string) {
+        return await this.authRepo.refreshAccessToken(refreshToken);
+    }
 }

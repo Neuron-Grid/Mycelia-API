@@ -28,4 +28,9 @@ export abstract class AuthRepositoryPort {
     ): Promise<unknown>;
     abstract verifyEmail(email: string, token: string): Promise<unknown>;
     abstract verifyTotp(factorId: string, code: string): Promise<unknown>;
+
+    // リフレッシュトークンからアクセストークンを再発行
+    abstract refreshAccessToken(
+        refreshToken: string,
+    ): Promise<{ access_token: string; refresh_token?: string }>;
 }
