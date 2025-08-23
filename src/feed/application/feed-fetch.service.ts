@@ -1,9 +1,7 @@
 // @file RSSフィードの取得とパースを行うサービス
 import { Injectable } from "@nestjs/common";
 // @see https://www.npmjs.com/package/feedparser
-import * as FeedParser from "feedparser";
-// @see https://www.npmjs.com/package/feedparser
-import { Item as FeedparserItem, Meta } from "feedparser";
+import FeedParser, { Item as FeedparserItem, Meta } from "feedparser";
 // @see https://www.npmjs.com/package/node-fetch
 import fetch, { Response } from "node-fetch";
 

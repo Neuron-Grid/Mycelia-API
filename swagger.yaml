@@ -949,8 +949,14 @@ paths:
       responses:
         '201':
           description: ''
-      security:
-        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/refresh:
+    post:
+      operationId: AuthController_refresh
+      parameters: []
+      responses:
+        '201':
+          description: ''
       tags: *ref_11
   /api/v1/auth/delete:
     delete:
