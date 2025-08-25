@@ -9,10 +9,19 @@ import {
     UseGuards,
 } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import {
+    ApiBearerAuth,
+    ApiExtraModels,
+    ApiOkResponse,
+    ApiResponse,
+    ApiTags,
+    getSchemaPath,
+} from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
+import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
+import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
 import { FavoriteService } from "./favorite.service";
 import { buildResponse } from "./response.util";
 
@@ -23,6 +32,7 @@ import { buildResponse } from "./response.util";
     version: "1",
 })
 @UseGuards(SupabaseAuthGuard)
+@ApiExtraModels(FavoriteDto, CheckFavoriteResponseDto)
 // @public
 // @since 1.0.0
 export class FavoriteController {
@@ -41,6 +51,19 @@ export class FavoriteController {
     // await favoriteController.getUserFavorites(user)
     // @see FavoriteService.getUserFavorites
     @Get()
+    @ApiOkResponse({
+        description: "Favorites list",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: getSchemaPath(FavoriteDto) },
+                },
+            },
+        },
+    })
     async getUserFavorites(@UserId() userId: string) {
         const favorites = await this.favoriteService.getUserFavorites(userId);
         return buildResponse("Favorites fetched", favorites);
@@ -57,6 +80,16 @@ export class FavoriteController {
     // await favoriteController.checkFavorite(user, 1)
     // @see FavoriteService.isFavorited
     @Get(":feedItemId/is-favorited")
+    @ApiOkResponse({
+        description: "Favorite check",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(CheckFavoriteResponseDto) },
+            },
+        },
+    })
     async checkFavorite(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
@@ -79,6 +112,17 @@ export class FavoriteController {
     // await favoriteController.favoriteItem(user, 1)
     // @see FavoriteService.favoriteFeedItem
     @Post(":feedItemId")
+    @ApiResponse({
+        status: 201,
+        description: "Favorited successfully",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(FavoriteDto) },
+            },
+        },
+    })
     async favoriteItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
@@ -101,6 +145,15 @@ export class FavoriteController {
     // await favoriteController.unfavoriteItem(user, 1)
     // @see FavoriteService.unfavoriteFeedItem
     @Delete(":feedItemId")
+    @ApiOkResponse({
+        description: "Unfavorited successfully",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+            },
+        },
+    })
     async unfavoriteItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,

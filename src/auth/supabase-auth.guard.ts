@@ -5,6 +5,7 @@ import {
     UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Request } from "express";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
@@ -21,7 +22,9 @@ export class SupabaseAuthGuard implements CanActivate {
     // @since 1.0.0
 
     async canActivate(context: ExecutionContext): Promise<boolean> {
-        const request = context.switchToHttp().getRequest<Request>();
+        const request = context
+            .switchToHttp()
+            .getRequest<Request & { user?: User }>();
         const authHeader = request.headers.authorization;
 
         // Authorizationヘッダー or Cookieからアクセストークンを取得
@@ -126,7 +129,7 @@ export class SupabaseAuthGuard implements CanActivate {
         }
 
         // request.user にユーザー情報をセット
-        request.user = data.user;
+        request.user = data.user ?? undefined;
         return true;
     }
 }

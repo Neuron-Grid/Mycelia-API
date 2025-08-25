@@ -12,6 +12,7 @@ import {
 } from "@nestjs/common";
 import {
     ApiBearerAuth,
+    ApiBody,
     ApiOperation,
     ApiQuery,
     ApiTags,
@@ -20,6 +21,7 @@ import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { Job, Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
+import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
 
 type QueueName =
     | "embeddingQueue"
@@ -102,10 +104,11 @@ export class JobsAdminController {
         summary: "Retry all failed jobs for current user in the queue",
     })
     @ApiQuery({ name: "queue", required: true })
+    @ApiBody({ type: RetryAllDto })
     async retryAll(
         @SupabaseUser() user: SupabaseUserType,
         @Query("queue") queueName: QueueName,
-        @Body() body?: { max?: number },
+        @Body() body?: RetryAllDto,
     ) {
         const queue = this.getQueue(queueName);
         const limit = body?.max ?? 100;

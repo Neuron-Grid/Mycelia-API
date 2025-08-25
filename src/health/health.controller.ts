@@ -2,7 +2,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Controller, Get } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiTags } from "@nestjs/swagger";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
 import { Job, Queue } from "bullmq";
 import { RedisService } from "@/shared/redis/redis.service";
@@ -53,6 +53,10 @@ export class HealthController {
     // await healthController.checkHealth()
     // @see HealthCheckResponseDto
     @Get()
+    @ApiOkResponse({
+        description: "System health status",
+        type: HealthCheckResponseDto,
+    })
     async checkHealth(): Promise<HealthCheckResponseDto> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();

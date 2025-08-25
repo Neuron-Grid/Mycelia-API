@@ -11,7 +11,7 @@ import {
     UseGuards,
 } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
@@ -69,6 +69,18 @@ export class AuthController {
     // await authController.signIn({ email, password })
     // @see AuthService.signIn
     @Post("login")
+    @ApiResponse({
+        status: 201,
+        description:
+            "Set-Cookie: __Host-access_token, __Secure-refresh_token を返します",
+        headers: {
+            "Set-Cookie": {
+                description:
+                    "Sets __Host-access_token (Path=/) and __Secure-refresh_token (Path=/api/v1/auth/refresh)",
+                schema: { type: "string" },
+            },
+        },
+    })
     async signIn(
         @Body() signInDto: SignInDto,
         @Res({ passthrough: true }) res: Response,
@@ -190,6 +202,18 @@ export class AuthController {
     // await authController.signOut()
     // @see AuthService.signOut
     @Post("logout")
+    @ApiResponse({
+        status: 201,
+        description:
+            "Set-Cookie: __Host-access_token, __Secure-refresh_token を無効化して返します",
+        headers: {
+            "Set-Cookie": {
+                description:
+                    "Clears __Host-access_token and __Secure-refresh_token cookies",
+                schema: { type: "string" },
+            },
+        },
+    })
     async signOut(@Res({ passthrough: true }) res: Response) {
         // 認証が無くてもCookie破棄は必ず実施可能に
         // 可能ならSupabase側セッション失効も試行
@@ -227,6 +251,18 @@ export class AuthController {
     // リフレッシュ
     // refresh_token Cookie を検証し、新しい access_token Cookie を返す
     @Post("refresh")
+    @ApiResponse({
+        status: 201,
+        description:
+            "Set-Cookie: __Host-access_token（必須）と必要に応じて__Secure-refresh_tokenを返します",
+        headers: {
+            "Set-Cookie": {
+                description:
+                    "Sets new __Host-access_token and optionally updates __Secure-refresh_token",
+                schema: { type: "string" },
+            },
+        },
+    })
     async refresh(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,

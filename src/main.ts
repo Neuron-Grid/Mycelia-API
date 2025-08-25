@@ -65,8 +65,8 @@ async function bootstrap() {
     const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
 
     // 出力パスは固定
-    // 必要に応じて環境変数化も可
-    const outPath = resolve(process.cwd(), "swagger.yaml");
+    // Nestia 生成の swagger.yaml と衝突しないように別名に変更
+    const outPath = resolve(process.cwd(), "swagger.nestjs.yaml");
 
     try {
         const yaml = yamlDump(swaggerDocument);

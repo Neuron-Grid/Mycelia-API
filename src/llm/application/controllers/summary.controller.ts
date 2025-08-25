@@ -10,12 +10,15 @@ import {
 } from "@nestjs/common";
 import {
     ApiBearerAuth,
+    ApiBody,
     ApiOperation,
     ApiParam,
     ApiTags,
 } from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { RegenerateScriptDto } from "@/llm/application/dto/regenerate-script.dto";
+import { RegenerateSummaryDto } from "@/llm/application/dto/regenerate-summary.dto";
 import { SupabaseUser } from "../../../auth/supabase-user.decorator";
 import { DailySummaryRepository } from "../../infrastructure/repositories/daily-summary.repository";
 import { SummaryScriptService } from "../services/summary-script.service";
@@ -42,10 +45,11 @@ export class SummaryController {
     })
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
+    @ApiBody({ type: RegenerateSummaryDto })
     async regenerateSummary(
         @Param("userId") targetUserId: string,
         @SupabaseUser() requestingUser: SupabaseUserType,
-        @Body() body?: { date?: string; prompt?: string },
+        @Body() body?: RegenerateSummaryDto,
     ): Promise<{ message: string; jobId?: string }> {
         // 戻り値の型を明確化
         this.logger.log(
@@ -99,10 +103,11 @@ export class SummaryController {
     })
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
+    @ApiBody({ type: RegenerateScriptDto })
     async regenerateScript(
         @Param("summaryId") summaryIdParam: string, // パラメータは文字列で来るので変換が必要
         @SupabaseUser() user: SupabaseUserType, // requestingUser の方が意図が明確かも
-        @Body() body?: { prompt?: string },
+        @Body() body?: RegenerateScriptDto,
     ): Promise<{ message: string; jobId?: string }> {
         // 戻り値の型を明確化
         const summaryId = Number.parseInt(summaryIdParam, 10);

@@ -8,7 +8,13 @@ import {
     Put,
     UseGuards,
 } from "@nestjs/common";
-import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiOkResponse,
+    ApiOperation,
+    ApiTags,
+} from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
@@ -18,6 +24,11 @@ import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
 import { JobsService } from "@/jobs/jobs.service";
 import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
 import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
+import { PreviewScheduleDto } from "@/settings/dto/preview-schedule.dto";
+import { RunSummaryNowDto } from "@/settings/dto/run-summary-now.dto";
+import { SettingsOverviewDto } from "@/settings/dto/settings-overview.dto";
+import { UpdatePodcastSettingDto } from "@/settings/dto/update-podcast-setting.dto";
+import { UpdateSummarySettingDto } from "@/settings/dto/update-summary-setting.dto";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 @ApiTags("settings")
@@ -39,6 +50,10 @@ export class SettingsController {
     @Get("settings")
     @ApiOperation({ summary: "User settings and schedule overview" })
     @ApiBearerAuth()
+    @ApiOkResponse({
+        description: "Settings overview",
+        type: SettingsOverviewDto,
+    })
     async getSettings(@SupabaseUser() user: User) {
         const userId = user.id;
         const base = await this.userSettingsRepo.getByUserId(userId);
@@ -94,11 +109,12 @@ export class SettingsController {
             "Preview next run times at a given JST time (with jitter and fixed offset)",
     })
     @ApiBearerAuth()
+    @ApiBody({ type: PreviewScheduleDto })
     previewSchedule(
         @SupabaseUser() user: User,
-        @Body() body: { timeJst: string },
+        @Body() body: PreviewScheduleDto,
     ) {
-        const { timeJst } = body || {};
+        const { timeJst } = body || ({} as PreviewScheduleDto);
         if (!/^([0-1]?\d|2[0-3]):[0-5]\d$/.test(String(timeJst))) {
             throw new BadRequestException("timeJst must be HH:mm (JST)");
         }
@@ -221,9 +237,10 @@ export class SettingsController {
     @Put("settings/summary")
     @ApiOperation({ summary: "Update summary feature enabled/disabled" })
     @ApiBearerAuth()
+    @ApiBody({ type: UpdateSummarySettingDto })
     async updateSummarySetting(
         @SupabaseUser() user: User,
-        @Body() body: { enabled: boolean },
+        @Body() body: UpdateSummarySettingDto,
     ) {
         if (typeof body?.enabled !== "boolean") {
             throw new BadRequestException("enabled must be boolean");
@@ -243,14 +260,10 @@ export class SettingsController {
         summary: "Update podcast settings (enabled/time/language)",
     })
     @ApiBearerAuth()
+    @ApiBody({ type: UpdatePodcastSettingDto })
     async updatePodcastSetting(
         @SupabaseUser() user: User,
-        @Body()
-        body: {
-            enabled: boolean;
-            time?: string;
-            language?: "ja-JP" | "en-US";
-        },
+        @Body() body: UpdatePodcastSettingDto,
     ) {
         if (typeof body?.enabled !== "boolean")
             throw new BadRequestException("enabled must be boolean");
@@ -276,9 +289,10 @@ export class SettingsController {
             "Enqueue today's summary → script → podcast flow immediately (idempotent)",
     })
     @ApiBearerAuth()
+    @ApiBody({ type: RunSummaryNowDto })
     async runSummaryNow(
         @SupabaseUser() user: User,
-        @Body() body?: { date?: string },
+        @Body() body?: RunSummaryNowDto,
     ) {
         const dateJst = body?.date ?? this.formatDateJst(new Date());
         const flow = await this.flowOrchestrator.createDailyFlow(
