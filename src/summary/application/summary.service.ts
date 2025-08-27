@@ -41,9 +41,17 @@ export class SummaryService {
                     throw new Error(`Invalid fileRef format: ${fileRef}`);
                 }
 
+                // 所有チェック: 指定キーが当該ユーザーの領域配下であることを強制
+                if (!this.cloudflareR2Service.isUserFile(objectKey, userId)) {
+                    this.logger.warn(
+                        `Access denied to fileRef for user ${userId}: ${objectKey}`,
+                    );
+                    throw new Error(
+                        "Access denied: fileRef must belong to the requesting user",
+                    );
+                }
+
                 // セキュリティチェック: ユーザーが自分のファイルにのみアクセス可能かチェック
-                // ただし、要約機能では他のユーザーのファイルも参照する可能性があるため、
-                // 実際の運用では適切なアクセス制御を実装する必要があります
                 const fileContent =
                     await this.cloudflareR2Service.getObject(objectKey);
 

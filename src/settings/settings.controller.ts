@@ -94,7 +94,10 @@ export class SettingsController {
 
     @Post("schedule/reload")
     @ApiOperation({
-        summary: "Reload your repeatable jobs (apply immediately)",
+        summary:
+            "Reload schedule (central scheduler; changes take effect immediately)",
+        description:
+            "中央スケジューラ方式のため、設定変更は即時反映されます。個別ユーザーのrepeatable再登録は不要です。",
     })
     @ApiBearerAuth()
     async reloadMySchedule(@SupabaseUser() user: User) {
@@ -235,7 +238,11 @@ export class SettingsController {
     }
 
     @Put("settings/summary")
-    @ApiOperation({ summary: "Update summary feature enabled/disabled" })
+    @ApiOperation({
+        summary: "Update summary feature enabled/disabled",
+        description:
+            "中央スケジューラにより、変更は即時に有効化/無効化されます（安定ジッター適用）。",
+    })
     @ApiBearerAuth()
     @ApiBody({ type: UpdateSummarySettingDto })
     async updateSummarySetting(
@@ -258,6 +265,8 @@ export class SettingsController {
     @Put("settings/podcast")
     @ApiOperation({
         summary: "Update podcast settings (enabled/time/language)",
+        description:
+            "中央スケジューラ方式。指定時刻（JST）＋安定ジッターで運用され、要約の+10分後にポッドキャストが実行されます。",
     })
     @ApiBearerAuth()
     @ApiBody({ type: UpdatePodcastSettingDto })

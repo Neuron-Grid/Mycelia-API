@@ -1494,6 +1494,7 @@ paths:
         - settings
   /api/v1/schedule/reload:
     post:
+      description: 中央スケジューラ方式のため、設定変更は即時反映されます。個別ユーザーのrepeatable再登録は不要です。
       operationId: SettingsController_reloadMySchedule
       parameters: []
       responses:
@@ -1501,7 +1502,7 @@ paths:
           description: ''
       security:
         - bearer: []
-      summary: Reload your repeatable jobs (apply immediately)
+      summary: Reload schedule (central scheduler; changes take effect immediately)
       tags: *ref_18
   /api/v1/schedule/preview:
     post:
@@ -1535,6 +1536,7 @@ paths:
       tags: *ref_18
   /api/v1/settings/summary:
     put:
+      description: 中央スケジューラにより、変更は即時に有効化/無効化されます（安定ジッター適用）。
       operationId: SettingsController_updateSummarySetting
       parameters: []
       requestBody:
@@ -1552,6 +1554,7 @@ paths:
       tags: *ref_18
   /api/v1/settings/podcast:
     put:
+      description: 中央スケジューラ方式。指定時刻（JST）＋安定ジッターで運用され、要約の+10分後にポッドキャストが実行されます。
       operationId: SettingsController_updatePodcastSetting
       parameters: []
       requestBody:

@@ -95,18 +95,20 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         const m = now.getMinutes();
         const dateStr = this.formatDateJst(now);
 
-        // 1) ユーザー毎のサマリ実行判定
+        // 1) ユーザー毎のサマリ実行判定（summary: ベース時刻そのまま）
         const summaries =
             await this.userSettingsRepo.getAllEnabledSummarySchedules();
         for (const { userId, timeJst } of summaries) {
             const base = this.parseTimeWithStableJitter(timeJst, userId);
-            const { hour, minute } = this.addOffset(base.hour, base.minute, 10);
+            // summary は +0 分（ジッターのみ）
+            const { hour, minute } = this.addOffset(base.hour, base.minute, 0);
             if (hour === h && minute === m) {
                 await this.summaryQueue.add(
                     "generateUserSummary",
                     { userId },
                     {
-                        jobId: `summary-daily:${userId}:${dateStr}`,
+                        // 日次も jobs.status と同一の命名に統一
+                        jobId: `summary:${userId}:${dateStr}`,
                         removeOnComplete: true,
                         removeOnFail: 5,
                     },
@@ -114,7 +116,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
             }
         }
 
-        // 2) ユーザー毎のポッドキャスト実行判定
+        // 2) ユーザー毎のポッドキャスト実行判定（podcast: summary の +10 分）
         const podcasts =
             await this.userSettingsRepo.getAllEnabledPodcastSchedules();
         for (const { userId, timeJst } of podcasts) {

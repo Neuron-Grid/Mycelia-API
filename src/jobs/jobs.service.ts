@@ -145,14 +145,16 @@ export class JobsService implements OnModuleInit {
         };
 
         return {
+            // summary はベース時刻（ジッターのみ、+0 分）
             next_run_at_summary: settings?.summary_enabled
                 ? toNextIso(
                       (
                           await this.settingsRepo.getAllEnabledSummarySchedules()
                       ).find((s) => s.userId === userId)?.timeJst || "06:00",
-                      10,
+                      0,
                   )
                 : null,
+            // podcast は summary の +10 分相当
             next_run_at_podcast:
                 settings?.summary_enabled && settings?.podcast_enabled
                     ? toNextIso(
