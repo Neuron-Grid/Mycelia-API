@@ -1109,6 +1109,98 @@ paths:
         '201':
           description: ''
       tags: *ref_11
+  /api/v1/auth/mfa/totp/verify:
+    post:
+      operationId: AuthController_verifyTotpNew
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTotpDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/mfa/webauthn/register:
+    post:
+      operationId: AuthController_startWebAuthnRegistration
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartWebAuthnRegistrationDto'
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/mfa/webauthn/callback:
+    post:
+      operationId: AuthController_finishWebAuthnRegistration
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinishWebAuthnRegistrationDto'
+      responses:
+        '201':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/mfa/webauthn/verify:
+    post:
+      operationId: AuthController_verifyWebAuthnAssertion
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyWebAuthnAssertionDto'
+      responses:
+        '201':
+          description: ''
+      tags: *ref_11
+  /api/v1/auth/mfa/totp/enroll:
+    patch:
+      operationId: AuthController_enrollTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollTotpDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
+  /api/v1/auth/mfa/totp/disable:
+    patch:
+      operationId: AuthController_disableTotp
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisableTotpDto'
+      responses:
+        '200':
+          description: ''
+      security:
+        - bearer: []
+      tags: *ref_11
   /api/v1/health:
     get:
       operationId: HealthController_checkHealth
@@ -1949,6 +2041,68 @@ components:
       required:
         - factorId
         - code
+    StartWebAuthnRegistrationDto:
+      type: object
+      properties:
+        displayName:
+          type: string
+          example: MacBook Pro Touch ID
+          description: 登録するパスキーを識別する任意の表示名
+    FinishWebAuthnRegistrationDto:
+      type: object
+      properties:
+        attestationResponse:
+          type: object
+          description: navigator.credentials.create() で得た credential 全体
+          additionalProperties: true
+          example:
+            id: credentialId
+            rawId: BASE64URL
+            type: public-key
+            response:
+              attestationObject: BASE64URL
+              clientDataJSON: BASE64URL
+      required:
+        - attestationResponse
+    VerifyWebAuthnAssertionDto:
+      type: object
+      properties:
+        factorId:
+          type: string
+          example: webauthn_factor_id
+          description: Supabase が払い出した WebAuthn ファクター ID
+        assertionResponse:
+          type: object
+          description: navigator.credentials.get() で得た credential 全体
+          additionalProperties: true
+          example:
+            id: credentialId
+            rawId: BASE64URL
+            type: public-key
+            response:
+              authenticatorData: BASE64URL
+              clientDataJSON: BASE64URL
+              signature: BASE64URL
+              userHandle: BASE64URL
+      required:
+        - factorId
+        - assertionResponse
+    EnrollTotpDto:
+      type: object
+      properties:
+        displayName:
+          type: string
+          example: iPhone 15
+          description: この TOTP デバイスを識別する任意の表示名
+    DisableTotpDto:
+      type: object
+      properties:
+        factorId:
+          type: string
+          example: totp_factor_id
+          description: 無効化したい TOTP ファクター ID
+      required:
+        - factorId
     JobCountsDto:
       type: object
       properties:

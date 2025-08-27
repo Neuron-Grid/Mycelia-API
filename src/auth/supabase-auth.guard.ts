@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { Request } from "express";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { JwtAuthClaims } from "@/types/auth-claims";
 import { Database } from "@/types/schema";
 
 @Injectable()
@@ -17,6 +18,31 @@ export class SupabaseAuthGuard implements CanActivate {
         private readonly admin: SupabaseAdminService,
         private readonly cfg: ConfigService,
     ) {}
+
+    private static decodeJwtClaims(token: string): JwtAuthClaims | null {
+        try {
+            const [, payload] = token.split(".");
+            if (!payload) return null;
+            const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+            const pad =
+                normalized.length % 4
+                    ? "=".repeat(4 - (normalized.length % 4))
+                    : "";
+            const json = Buffer.from(normalized + pad, "base64").toString(
+                "utf8",
+            );
+            const obj = JSON.parse(json) as Record<string, unknown>;
+            const amr = Array.isArray(obj.amr)
+                ? ((obj.amr as unknown[]).filter(
+                      (v) => typeof v === "string",
+                  ) as string[])
+                : undefined;
+            return { ...(obj as JwtAuthClaims), amr };
+        } catch {
+            return null;
+        }
+    }
+
     // @async
     // @public
     // @since 1.0.0
@@ -126,6 +152,13 @@ export class SupabaseAuthGuard implements CanActivate {
         } catch (_e) {
             // 行が見つからない場合やadmin経由の読み取り問題はスルー（トークン有効であれば継続）
             // ただし soft_deleted=true のときのみ拒否
+        }
+
+        // JWT クレームをデコードして添付（amr/acr/aal を下位ガードで使用）
+        const claims = SupabaseAuthGuard.decodeJwtClaims(token);
+        if (claims) {
+            (request as unknown as { authClaims?: JwtAuthClaims }).authClaims =
+                claims;
         }
 
         // request.user にユーザー情報をセット

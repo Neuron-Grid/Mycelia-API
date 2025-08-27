@@ -178,6 +178,29 @@ export class AuthService {
         return await this.authRepo.verifyTotp(factorId, code);
     }
 
+    // @async
+    // @public
+    // @since 1.0.0
+    // @returns {Promise<{ id: string; qr: string }>} - 登録用QR/URIとfactor ID
+    // @example
+    // await authService.enrollTotp('My Phone')
+    // @see AuthRepositoryPort.enrollTotp
+    async enrollTotp(displayName?: string) {
+        return await this.authRepo.enrollTotp(displayName);
+    }
+
+    // @async
+    // @public
+    // @since 1.0.0
+    // @param {string} factorId - 無効化するTOTPファクターID
+    // @returns {Promise<unknown>} - 無効化結果
+    // @example
+    // await authService.disableTotp('factorId')
+    // @see AuthRepositoryPort.disableTotp
+    async disableTotp(factorId: string) {
+        return await this.authRepo.disableTotp(factorId);
+    }
+
     // リフレッシュトークンからアクセストークンを再発行
     async refreshAccessToken(refreshToken: string) {
         return await this.authRepo.refreshAccessToken(refreshToken);

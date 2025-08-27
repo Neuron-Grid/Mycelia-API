@@ -328,6 +328,96 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
         return data;
     }
+    // TOTP: enroll（QR/URI返却）
+    async enrollTotp(
+        _displayName?: string,
+    ): Promise<{ id: string; otpauthUri: string }> {
+        const sb = this.supabaseReq.getClient();
+        const { data, error } = await sb.auth.mfa.enroll({
+            factorType: "totp",
+        });
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        const d = data as unknown as {
+            id?: string;
+            totp?: {
+                qr_code?: string;
+                qr_code_svg?: string;
+                uri?: string;
+            };
+        };
+        const factorId = d.id ?? "";
+        // 返却する otpauthUri は otpauth URI を優先（フロントで QR 生成可能）
+        const otpauthUri =
+            d.totp?.uri ?? d.totp?.qr_code ?? d.totp?.qr_code_svg ?? "";
+        if (!factorId || !otpauthUri) {
+            throw new HttpException(
+                "Failed to enroll TOTP factor",
+                HttpStatus.BAD_REQUEST,
+            );
+        }
+        return { id: factorId, otpauthUri };
+    }
+
+    // TOTP: disable（unenroll）
+    async disableTotp(factorId: string) {
+        const sb = this.supabaseReq.getClient();
+        const { data, error } = await sb.auth.mfa.unenroll({ factorId });
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        return data;
+    }
+
+    /* ------------------------------------------------------------------
+     * WebAuthn (パスキー) 関連
+     * ------------------------------------------------------------------ */
+    // 1. 登録開始: PublicKeyCredentialCreationOptions を取得
+    async startWebAuthnRegistration(displayName?: string) {
+        const sb = this.supabaseReq.getClient();
+        // `@supabase/supabase-js` v2.x では型定義に "webauthn" が含まれていないため
+        // 明示的に型アサーションしてコンパイラエラーを回避する
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const { data, error } = await sb.auth.mfa.enroll({
+            factorType: "webauthn",
+            friendlyName: displayName,
+        } as unknown as Parameters<typeof sb.auth.mfa.enroll>[0]);
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        return data as Record<string, unknown>;
+    }
+
+    // 2. 登録完了: attestationResponse を検証
+    async finishWebAuthnRegistration(
+        attestationResponse: Record<string, unknown>,
+    ) {
+        const sb = this.supabaseReq.getClient();
+        // WebAuthn 登録完了（attestation）の型定義も存在しないため同様にキャスト
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const { data, error } = await sb.auth.mfa.verify({
+            attestationResponse,
+        } as unknown as Parameters<typeof sb.auth.mfa.verify>[0]);
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        return data;
+    }
+
+    // 3. 認証検証: assertionResponse を検証
+    async verifyWebAuthnAssertion(assertionResponse: Record<string, unknown>) {
+        const sb = this.supabaseReq.getClient();
+        // WebAuthn 認証（assertion）の検証
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const { data, error } = await sb.auth.mfa.verify({
+            assertionResponse,
+        } as unknown as Parameters<typeof sb.auth.mfa.verify>[0]);
+        if (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+        }
+        return data;
+    }
 
     // リフレッシュトークンからアクセストークンを再発行
     async refreshAccessToken(refreshToken: string) {

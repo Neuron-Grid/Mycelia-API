@@ -12,10 +12,14 @@ import {
 } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
+import { setAuthCookies } from "src/common/utils/cookie";
 import { AuthService } from "./auth.service";
+import { DisableTotpDto } from "./dto/disable-totp.dto";
+import { EnrollTotpDto } from "./dto/enroll-totp.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { SignInDto } from "./dto/sign-in.dto";
@@ -25,11 +29,17 @@ import { UpdatePasswordDto } from "./dto/update-password.dto";
 import { UpdateUsernameDto } from "./dto/update-username.dto";
 import { VerifyEmailDto } from "./dto/verify-email.dto";
 import { VerifyTotpDto } from "./dto/verify-totp.dto";
+import {
+    FinishWebAuthnRegistrationDto,
+    StartWebAuthnRegistrationDto,
+    VerifyWebAuthnAssertionDto,
+} from "./dto/webauthn.dto";
+import { RequiresMfaGuard } from "./requires-mfa.guard";
 import { buildResponse } from "./response.util";
 import { SupabaseAuthGuard } from "./supabase-auth.guard";
 import { SupabaseUser } from "./supabase-user.decorator";
 import { UserId } from "./user-id.decorator";
-
+import { WebAuthnService } from "./webauthn.service";
 @ApiTags("Authentication")
 @Controller({
     path: "auth",
@@ -37,11 +47,15 @@ import { UserId } from "./user-id.decorator";
 })
 // @public
 // @since 1.0.0
+@UseGuards(ThrottlerGuard)
 export class AuthController {
     // @param {AuthService} authService - 認証サービス
     // @since 1.0.0
     // @public
-    constructor(private readonly authService: AuthService) {}
+    constructor(
+        private readonly authService: AuthService,
+        private readonly webauthn: WebAuthnService,
+    ) {}
 
     // @async
     // @public
@@ -69,6 +83,7 @@ export class AuthController {
     // await authController.signIn({ email, password })
     // @see AuthService.signIn
     @Post("login")
+    @Throttle({ default: { limit: 5, ttl: 60 } })
     @ApiResponse({
         status: 201,
         description:
@@ -251,6 +266,7 @@ export class AuthController {
     // リフレッシュ
     // refresh_token Cookie を検証し、新しい access_token Cookie を返す
     @Post("refresh")
+    @Throttle({ default: { limit: 5, ttl: 60 } })
     @ApiResponse({
         status: 201,
         description:
@@ -339,7 +355,7 @@ export class AuthController {
     // @see AuthService.deleteAccount
     @Delete("delete")
     @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async deleteAccount(@UserId() userId: string) {
         const result = await this.authService.deleteAccount(userId);
         return buildResponse("Account deleted", result);
@@ -357,7 +373,7 @@ export class AuthController {
     // @see AuthService.updateEmail
     @Patch("update-email")
     @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updateEmail(@SupabaseUser() user: User, @Body() dto: UpdateEmailDto) {
         const result = await this.authService.updateEmail(user, dto.newEmail);
         return buildResponse("Email updated successfully", result);
@@ -375,7 +391,7 @@ export class AuthController {
     // @see AuthService.updateUsername
     @Patch("update-username")
     @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updateUsername(
         @SupabaseUser() user: User,
         @Body() dto: UpdateUsernameDto,
@@ -399,7 +415,7 @@ export class AuthController {
     // @see AuthService.updatePassword
     @Patch("update-password")
     @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updatePassword(
         @SupabaseUser() user: User,
         @Body() dto: UpdatePasswordDto,
@@ -421,7 +437,7 @@ export class AuthController {
     // authController.getProfile(user)
     @Get("profile")
     @ApiBearerAuth()
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     getProfile(@SupabaseUser() user: User): { message: string; data: User } {
         return buildResponse("User profile fetched successfully", user);
     }
@@ -436,10 +452,117 @@ export class AuthController {
     // await authController.verifyTotp({ factorId, code })
     // @see AuthService.verifyTotp
     @Post("verify-totp")
-    async verifyTotp(@Body() dto: VerifyTotpDto) {
-        // dto内に factorId, code がある想定
+    @UseGuards(ThrottlerGuard)
+    @Throttle({
+        default: { limit: 5, ttl: 60 },
+    })
+    async verifyTotp(
+        @Body() dto: VerifyTotpDto,
+        @Res({ passthrough: true }) res: Response,
+    ) {
         const { factorId, code } = dto;
         const result = await this.authService.verifyTotp(factorId, code);
+
+        // セッションが含まれていれば Cookie を再設定
+        const { session } = result as {
+            session?: { access_token?: string; refresh_token?: string };
+        };
+        if (session?.access_token && session?.refresh_token) {
+            setAuthCookies(res, session.access_token, session.refresh_token);
+        }
+
         return buildResponse("TOTP verified successfully", result);
+    }
+
+    // 仕様に合わせたTOTP verify新ルート（既存と同実装）
+    @Post("mfa/totp/verify")
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60 } })
+    async verifyTotpNew(
+        @Body() dto: VerifyTotpDto,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const { factorId, code } = dto;
+        const result = await this.authService.verifyTotp(factorId, code);
+        const { session } = result as {
+            session?: { access_token?: string; refresh_token?: string };
+        };
+        if (session?.access_token && session?.refresh_token) {
+            setAuthCookies(res, session.access_token, session.refresh_token);
+        }
+        return buildResponse("TOTP verified successfully", result);
+    }
+
+    /* ------------------------------------------------------------------
+     * WebAuthn (Passkey) endpoints
+     * ------------------------------------------------------------------ */
+    // 登録開始: navigator.credentials.create() 前段で呼び出し
+    @Post("mfa/webauthn/register")
+    @ApiBearerAuth()
+    @UseGuards(SupabaseAuthGuard, ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60 } })
+    async startWebAuthnRegistration(@Body() dto: StartWebAuthnRegistrationDto) {
+        const data = await this.webauthn.startRegistration(dto?.displayName);
+        return buildResponse("WebAuthn registration started", data);
+    }
+
+    // 登録完了: attestationResponse を検証
+    @Post("mfa/webauthn/callback")
+    @ApiBearerAuth()
+    @UseGuards(SupabaseAuthGuard, ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60 } })
+    async finishWebAuthnRegistration(
+        @Body() dto: FinishWebAuthnRegistrationDto,
+    ) {
+        const data = await this.webauthn.finishRegistration(
+            dto.attestationResponse,
+        );
+        return buildResponse("WebAuthn registration finished", data);
+    }
+
+    // 認証検証: navigator.credentials.get() 後に呼び出す
+    @Post("mfa/webauthn/verify")
+    @UseGuards(ThrottlerGuard)
+    @Throttle({ default: { limit: 5, ttl: 60 } })
+    async verifyWebAuthnAssertion(
+        @Body() dto: VerifyWebAuthnAssertionDto,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        const data = await this.webauthn.verifyAssertion(dto.assertionResponse);
+        // セッションが含まれていれば Cookie 設定
+        const { session } = data as {
+            session?: { access_token?: string; refresh_token?: string };
+        };
+        if (session?.access_token && session?.refresh_token) {
+            setAuthCookies(res, session.access_token, session.refresh_token);
+        }
+        return buildResponse("WebAuthn assertion verified", data);
+    }
+
+    // TOTP enroll（QR/otpauth URI を返す）
+    @Patch("mfa/totp/enroll")
+    @ApiBearerAuth()
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard, ThrottlerGuard)
+    @Throttle({
+        default: { limit: 5, ttl: 60 },
+    })
+    async enrollTotp(@Body() dto: EnrollTotpDto) {
+        const result = await this.authService.enrollTotp(dto?.displayName);
+        return buildResponse("TOTP enrollment created", {
+            factorId: result.id,
+            otpauthUri: result.otpauthUri,
+        });
+    }
+
+    // 既存 TOTP factor を無効化
+    @Patch("mfa/totp/disable")
+    @ApiBearerAuth()
+    @UseGuards(SupabaseAuthGuard, RequiresMfaGuard, ThrottlerGuard)
+    @Throttle({
+        default: { limit: 5, ttl: 60 },
+    })
+    async disableTotp(@Body() dto: DisableTotpDto) {
+        const result = await this.authService.disableTotp(dto.factorId);
+        return buildResponse("TOTP factor disabled", result);
     }
 }

@@ -9,6 +9,10 @@ import cookieParser from "cookie-parser";
 // @see https://www.npmjs.com/package/helmet
 import helmet from "helmet";
 import { dump as yamlDump } from "js-yaml";
+import {
+    createCsrfMiddleware,
+    createHttpsEnforceMiddleware,
+} from "@/common/middleware/security.middleware";
 // @see ./app.module
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
@@ -34,10 +38,26 @@ async function bootstrap() {
         credentials: true,
     });
 
-    // helmet
-    app.use(helmet());
+    // helmet + HSTS 強化（prod環境のみ preload/subdomainsを有効化）
+    const isProd =
+        (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
+    app.use(
+        helmet({
+            hsts: isProd
+                ? {
+                      maxAge: 15552000, // 180 days
+                      includeSubDomains: true,
+                      preload: true,
+                  }
+                : undefined,
+        }),
+    );
     // cookie
     app.use(cookieParser());
+    // HTTPS 強制（proxy 配下想定）
+    app.use(createHttpsEnforceMiddleware(cfg));
+    // Double submit cookie 方式の CSRF 対策
+    app.use(createCsrfMiddleware(cfg));
 
     // global settings
     app.useGlobalPipes(
