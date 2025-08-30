@@ -59,7 +59,7 @@ export class SummaryScriptService {
         this.logger.log(
             `Summary generation job ${job.id} added for user ${userId}`,
         );
-        return { jobId: job.id };
+        return { jobId: job.id?.toString() };
     }
 
     // JST(UTC+9)基準でYYYY-MM-DDを返す
@@ -94,6 +94,6 @@ export class SummaryScriptService {
         this.logger.log(
             `Script generation job ${job.id} added for summaryId ${summaryId}`,
         );
-        return { jobId: job.id };
+        return { jobId: job.id?.toString() };
     }
 }

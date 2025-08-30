@@ -1,4 +1,5 @@
 import { HttpModule, HttpService } from "@nestjs/axios";
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
@@ -33,7 +34,7 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
             {
                 name: SUMMARY_GENERATE_QUEUE,
                 imports: [RedisModule],
-                useFactory: (redis: RedisService) => ({
+                useFactory: (redis: RedisService): QueueOptionsLike => ({
                     connection: redis.createBullClient(),
                     limiter: {
                         max: 50,
@@ -52,7 +53,7 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
             {
                 name: SCRIPT_GENERATE_QUEUE,
                 imports: [RedisModule],
-                useFactory: (redis: RedisService) => ({
+                useFactory: (redis: RedisService): QueueOptionsLike => ({
                     connection: redis.createBullClient(),
                     limiter: {
                         max: 50,

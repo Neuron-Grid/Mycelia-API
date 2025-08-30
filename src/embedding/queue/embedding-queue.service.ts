@@ -10,7 +10,8 @@ export class EmbeddingQueueService {
     private readonly logger = new Logger(EmbeddingQueueService.name);
 
     constructor(
-        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
+        @InjectQueue("embeddingQueue")
+        private readonly embeddingQueue: Queue<VectorUpdateJobDto>,
         private readonly batchDataService: EmbeddingBatchDataService,
     ) {}
 

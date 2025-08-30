@@ -50,6 +50,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
             }
             default:
                 this.logger.warn(`Unknown maintenance job: ${job.name}`);
+                return { success: false };
         }
     }
 

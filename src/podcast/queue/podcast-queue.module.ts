@@ -1,3 +1,4 @@
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/worker-daily-summary.repository";
@@ -21,7 +22,7 @@ import { SupabaseAdminService } from "@/shared/supabase-admin.service";
             name: "podcastQueue",
             imports: [RedisModule],
             // RedisService側で用意した共通ioredisインスタンスを共有する
-            useFactory: (redisService: RedisService) => ({
+            useFactory: (redisService: RedisService): QueueOptionsLike => ({
                 connection: redisService.createBullClient(),
                 limiter: {
                     max: 30,

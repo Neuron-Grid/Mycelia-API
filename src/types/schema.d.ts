@@ -1173,11 +1173,11 @@ export type CompositeTypes<
       ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
       : never;
 
-export const Constants = {
+export declare const Constants: {
     graphql_public: {
-        Enums: {},
-    },
+        Enums: Record<string, never>;
+    };
     public: {
-        Enums: {},
-    },
-} as const;
+        Enums: Record<string, never>;
+    };
+};

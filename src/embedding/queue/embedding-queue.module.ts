@@ -1,3 +1,4 @@
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { RedisModule } from "@/shared/redis/redis.module";
@@ -16,7 +17,7 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
         BullModule.registerQueueAsync({
             name: "embeddingQueue",
             imports: [RedisModule],
-            useFactory: (redisService: RedisService) => ({
+            useFactory: (redisService: RedisService): QueueOptionsLike => ({
                 connection: redisService.createBullClient(),
                 defaultJobOptions: {
                     removeOnComplete:

@@ -46,8 +46,9 @@ export class FeedFetchService {
                 reject(error);
             });
 
-            feedparser.on("meta", function () {
-                meta = this.meta;
+            feedparser.on("meta", function (this: FeedParser) {
+                // FeedParser typings expose a loose meta shape; cast to the Meta interface we return.
+                meta = this.meta as unknown as Meta;
             });
 
             feedparser.on("readable", function (this: FeedParser) {

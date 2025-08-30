@@ -23,6 +23,11 @@ import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
 import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
 
+type DataWithOwner = { userId?: string; user_id?: string } & Record<
+    string,
+    unknown
+>;
+
 type QueueName =
     | "embeddingQueue"
     | "summary-generate"
@@ -35,13 +40,17 @@ type QueueName =
 @Controller("jobs")
 export class JobsAdminController {
     constructor(
-        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
-        @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
-        @InjectQueue("script-generate") private readonly scriptQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        @InjectQueue("embeddingQueue")
+        private readonly embeddingQueue: Queue<DataWithOwner>,
+        @InjectQueue("summary-generate")
+        private readonly summaryQueue: Queue<DataWithOwner>,
+        @InjectQueue("script-generate")
+        private readonly scriptQueue: Queue<DataWithOwner>,
+        @InjectQueue("podcastQueue")
+        private readonly podcastQueue: Queue<DataWithOwner>,
     ) {}
 
-    private getQueue(name: QueueName): Queue {
+    private getQueue(name: QueueName): Queue<DataWithOwner> {
         switch (name) {
             case "embeddingQueue":
                 return this.embeddingQueue;
@@ -112,7 +121,7 @@ export class JobsAdminController {
     ) {
         const queue = this.getQueue(queueName);
         const limit = body?.max ?? 100;
-        const jobs: Job[] = await queue.getFailed(0, limit);
+        const jobs: Job<DataWithOwner>[] = await queue.getFailed(0, limit);
         let retried = 0;
         for (const job of jobs) {
             const owner = job.data?.userId ?? job.data?.user_id;

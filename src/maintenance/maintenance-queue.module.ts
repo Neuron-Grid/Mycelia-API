@@ -1,3 +1,4 @@
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { AccountDeletionModule } from "@/account-deletion/account-deletion.module";
@@ -24,7 +25,7 @@ import { MaintenanceQueueProcessor } from "./maintenance-queue.processor";
         BullModule.registerQueueAsync({
             name: "maintenanceQueue",
             imports: [RedisModule],
-            useFactory: (redis: RedisService) => ({
+            useFactory: (redis: RedisService): QueueOptionsLike => ({
                 connection: redis.createBullClient(),
                 defaultJobOptions: {
                     attempts: 2,

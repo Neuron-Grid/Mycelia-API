@@ -61,6 +61,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                 );
             default:
                 this.logger.warn(`Unknown job: ${job.name}`);
+                return { success: false };
         }
     }
 

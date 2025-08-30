@@ -1,3 +1,4 @@
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { AccountDeletionQueueProcessor } from "@/account-deletion/account-deletion.processor";
@@ -15,7 +16,7 @@ import { SupabaseAdminService } from "@/shared/supabase-admin.service";
         BullModule.registerQueueAsync({
             name: "accountDeletionQueue",
             imports: [RedisModule],
-            useFactory: (redis: RedisService) => ({
+            useFactory: (redis: RedisService): QueueOptionsLike => ({
                 connection: redis.createBullClient(),
                 defaultJobOptions: {
                     attempts: 3,

@@ -1,3 +1,4 @@
+import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { EmbeddingModule } from "@/embedding/embedding.module";
@@ -21,7 +22,7 @@ import { FeedQueueService } from "./feed-queue.service";
             name: "feedQueue",
             imports: [RedisModule],
             // RedisService側で用意した共通ioredisインスタンスを共有する。
-            useFactory: (redisService: RedisService) => ({
+            useFactory: (redisService: RedisService): QueueOptionsLike => ({
                 connection: redisService.createBullClient(),
             }),
             inject: [RedisService],
