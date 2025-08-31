@@ -23,6 +23,7 @@ import {
 } from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
+import { buildResponse } from "@/common/utils/response.util";
 import { AttachTagDto } from "./dto/attach-tag.dto";
 import { BulkTagDto } from "./dto/bulk-tag.dto";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
@@ -34,7 +35,6 @@ import {
 } from "./dto/tag-hierarchy.dto";
 import { UpdateTagDto } from "./dto/update-tag.dto";
 import { HierarchicalTagService } from "./hierarchical-tag.service";
-import { buildResponse } from "./response.util";
 import { TagService } from "./tag.service";
 
 @ApiTags("Tags")
@@ -110,7 +110,7 @@ export class TagController {
         @Param("tagId", ParseIntPipe) tagId: number,
     ) {
         await this.tagService.deleteTagForUser(userId, tagId);
-        return buildResponse("Tag deleted");
+        return buildResponse("Tag deleted", null);
     }
 
     // FeedItemとの紐付け
@@ -156,7 +156,7 @@ export class TagController {
             feedItemId,
             body.tagId,
         );
-        return buildResponse("Tag attached to feed item");
+        return buildResponse("Tag attached to feed item", null);
     }
 
     @ApiOperation({ summary: "Detach a tag from a feed item" })
@@ -187,7 +187,7 @@ export class TagController {
             feedItemId,
             parsedTagId,
         );
-        return buildResponse("Tag detached from feed item");
+        return buildResponse("Tag detached from feed item", null);
     }
 
     // UserSubscriptionとの紐付け
@@ -233,7 +233,7 @@ export class TagController {
             subscriptionId,
             body.tagId,
         );
-        return buildResponse("Tag attached to subscription");
+        return buildResponse("Tag attached to subscription", null);
     }
 
     @ApiOperation({ summary: "Detach a tag from a subscription" })
@@ -264,7 +264,7 @@ export class TagController {
             subscriptionId,
             parsedTagId,
         );
-        return buildResponse("Tag detached from subscription");
+        return buildResponse("Tag detached from subscription", null);
     }
 
     // 階層化タグの高度な機能
@@ -453,7 +453,7 @@ export class TagController {
             feedItemId,
             body.tagIds,
         );
-        return buildResponse("Feed item tagged with multiple tags");
+        return buildResponse("Feed item tagged with multiple tags", null);
     }
 
     @ApiOperation({ summary: "Tag subscription with multiple tags" })
@@ -482,6 +482,6 @@ export class TagController {
             subscriptionId,
             body.tagIds,
         );
-        return buildResponse("Subscription tagged with multiple tags");
+        return buildResponse("Subscription tagged with multiple tags", null);
     }
 }

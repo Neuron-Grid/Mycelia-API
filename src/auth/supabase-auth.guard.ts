@@ -1,16 +1,16 @@
 import {
-    CanActivate,
-    ExecutionContext,
+    type CanActivate,
+    type ExecutionContext,
     Injectable,
     UnauthorizedException,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import type { ConfigService } from "@nestjs/config";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
-import { Request } from "express";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { Request } from "express";
+import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import type { JwtAuthClaims } from "@/types/auth-claims";
-import { Database } from "@/types/schema";
+import type { Database } from "@/types/schema";
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {

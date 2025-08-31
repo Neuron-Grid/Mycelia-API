@@ -20,10 +20,10 @@ import {
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
+import { buildResponse } from "@/common/utils/response.util";
 import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
 import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
 import { FavoriteService } from "./favorite.service";
-import { buildResponse } from "./response.util";
 
 @ApiTags("Favorites")
 @ApiBearerAuth()
@@ -151,6 +151,7 @@ export class FavoriteController {
             type: "object",
             properties: {
                 message: { type: "string" },
+                data: { nullable: true, type: "null" },
             },
         },
     })
@@ -159,6 +160,6 @@ export class FavoriteController {
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
     ) {
         await this.favoriteService.unfavoriteFeedItem(userId, feedItemId);
-        return buildResponse("Feed item unfavorited");
+        return buildResponse("Feed item unfavorited", null);
     }
 }

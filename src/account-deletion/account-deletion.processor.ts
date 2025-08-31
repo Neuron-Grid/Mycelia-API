@@ -1,18 +1,18 @@
-import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
-import { Injectable, Logger } from "@nestjs/common";
-import { Job, Queue } from "bullmq";
-import { AccountDeletionService } from "@/account-deletion/account-deletion.service";
+import { getQueueToken } from "@nestjs/bull-shared";
+import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import type { Job, Queue } from "bullmq";
+import type { AccountDeletionService } from "@/account-deletion/account-deletion.service";
 
 @Processor("accountDeletionQueue")
 @Injectable()
 export class AccountDeletionQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(AccountDeletionQueueProcessor.name);
 
-    constructor(
-        private readonly deletion: AccountDeletionService,
-        @InjectQueue("accountDeletionQueue")
-        private readonly queue: Queue,
-    ) {
+    @Inject(getQueueToken("accountDeletionQueue"))
+    private readonly queue!: Queue;
+
+    constructor(private readonly deletion: AccountDeletionService) {
         super();
     }
 

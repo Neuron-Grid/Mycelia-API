@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { RedisService } from "@/shared/redis/redis.service";
-import { AuthRepositoryPort } from "./domain/auth.repository";
+import type { RedisService } from "@/shared/redis/redis.service";
+import type { AuthRepositoryPort } from "./domain/auth.repository";
 
 /**
  * WebAuthn(パスキー) MFA のドメインサービス

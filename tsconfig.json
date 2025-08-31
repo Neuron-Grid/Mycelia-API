@@ -4,8 +4,7 @@
     "moduleResolution": "NodeNext",
     "target": "ES2023",
     "lib": [
-      "ES2023",
-      "DOM"
+      "ES2023"
     ],
     "experimentalDecorators": true,
     "exactOptionalPropertyTypes": false,

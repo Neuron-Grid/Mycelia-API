@@ -5,13 +5,12 @@ import {
     ApiResponse,
     ApiTags,
 } from "@nestjs/swagger";
-import { User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { SupabaseUser } from "../../auth/supabase-user.decorator";
-import {
-    PodcastConfigResponseDto,
-    UpdatePodcastConfigDto,
-} from "./dto/podcast-config.dto";
+import type { UpdatePodcastConfigDto } from "./dto/podcast-config.dto";
 import { PodcastConfigService } from "./podcast-config.service";
 
 @ApiTags("podcast")
@@ -25,29 +24,58 @@ export class PodcastConfigController {
     @ApiOperation({ summary: "Get podcast settings" })
     @ApiResponse({
         status: 200,
-        description: "Podcast settings",
-        type: PodcastConfigResponseDto,
+        description: "Returns { message, data: PodcastConfigResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/PodcastConfigResponseDto" },
+            },
+        },
     })
-    async getPodcastConfig(
-        @SupabaseUser() user: User,
-    ): Promise<PodcastConfigResponseDto> {
-        return await this.podcastConfigService.getUserPodcastConfig(user.id);
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    async getPodcastConfig(@SupabaseUser() user: User) {
+        const dto = await this.podcastConfigService.getUserPodcastConfig(
+            user.id,
+        );
+        return buildResponse("Podcast settings fetched", dto);
     }
 
     @Put()
     @ApiOperation({ summary: "Update podcast settings" })
     @ApiResponse({
         status: 200,
-        description: "Updated podcast settings",
-        type: PodcastConfigResponseDto,
+        description: "Returns { message, data: PodcastConfigResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/PodcastConfigResponseDto" },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: "Bad Request",
+        type: ErrorResponseDto,
+    })
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     async updatePodcastConfig(
         @SupabaseUser() user: User,
         @Body() updateDto: UpdatePodcastConfigDto,
-    ): Promise<PodcastConfigResponseDto> {
-        return await this.podcastConfigService.updatePodcastConfig(
+    ) {
+        const dto = await this.podcastConfigService.updatePodcastConfig(
             user.id,
             updateDto,
         );
+        return buildResponse("Podcast settings updated", dto);
     }
 }

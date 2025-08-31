@@ -1,4 +1,4 @@
-import { Response } from "express";
+import type { Response } from "express";
 
 /**
  * Supabase JWT を Cookie としてクライアントへ送信するユーティリティ

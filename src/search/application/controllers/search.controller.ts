@@ -1,20 +1,26 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import {
     ApiBearerAuth,
+    ApiExtraModels,
     ApiOperation,
     ApiQuery,
     ApiResponse,
     ApiTags,
+    getSchemaPath,
 } from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { SearchResponseDto } from "../dto/search-response.dto";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import type { SuccessResponse } from "@/common/utils/response.util";
+import { buildResponse } from "@/common/utils/response.util";
+import { SearchResultDto } from "../dto/search-response.dto";
 import { SearchService } from "../services/search.service";
 
 @ApiTags("Search")
 @Controller("search")
 @ApiBearerAuth()
 @UseGuards(SupabaseAuthGuard)
+@ApiExtraModels(SearchResultDto)
 export class SearchController {
     constructor(private readonly searchService: SearchService) {}
 
@@ -26,7 +32,17 @@ export class SearchController {
     })
     @ApiResponse({
         status: 200,
-        description: "Search results returned successfully",
+        description: "Returns { message, data: SearchResultDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: getSchemaPath(SearchResultDto) },
+                },
+            },
+        },
     })
     @ApiQuery({ name: "q", description: "Search query", required: true })
     @ApiQuery({
@@ -47,13 +63,18 @@ export class SearchController {
             "Content types to search (comma-separated: feed_item,summary,podcast)",
         required: false,
     })
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     async searchAll(
         @UserId() userId: string,
         @Query("q") query: string,
         @Query("limit") limit?: string,
         @Query("threshold") threshold?: string,
         @Query("types") types?: string,
-    ): Promise<SearchResponseDto> {
+    ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -70,9 +91,9 @@ export class SearchController {
 
         const results = await this.searchService.searchAll(userId, searchData);
 
-        return {
-            message: "Search completed successfully",
-            data: results.map((result) => ({
+        return buildResponse(
+            "Search completed successfully",
+            results.map((result) => ({
                 id: result.id,
                 title: result.title,
                 content: result.content,
@@ -80,7 +101,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        };
+        );
     }
 
     @Get("feed-items")
@@ -90,7 +111,17 @@ export class SearchController {
     })
     @ApiResponse({
         status: 200,
-        description: "Feed item search results returned successfully",
+        description: "Returns { message, data: SearchResultDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: getSchemaPath(SearchResultDto) },
+                },
+            },
+        },
     })
     @ApiQuery({ name: "q", description: "Search query", required: true })
     @ApiQuery({
@@ -105,12 +136,17 @@ export class SearchController {
         required: false,
         type: Number,
     })
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     async searchFeedItems(
         @UserId() userId: string,
         @Query("q") query: string,
         @Query("limit") limit?: string,
         @Query("threshold") threshold?: string,
-    ): Promise<SearchResponseDto> {
+    ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -122,9 +158,9 @@ export class SearchController {
             searchData,
         );
 
-        return {
-            message: "Feed item search completed successfully",
-            data: results.map((result) => ({
+        return buildResponse(
+            "Feed item search completed successfully",
+            results.map((result) => ({
                 id: result.id,
                 title: result.title,
                 content: result.content,
@@ -132,7 +168,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        };
+        );
     }
 
     @Get("summaries")
@@ -142,7 +178,17 @@ export class SearchController {
     })
     @ApiResponse({
         status: 200,
-        description: "Summary search results returned successfully",
+        description: "Returns { message, data: SearchResultDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: getSchemaPath(SearchResultDto) },
+                },
+            },
+        },
     })
     @ApiQuery({ name: "q", description: "Search query", required: true })
     @ApiQuery({
@@ -157,12 +203,17 @@ export class SearchController {
         required: false,
         type: Number,
     })
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     async searchSummaries(
         @UserId() userId: string,
         @Query("q") query: string,
         @Query("limit") limit?: string,
         @Query("threshold") threshold?: string,
-    ): Promise<SearchResponseDto> {
+    ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -174,9 +225,9 @@ export class SearchController {
             searchData,
         );
 
-        return {
-            message: "Summary search completed successfully",
-            data: results.map((result) => ({
+        return buildResponse(
+            "Summary search completed successfully",
+            results.map((result) => ({
                 id: result.id,
                 title: result.title,
                 content: result.content,
@@ -184,7 +235,7 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        };
+        );
     }
 
     @Get("podcasts")
@@ -194,7 +245,17 @@ export class SearchController {
     })
     @ApiResponse({
         status: 200,
-        description: "Podcast search results returned successfully",
+        description: "Returns { message, data: SearchResultDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: getSchemaPath(SearchResultDto) },
+                },
+            },
+        },
     })
     @ApiQuery({ name: "q", description: "Search query", required: true })
     @ApiQuery({
@@ -209,12 +270,17 @@ export class SearchController {
         required: false,
         type: Number,
     })
+    @ApiResponse({
+        status: 401,
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     async searchPodcasts(
         @UserId() userId: string,
         @Query("q") query: string,
         @Query("limit") limit?: string,
         @Query("threshold") threshold?: string,
-    ): Promise<SearchResponseDto> {
+    ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
             limit: limit ? Number.parseInt(limit, 10) : undefined,
@@ -226,9 +292,9 @@ export class SearchController {
             searchData,
         );
 
-        return {
-            message: "Podcast search completed successfully",
-            data: results.map((result) => ({
+        return buildResponse(
+            "Podcast search completed successfully",
+            results.map((result) => ({
                 id: result.id,
                 title: result.title,
                 content: result.content,
@@ -236,6 +302,6 @@ export class SearchController {
                 type: result.type,
                 metadata: result.metadata,
             })),
-        };
+        );
     }
 }

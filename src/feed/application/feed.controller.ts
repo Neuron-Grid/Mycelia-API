@@ -21,6 +21,7 @@ import {
     ApiBearerAuth,
     ApiBody,
     ApiCreatedResponse,
+    ApiExtraModels,
     ApiNotFoundResponse,
     ApiOkResponse,
     ApiOperation,
@@ -28,27 +29,26 @@ import {
     ApiQuery,
     ApiTags,
     ApiUnauthorizedResponse,
+    getSchemaPath,
 } from "@nestjs/swagger";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
-import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
-import { Database } from "../../types/schema";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import type { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
 import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { FeedItemService } from "./feed-item.service";
 import { FeedUseCaseService } from "./feed-usecase.service";
-import { buildResponse } from "./response.util";
 import { SubscriptionService } from "./subscription.service";
 
-// @typedef {Database['public']['Tables']['user_subscriptions']['Row']} SubscriptionRow - 購読の型
-type SubscriptionRow =
-    Database["public"]["Tables"]["user_subscriptions"]["Row"];
+// 型注釈はOpenAPIスキーマで表現し、戻り値は共通包形式に統一
 
 @ApiTags("Feed")
 @ApiBearerAuth()
+@ApiExtraModels(FeedItemResponseDto)
 @Controller({
     path: "feed",
     version: "1",
@@ -85,7 +85,24 @@ export class FeedController {
             "Returns the logged-in user's subscriptions paginated by page and limit.",
     })
     @ApiOkResponse({
-        description: "Returns PaginatedResult<UserSubscription>.",
+        description:
+            "Returns { message, data: PaginatedResult<UserSubscription> }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        data: { type: "array", items: { type: "object" } },
+                        total: { type: "number" },
+                        page: { type: "number" },
+                        limit: { type: "number" },
+                        hasNext: { type: "boolean" },
+                    },
+                },
+            },
+        },
     })
     @ApiQuery({
         name: "page",
@@ -99,17 +116,24 @@ export class FeedController {
         type: Number,
         description: "Items per page (max 100)",
     })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
-    @ApiBadRequestResponse({ description: "Bad request" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
     async getSubscriptions(
         @UserId() userId: string,
         @Query() query: PaginationQueryDto,
-    ): Promise<PaginatedResult<SubscriptionRow>> {
-        return await this.subscriptionService.getSubscriptionsPaginated(
+    ) {
+        const result = await this.subscriptionService.getSubscriptionsPaginated(
             userId,
             query.page,
             query.limit,
         );
+        return buildResponse("Subscriptions fetched", result);
     }
 
     // @async
@@ -214,7 +238,28 @@ export class FeedController {
         description:
             "Returns feed items for the specified subscription ID paginated by page and limit.",
     })
-    @ApiOkResponse({ description: "Returns PaginatedResult<FeedItem>." })
+    @ApiOkResponse({
+        description: "Returns { message, data: PaginatedResult<FeedItem> }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        data: {
+                            type: "array",
+                            items: { $ref: getSchemaPath(FeedItemResponseDto) },
+                        },
+                        total: { type: "number" },
+                        page: { type: "number" },
+                        limit: { type: "number" },
+                        hasNext: { type: "boolean" },
+                    },
+                },
+            },
+        },
+    })
     @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
     @ApiQuery({
         name: "page",
@@ -228,20 +273,30 @@ export class FeedController {
         type: Number,
         description: "Items per page (max 100)",
     })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
-    @ApiBadRequestResponse({ description: "Bad request" })
-    @ApiNotFoundResponse({ description: "Subscription not found" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiNotFoundResponse({
+        description: "Subscription not found",
+        type: ErrorResponseDto,
+    })
     async getSubscriptionItems(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
         @Query() query: PaginationQueryDto,
-    ): Promise<PaginatedResult<FeedItemResponseDto>> {
-        return await this.feedItemService.getFeedItemsPaginated(
+    ) {
+        const result = await this.feedItemService.getFeedItemsPaginated(
             userId,
             subscriptionId,
             query.page,
             query.limit,
         );
+        return buildResponse("Feed items fetched", result);
     }
 
     // @async
@@ -308,6 +363,6 @@ export class FeedController {
             userId,
             subscriptionId,
         );
-        return buildResponse("Subscription deleted");
+        return buildResponse("Subscription deleted", null);
     }
 }

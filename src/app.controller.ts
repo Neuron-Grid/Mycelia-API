@@ -1,7 +1,7 @@
 // @file アプリケーションのルートコントローラ
 import { Controller, Get } from "@nestjs/common";
 // @see ./app.service
-import { AppService } from "@/app.service";
+import type { AppService } from "@/app.service";
 
 @Controller()
 // @public

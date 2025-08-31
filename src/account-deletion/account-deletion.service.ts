@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
-import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
+import type { DistributedLockService } from "@/shared/lock/distributed-lock.service";
+import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
 @Injectable()
 export class AccountDeletionService {

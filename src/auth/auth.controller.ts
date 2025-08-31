@@ -14,28 +14,28 @@ import {
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import { User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
 import { setAuthCookies } from "src/common/utils/cookie";
+import { buildResponse } from "@/common/utils/response.util";
 import { AuthService } from "./auth.service";
-import { DisableTotpDto } from "./dto/disable-totp.dto";
-import { EnrollTotpDto } from "./dto/enroll-totp.dto";
-import { ForgotPasswordDto } from "./dto/forgot-password.dto";
-import { ResetPasswordDto } from "./dto/reset-password.dto";
-import { SignInDto } from "./dto/sign-in.dto";
-import { SignUpDto } from "./dto/sign-up.dto";
-import { UpdateEmailDto } from "./dto/update-email.dto";
-import { UpdatePasswordDto } from "./dto/update-password.dto";
-import { UpdateUsernameDto } from "./dto/update-username.dto";
-import { VerifyEmailDto } from "./dto/verify-email.dto";
-import { VerifyTotpDto } from "./dto/verify-totp.dto";
-import {
+import type { DisableTotpDto } from "./dto/disable-totp.dto";
+import type { EnrollTotpDto } from "./dto/enroll-totp.dto";
+import type { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import type { ResetPasswordDto } from "./dto/reset-password.dto";
+import type { SignInDto } from "./dto/sign-in.dto";
+import type { SignUpDto } from "./dto/sign-up.dto";
+import type { UpdateEmailDto } from "./dto/update-email.dto";
+import type { UpdatePasswordDto } from "./dto/update-password.dto";
+import type { UpdateUsernameDto } from "./dto/update-username.dto";
+import type { VerifyEmailDto } from "./dto/verify-email.dto";
+import type { VerifyTotpDto } from "./dto/verify-totp.dto";
+import type {
     FinishWebAuthnRegistrationDto,
     StartWebAuthnRegistrationDto,
     VerifyWebAuthnAssertionDto,
 } from "./dto/webauthn.dto";
 import { RequiresMfaGuard } from "./requires-mfa.guard";
-import { buildResponse } from "./response.util";
 import { SupabaseAuthGuard } from "./supabase-auth.guard";
 import { SupabaseUser } from "./supabase-user.decorator";
 import { UserId } from "./user-id.decorator";
@@ -417,12 +417,12 @@ export class AuthController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updatePassword(
-        @SupabaseUser() user: User,
+        @SupabaseUser() _user: User,
         @Body() dto: UpdatePasswordDto,
     ) {
         const { oldPassword, newPassword } = dto;
         const result = await this.authService.updatePassword(
-            user,
+            _user,
             oldPassword,
             newPassword,
         );
@@ -438,7 +438,9 @@ export class AuthController {
     @Get("profile")
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
-    getProfile(@SupabaseUser() user: User): { message: string; data: User } {
+    getProfile(
+        @SupabaseUser() user: User,
+    ): import("@/common/utils/response.util").SuccessResponse<User> {
         return buildResponse("User profile fetched successfully", user);
     }
 

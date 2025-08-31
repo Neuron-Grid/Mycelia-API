@@ -1,5 +1,5 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { User } from "@supabase/supabase-js";
+import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
+import type { User } from "@supabase/supabase-js";
 
 // コントローラの引数で「@SupabaseUser() user: User」を受け取れる
 export const SupabaseUser = createParamDecorator(

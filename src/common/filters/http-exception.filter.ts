@@ -1,12 +1,13 @@
+import { STATUS_CODES } from "node:http";
 import {
-    ArgumentsHost,
+    type ArgumentsHost,
     Catch,
-    ExceptionFilter,
+    type ExceptionFilter,
     HttpException,
     HttpStatus,
     Logger,
 } from "@nestjs/common";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -17,31 +18,70 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
 
-        const status =
+        const status: number =
             exception instanceof HttpException
                 ? exception.getStatus()
                 : HttpStatus.INTERNAL_SERVER_ERROR;
 
-        const message =
-            exception instanceof HttpException
-                ? exception.getResponse()
-                : "Internal server error";
+        let message: string | string[] = "Internal server error";
+        let errorLabel: string = STATUS_CODES[status] ?? "Error";
 
-        const errorResponse = {
+        if (exception instanceof HttpException) {
+            const res = exception.getResponse();
+            if (typeof res === "string") {
+                message = res;
+            } else if (res && typeof res === "object") {
+                const r = res as { message?: unknown; error?: unknown };
+                // message can be string | string[]
+                if (Array.isArray(r.message)) {
+                    message = r.message.filter(
+                        (v): v is string => typeof v === "string",
+                    );
+                } else if (typeof r.message === "string") {
+                    message = r.message;
+                } else if (
+                    typeof (exception as unknown as { message?: unknown })
+                        ?.message === "string"
+                ) {
+                    message = (exception as unknown as { message: string })
+                        .message;
+                }
+
+                if (typeof r.error === "string" && r.error.length > 0) {
+                    errorLabel = r.error;
+                } else {
+                    errorLabel = STATUS_CODES[status] ?? exception.name;
+                }
+            } else {
+                // Fallbacks
+                const exMsg = (exception as unknown as { message?: unknown })
+                    ?.message;
+                if (typeof exMsg === "string" && exMsg.length > 0) {
+                    message = exMsg;
+                }
+                errorLabel = STATUS_CODES[status] ?? exception.name;
+            }
+        } else if (
+            exception &&
+            typeof (exception as { message?: unknown }).message === "string"
+        ) {
+            message = (exception as { message: string }).message;
+            errorLabel = STATUS_CODES[status] ?? "Error";
+        }
+
+        const payload = {
             statusCode: status,
-            timestamp: new Date().toISOString(),
+            message,
+            error: errorLabel,
             path: request.url,
-            message:
-                typeof message === "string"
-                    ? { message }
-                    : message || { message: "Internal server error" },
+            timestamp: new Date().toISOString(),
         };
 
         this.logger.error(
-            `HTTP Status: ${status} Error Message: ${JSON.stringify(errorResponse.message)}`,
+            `HTTP Status: ${status} Error: ${errorLabel} Message: ${JSON.stringify(message)}`,
             exception instanceof Error ? exception.stack : "",
         );
 
-        response.status(status).json(errorResponse);
+        response.status(status).json(payload);
     }
 }
