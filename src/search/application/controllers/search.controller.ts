@@ -71,14 +71,14 @@ export class SearchController {
     async searchAll(
         @UserId() userId: string,
         @Query("q") query: string,
-        @Query("limit") limit?: string,
-        @Query("threshold") threshold?: string,
+        @Query("limit") limit?: number,
+        @Query("threshold") threshold?: number,
         @Query("types") types?: string,
     ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
-            limit: limit ? Number.parseInt(limit, 10) : undefined,
-            threshold: threshold ? Number.parseFloat(threshold) : undefined,
+            limit,
+            threshold,
             includeTypes: types
                 ? (types
                       .split(",")
@@ -144,13 +144,13 @@ export class SearchController {
     async searchFeedItems(
         @UserId() userId: string,
         @Query("q") query: string,
-        @Query("limit") limit?: string,
-        @Query("threshold") threshold?: string,
+        @Query("limit") limit?: number,
+        @Query("threshold") threshold?: number,
     ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
-            limit: limit ? Number.parseInt(limit, 10) : undefined,
-            threshold: threshold ? Number.parseFloat(threshold) : undefined,
+            limit,
+            threshold,
         };
 
         const results = await this.searchService.searchFeedItems(
@@ -211,13 +211,13 @@ export class SearchController {
     async searchSummaries(
         @UserId() userId: string,
         @Query("q") query: string,
-        @Query("limit") limit?: string,
-        @Query("threshold") threshold?: string,
+        @Query("limit") limit?: number,
+        @Query("threshold") threshold?: number,
     ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
-            limit: limit ? Number.parseInt(limit, 10) : undefined,
-            threshold: threshold ? Number.parseFloat(threshold) : undefined,
+            limit,
+            threshold,
         };
 
         const results = await this.searchService.searchSummaries(
@@ -278,13 +278,13 @@ export class SearchController {
     async searchPodcasts(
         @UserId() userId: string,
         @Query("q") query: string,
-        @Query("limit") limit?: string,
-        @Query("threshold") threshold?: string,
+        @Query("limit") limit?: number,
+        @Query("threshold") threshold?: number,
     ): Promise<SuccessResponse<SearchResultDto[]>> {
         const searchData = {
             query,
-            limit: limit ? Number.parseInt(limit, 10) : undefined,
-            threshold: threshold ? Number.parseFloat(threshold) : undefined,
+            limit,
+            threshold,
         };
 
         const results = await this.searchService.searchPodcastEpisodes(

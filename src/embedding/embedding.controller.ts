@@ -8,15 +8,18 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import {
+    ApiAcceptedResponse,
+    ApiBadRequestResponse,
     ApiBearerAuth,
+    ApiOkResponse,
     ApiOperation,
-    ApiResponse,
     ApiTags,
 } from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { SupabaseUser } from "../auth/supabase-user.decorator";
-import { BatchProgressResponseDto } from "./dto/batch-progress-response.dto";
 import { BatchUpdateRequestDto } from "./dto/batch-update-request.dto";
 import { EmbeddingQueueService } from "./queue/embedding-queue.service";
 
@@ -36,31 +39,32 @@ export class EmbeddingController {
         description:
             "Start batch update of embeddings for specified table types",
     })
-    @ApiResponse({
-        status: HttpStatus.ACCEPTED,
-        description: "Batch update initiated successfully",
+    @ApiAcceptedResponse({
+        description: "Returns { message, data: { userId } }",
         schema: {
             type: "object",
             properties: {
-                message: { type: "string", example: "Batch update initiated" },
-                userId: { type: "string", example: "user-uuid-123" },
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: { userId: { type: "string" } },
+                },
             },
         },
     })
-    @ApiResponse({
-        status: 400,
+    @ApiBadRequestResponse({
         description: "Bad Request - Invalid table types",
+        type: ErrorResponseDto,
     })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
     async triggerBatchUpdate(
         @SupabaseUser() user: User,
         @Body() request: BatchUpdateRequestDto,
-    ): Promise<{ message: string; userId: string }> {
+    ) {
         await this.embeddingQueueService.addUserEmbeddingBatchJob(
             user.id,
             request.tableTypes,
         );
-        return { message: "Batch update initiated", userId: user.id };
+        return buildResponse("Batch update initiated", { userId: user.id });
     }
 
     @Get("progress")
@@ -68,18 +72,25 @@ export class EmbeddingController {
         summary: "Get batch progress",
         description: "Get current progress of batch embedding updates",
     })
-    @ApiResponse({
-        status: 200,
-        description: "Progress information returned successfully",
-        type: BatchProgressResponseDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: BatchProgressResponseDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: {
+                        $ref: "#/components/schemas/BatchProgressResponseDto",
+                    },
+                },
+            },
+        },
     })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
-    async getBatchProgress(
-        @SupabaseUser() user: User,
-    ): Promise<BatchProgressResponseDto> {
+    async getBatchProgress(@SupabaseUser() user: User) {
         const progress = await this.embeddingQueueService.getBatchProgress(
             user.id,
         );
-        return { message: "Progress retrieved successfully", data: progress };
+        return buildResponse("Progress retrieved successfully", progress);
     }
 }

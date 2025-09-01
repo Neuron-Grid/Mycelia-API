@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 
 export class TagHierarchyDto {
     @ApiProperty({
@@ -11,7 +12,7 @@ export class TagHierarchyDto {
         description: "Tag name",
         example: "Technology",
     })
-    tag_name!: string;
+    tagName!: string;
 
     @ApiPropertyOptional({
         description: "Parent tag ID",
@@ -19,7 +20,7 @@ export class TagHierarchyDto {
         type: Number,
         nullable: true,
     })
-    parent_tag_id!: number | null;
+    parentTagId!: number | null;
 
     @ApiPropertyOptional({
         description: "Tag description",
@@ -57,7 +58,7 @@ export class TagHierarchyDto {
         description: "Number of feeds associated with this tag",
         example: 5,
     })
-    feed_count?: number;
+    feedCount?: number;
 }
 
 export class TagWithPathDto {
@@ -71,7 +72,7 @@ export class TagWithPathDto {
         description: "Tag name",
         example: "JavaScript",
     })
-    tag_name!: string;
+    tagName!: string;
 
     @ApiPropertyOptional({
         description: "Parent tag ID",
@@ -79,20 +80,20 @@ export class TagWithPathDto {
         type: Number,
         nullable: true,
     })
-    parent_tag_id!: number | null;
+    parentTagId!: number | null;
 
     @ApiProperty({
         description: "Full path (separated by >)",
         example: "Technology > Programming > JavaScript",
     })
-    full_path!: string;
+    fullPath!: string;
 
     @ApiProperty({
         description: "Path array",
         type: [String],
         example: ["Technology", "Programming", "JavaScript"],
     })
-    path_array!: string[];
+    pathArray!: string[];
 
     @ApiProperty({
         description: "Hierarchy level (0 = root)",
@@ -108,5 +109,6 @@ export class MoveTagDto {
         type: Number,
         nullable: true,
     })
-    new_parent_id?: number | null;
+    @Transform(({ obj, value }) => value ?? obj.new_parent_id)
+    newParentId?: number | null;
 }

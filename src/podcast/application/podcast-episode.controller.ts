@@ -16,14 +16,22 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import {
+    ApiAcceptedResponse,
+    ApiBadRequestResponse,
     ApiBearerAuth,
+    ApiCreatedResponse,
+    ApiNotFoundResponse,
+    ApiOkResponse,
     ApiOperation,
     ApiParam,
     ApiQuery,
-    ApiResponse,
     ApiTags,
+    ApiUnauthorizedResponse,
+    getSchemaPath,
 } from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { UserId } from "../../auth/user-id.decorator";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";
@@ -33,7 +41,6 @@ import {
     GeneratePodcastEpisodeDto,
     PodcastEpisodeListResponseDto,
     PodcastEpisodeResponseDto,
-    PodcastGenerationJobResponseDto,
     UpdatePodcastEpisodeDto,
 } from "./dto/podcast-episode.dto";
 import { PodcastEpisodeMapper } from "./podcast-episode.mapper";
@@ -68,16 +75,25 @@ export class PodcastEpisodeController {
         type: Number,
         example: 20,
     })
-    @ApiResponse({
-        status: 200,
-        description: "User podcast episodes retrieved successfully",
-        type: PodcastEpisodeListResponseDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: PodcastEpisodeListResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(PodcastEpisodeListResponseDto) },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     async getEpisodes(
         @UserId() userId: string,
         @Query("page") page = 1,
         @Query("limit") limit = 20,
-    ): Promise<PodcastEpisodeListResponseDto> {
+    ) {
         // パラメータの検証
         const validPage = Math.max(1, Number(page));
         const validLimit = Math.min(Math.max(1, Number(limit)), 100); // 最大100件
@@ -96,15 +112,15 @@ export class PodcastEpisodeController {
 
         const totalPages = Math.ceil(total / validLimit);
 
-        return {
+        return buildResponse("Episodes fetched", {
             episodes: episodes.map((episode) =>
                 this.podcastEpisodeMapper.toResponseDto(episode),
             ),
             total,
             page: validPage,
             limit: validLimit,
-            total_pages: totalPages,
-        };
+            totalPages: totalPages,
+        });
     }
 
     @Get(":id")
@@ -114,19 +130,28 @@ export class PodcastEpisodeController {
         description: "Podcast episode ID",
         type: Number,
     })
-    @ApiResponse({
-        status: 200,
-        description: "Podcast episode retrieved successfully",
-        type: PodcastEpisodeResponseDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: PodcastEpisodeResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
+            },
+        },
     })
-    @ApiResponse({
-        status: 404,
+    @ApiNotFoundResponse({
         description: "Podcast episode not found or access denied",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     async getEpisodeById(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
-    ): Promise<PodcastEpisodeResponseDto> {
+    ) {
         this.logger.log(`User ${userId} requesting episode ${episodeId}`);
 
         const episode = await this.podcastEpisodeRepository.findById(
@@ -141,35 +166,47 @@ export class PodcastEpisodeController {
             );
         }
 
-        return this.podcastEpisodeMapper.toResponseDto(episode);
+        return buildResponse(
+            "Episode fetched",
+            this.podcastEpisodeMapper.toResponseDto(episode),
+        );
     }
 
     @Post()
     @ApiOperation({ summary: "Create a new podcast episode" })
-    @ApiResponse({
-        status: 201,
-        description: "Podcast episode created successfully",
-        type: PodcastEpisodeResponseDto,
+    @ApiCreatedResponse({
+        description: "Returns { message, data: PodcastEpisodeResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
+            },
+        },
     })
-    @ApiResponse({
-        status: 400,
+    @ApiBadRequestResponse({
         description: "Invalid request data",
+        type: ErrorResponseDto,
     })
-    @ApiResponse({
-        status: 404,
+    @ApiNotFoundResponse({
         description: "Related summary not found or access denied",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     async createEpisode(
         @UserId() userId: string,
         @Body() createDto: CreatePodcastEpisodeDto,
-    ): Promise<PodcastEpisodeResponseDto> {
+    ) {
         this.logger.log(
-            `User ${userId} creating episode for summary ${createDto.summary_id}`,
+            `User ${userId} creating episode for summary ${createDto.summaryId}`,
         );
 
         // 要約の所有者チェック
         const summary = await this.dailySummaryRepository.findById(
-            createDto.summary_id,
+            createDto.summaryId,
             userId,
         );
         if (!summary) {
@@ -183,7 +220,7 @@ export class PodcastEpisodeController {
         const existingEpisode =
             await this.podcastEpisodeRepository.findBySummaryId(
                 userId,
-                createDto.summary_id,
+                createDto.summaryId,
             );
         if (existingEpisode) {
             throw new HttpException(
@@ -194,14 +231,17 @@ export class PodcastEpisodeController {
 
         const episode = await this.podcastEpisodeRepository.create(
             userId,
-            createDto.summary_id,
+            createDto.summaryId,
             {
                 title: createDto.title,
             },
         );
 
         this.logger.log(`Episode ${episode.id} created for user ${userId}`);
-        return this.podcastEpisodeMapper.toResponseDto(episode);
+        return buildResponse(
+            "Episode created",
+            this.podcastEpisodeMapper.toResponseDto(episode),
+        );
     }
 
     @Put(":id")
@@ -211,20 +251,29 @@ export class PodcastEpisodeController {
         description: "Podcast episode ID",
         type: Number,
     })
-    @ApiResponse({
-        status: 200,
-        description: "Podcast episode updated successfully",
-        type: PodcastEpisodeResponseDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: PodcastEpisodeResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
+            },
+        },
     })
-    @ApiResponse({
-        status: 404,
+    @ApiNotFoundResponse({
         description: "Podcast episode not found or access denied",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     async updateEpisode(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
         @Body() updateDto: UpdatePodcastEpisodeDto,
-    ): Promise<PodcastEpisodeResponseDto> {
+    ) {
         this.logger.log(`User ${userId} updating episode ${episodeId}`);
 
         // 所有者チェック
@@ -246,7 +295,10 @@ export class PodcastEpisodeController {
         );
 
         this.logger.log(`Episode ${episodeId} updated by user ${userId}`);
-        return this.podcastEpisodeMapper.toResponseDto(updatedEpisode);
+        return buildResponse(
+            "Episode updated",
+            this.podcastEpisodeMapper.toResponseDto(updatedEpisode),
+        );
     }
 
     @Delete(":id")
@@ -256,19 +308,28 @@ export class PodcastEpisodeController {
         description: "Podcast episode ID",
         type: Number,
     })
-    @ApiResponse({
-        status: 204,
-        description: "Podcast episode deleted successfully",
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { nullable: true, type: "null" },
+            },
+        },
     })
-    @ApiResponse({
-        status: 404,
+    @ApiNotFoundResponse({
         description: "Podcast episode not found or access denied",
+        type: ErrorResponseDto,
     })
-    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     async deleteEpisode(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
-    ): Promise<void> {
+    ) {
         this.logger.log(`User ${userId} deleting episode ${episodeId}`);
 
         // 所有者チェック
@@ -285,35 +346,51 @@ export class PodcastEpisodeController {
 
         await this.podcastEpisodeRepository.softDelete(episodeId, userId);
         this.logger.log(`Episode ${episodeId} deleted by user ${userId}`);
+        return buildResponse("Episode deleted", null);
     }
 
     @Post("generate")
     @ApiOperation({ summary: "Generate a new podcast episode from a summary" })
-    @ApiResponse({
-        status: 202,
-        description: "Podcast generation job queued successfully",
-        type: PodcastGenerationJobResponseDto,
+    @ApiAcceptedResponse({
+        description: "Returns { message, data: { jobId, episodeId } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        jobId: { type: "string", nullable: true },
+                        episodeId: { type: "number", nullable: true },
+                    },
+                },
+            },
+        },
     })
-    @ApiResponse({
-        status: 400,
+    @ApiBadRequestResponse({
         description: "Invalid request data",
+        type: ErrorResponseDto,
     })
-    @ApiResponse({
-        status: 404,
+    @ApiNotFoundResponse({
         description: "Related summary not found or access denied",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
     })
     @HttpCode(HttpStatus.ACCEPTED)
     async generateEpisode(
         @UserId() userId: string,
         @Body() generateDto: GeneratePodcastEpisodeDto,
-    ): Promise<PodcastGenerationJobResponseDto> {
+    ) {
         this.logger.log(
-            `User ${userId} requesting podcast generation for summary ${generateDto.summary_id}`,
+            `User ${userId} requesting podcast generation for summary ${generateDto.summaryId}`,
         );
 
         // 要約の所有者チェック
         const summary = await this.dailySummaryRepository.findById(
-            generateDto.summary_id,
+            generateDto.summaryId,
             userId,
         );
         if (!summary) {
@@ -334,13 +411,13 @@ export class PodcastEpisodeController {
         // 既存のエピソードがあるかチェックし、なければ作成
         let episode = await this.podcastEpisodeRepository.findBySummaryId(
             userId,
-            generateDto.summary_id,
+            generateDto.summaryId,
         );
 
         if (!episode) {
             episode = await this.podcastEpisodeRepository.create(
                 userId,
-                generateDto.summary_id,
+                generateDto.summaryId,
                 {
                     title:
                         summary.summary_title ||
@@ -348,7 +425,7 @@ export class PodcastEpisodeController {
                 },
             );
             this.logger.log(
-                `Created new episode ${episode.id} for summary ${generateDto.summary_id}`,
+                `Created new episode ${episode.id} for summary ${generateDto.summaryId}`,
             );
         }
 
@@ -360,19 +437,18 @@ export class PodcastEpisodeController {
         }
 
         // ポッドキャスト生成ジョブをキューに追加（新APIへ統一）
-        const jobId = `podcast:${userId}:${generateDto.summary_id}`;
+        const jobId = `podcast:${userId}:${generateDto.summaryId}`;
         await this.podcastQueueService.addGeneratePodcastJob(
             userId,
-            generateDto.summary_id,
+            generateDto.summaryId,
         );
 
-        const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summary_id})`;
+        const message = `Podcast generation job queued for episode ID ${episode.id} (summary ID ${generateDto.summaryId})`;
         this.logger.log(message);
 
-        return {
-            message,
-            job_id: jobId,
-            episode_id: episode.id,
-        };
+        return buildResponse("Podcast job queued", {
+            jobId: jobId,
+            episodeId: episode.id,
+        });
     }
 }

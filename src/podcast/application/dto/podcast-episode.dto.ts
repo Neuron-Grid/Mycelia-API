@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import { IsNumber, IsOptional, IsString, Min } from "class-validator";
 
 // Podcast episode update DTO
@@ -23,7 +24,8 @@ export class CreatePodcastEpisodeDto {
     })
     @IsNumber()
     @Min(1)
-    summary_id: number;
+    @Transform(({ obj, value }) => value ?? obj.summary_id)
+    summaryId: number;
 
     @ApiProperty({
         description: "Podcast episode title",
@@ -48,13 +50,13 @@ export class PodcastEpisodeResponseDto {
         description: "Owner user ID",
         example: "user-uuid-123",
     })
-    user_id: string;
+    userId: string;
 
     @ApiProperty({
         description: "Related summary ID",
         example: 123,
     })
-    summary_id: number;
+    summaryId: number;
 
     @ApiProperty({
         description: "Podcast episode title",
@@ -70,25 +72,25 @@ export class PodcastEpisodeResponseDto {
         nullable: true,
         type: String,
     })
-    audio_url: string | null;
+    audioUrl: string | null;
 
     @ApiProperty({
         description: "Whether the episode is soft-deleted",
         example: false,
     })
-    soft_deleted: boolean;
+    softDeleted: boolean;
 
     @ApiProperty({
         description: "Created at",
         example: "2025-05-13T07:30:00.000Z",
     })
-    created_at: string;
+    createdAt: string;
 
     @ApiProperty({
         description: "Updated at",
         example: "2025-05-13T07:30:00.000Z",
     })
-    updated_at: string;
+    updatedAt: string;
 }
 
 // Podcast episodes list response DTO
@@ -122,7 +124,7 @@ export class PodcastEpisodeListResponseDto {
         description: "Total pages",
         example: 3,
     })
-    total_pages: number;
+    totalPages: number;
 }
 
 // Podcast episode generation request DTO
@@ -134,7 +136,8 @@ export class GeneratePodcastEpisodeDto {
     })
     @IsNumber()
     @Min(1)
-    summary_id: number;
+    @Transform(({ obj, value }) => value ?? obj.summary_id)
+    summaryId: number;
 
     @ApiProperty({
         description: "Custom prompt (optional)",
@@ -161,12 +164,12 @@ export class PodcastGenerationJobResponseDto {
         example: "job-123",
         required: false,
     })
-    job_id?: string;
+    jobId?: string;
 
     @ApiProperty({
         description: "Created episode ID (if already exists)",
         example: 456,
         required: false,
     })
-    episode_id?: number;
+    episodeId?: number;
 }

@@ -13,21 +13,30 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import {
+    ApiBadRequestResponse,
     ApiBearerAuth,
     ApiBody,
+    ApiCreatedResponse,
+    ApiNotFoundResponse,
+    ApiOkResponse,
     ApiOperation,
     ApiParam,
     ApiQuery,
-    ApiResponse,
     ApiTags,
+    ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { buildResponse } from "@/common/utils/response.util";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
+import { FeedItemDto } from "@/feed/application/dto/feed-item.dto";
+import { FeedItemMapper } from "@/feed/application/feed-item.mapper";
+import { SubscriptionMapper } from "@/feed/application/subscription.mapper";
 import { AttachTagDto } from "./dto/attach-tag.dto";
 import { BulkTagDto } from "./dto/bulk-tag.dto";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
 import { CreateTagDto } from "./dto/create-tag.dto";
+import { TagDto } from "./dto/tag.dto";
 import {
     MoveTagDto,
     TagHierarchyDto,
@@ -35,7 +44,9 @@ import {
 } from "./dto/tag-hierarchy.dto";
 import { UpdateTagDto } from "./dto/update-tag.dto";
 import { HierarchicalTagService } from "./hierarchical-tag.service";
+import { TagMapper } from "./tag.mapper";
 import { TagService } from "./tag.service";
+import { TagHierarchyMapper } from "./tag-hierarchy.mapper";
 
 @ApiTags("Tags")
 @ApiBearerAuth()
@@ -51,20 +62,52 @@ export class TagController {
     ) {}
 
     @ApiOperation({ summary: "Get all tags for current user" })
-    @ApiResponse({ status: 200, description: "Returns all tags for the user" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: Tag[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "array", items: { type: "object" } },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get()
-    async getAllTags(@UserId() userId: string) {
+    async getAllTags(
+        @UserId() userId: string,
+    ): Promise<SuccessResponse<TagDto[]>> {
         const tags = await this.tagService.getAllTagsForUser(userId);
-        return buildResponse("Tag list fetched", tags);
+        return buildResponse("Tag list fetched", TagMapper.listToDto(tags));
     }
 
     @ApiOperation({ summary: "Create a new tag" })
-    @ApiResponse({ status: 201, description: "Tag created successfully" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiCreatedResponse({
+        description: "Returns { message, data: Tag }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post()
-    async createTag(@UserId() userId: string, @Body() dto: CreateTagDto) {
+    async createTag(
+        @UserId() userId: string,
+        @Body() dto: CreateTagDto,
+    ): Promise<SuccessResponse<TagDto>> {
         if (!dto.tagName) {
             throw new HttpException(
                 "tagName is required",
@@ -76,34 +119,64 @@ export class TagController {
             dto.tagName,
             dto.parentTagId ?? null,
         );
-        return buildResponse("Tag created", result);
+        return buildResponse("Tag created", TagMapper.rowToDto(result));
     }
 
     @ApiOperation({ summary: "Update a tag" })
     @ApiParam({ name: "tagId", description: "ID of the tag to update" })
-    @ApiResponse({ status: 200, description: "Tag updated successfully" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: Tag }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Patch(":tagId")
     async updateTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
         @Body() dto: UpdateTagDto,
-    ) {
+    ): Promise<SuccessResponse<TagDto>> {
         const updated = await this.tagService.updateTagForUser(
             userId,
             tagId,
             dto.newName,
             dto.newParentTagId,
         );
-        return buildResponse("Tag updated", updated);
+        return buildResponse("Tag updated", TagMapper.rowToDto(updated));
     }
 
     @ApiOperation({ summary: "Delete a tag" })
     @ApiParam({ name: "tagId", description: "ID of the tag to delete" })
-    @ApiResponse({ status: 200, description: "Tag deleted successfully" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Delete(":tagId")
     async deleteTag(
         @UserId() userId: string,
@@ -116,28 +189,55 @@ export class TagController {
     // FeedItemとの紐付け
     @ApiOperation({ summary: "Get tags for a feed item" })
     @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiResponse({
-        status: 200,
-        description: "Returns tags associated with the feed item",
+    @ApiOkResponse({
+        description: "Returns { message, data: Tag[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "array", items: { type: "object" } },
+            },
+        },
     })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get("feed-items/:feedItemId")
     async getFeedItemTags(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-    ) {
+    ): Promise<SuccessResponse<TagDto[]>> {
         const result = await this.tagService.getTagsByFeedItem(
             userId,
             feedItemId,
         );
-        return buildResponse("Tags for feed item", result);
+        return buildResponse(
+            "Tags for feed item",
+            TagMapper.fromFeedItemJoin(result),
+        );
     }
 
     @ApiOperation({ summary: "Attach a tag to a feed item" })
     @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiResponse({ status: 200, description: "Tag attached to feed item" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post("feed-items/:feedItemId")
     @ApiBody({ type: AttachTagDto })
     async attachTagToFeedItem(
@@ -166,9 +266,24 @@ export class TagController {
         description: "ID of the tag to detach",
         type: Number,
     })
-    @ApiResponse({ status: 200, description: "Tag detached from feed item" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Delete("feed-items/:feedItemId")
     async detachTagFromFeedItem(
         @UserId() userId: string,
@@ -193,28 +308,55 @@ export class TagController {
     // UserSubscriptionとの紐付け
     @ApiOperation({ summary: "Get tags for a subscription" })
     @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiResponse({
-        status: 200,
-        description: "Returns tags associated with the subscription",
+    @ApiOkResponse({
+        description: "Returns { message, data: Tag[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "array", items: { type: "object" } },
+            },
+        },
     })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get("subscriptions/:subscriptionId")
     async getSubscriptionTags(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-    ) {
+    ): Promise<SuccessResponse<TagDto[]>> {
         const result = await this.tagService.getTagsBySubscription(
             userId,
             subscriptionId,
         );
-        return buildResponse("Tags for subscription", result);
+        return buildResponse(
+            "Tags for subscription",
+            TagMapper.fromSubscriptionJoin(result),
+        );
     }
 
     @ApiOperation({ summary: "Attach a tag to a subscription" })
     @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiResponse({ status: 200, description: "Tag attached to subscription" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post("subscriptions/:subscriptionId")
     @ApiBody({ type: AttachTagDto })
     async attachTagToSubscription(
@@ -243,9 +385,24 @@ export class TagController {
         description: "ID of the tag to detach",
         type: Number,
     })
-    @ApiResponse({ status: 200, description: "Tag detached from subscription" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Delete("subscriptions/:subscriptionId")
     async detachTagFromSubscription(
         @UserId() userId: string,
@@ -272,53 +429,94 @@ export class TagController {
     @ApiOperation({
         summary: "Create a hierarchical tag with advanced features",
     })
-    @ApiResponse({
-        status: 201,
-        description: "Hierarchical tag created successfully",
-        type: Object,
+    @ApiCreatedResponse({
+        description: "Returns { message, data }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
     })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post("hierarchical")
     async createHierarchicalTag(
         @UserId() userId: string,
         @Body() dto: CreateHierarchicalTagDto,
-    ) {
+    ): Promise<SuccessResponse<TagDto>> {
         const result = await this.hierarchicalTagService.createHierarchicalTag(
             userId,
             dto,
         );
-        return buildResponse("Hierarchical tag created", result);
+        return buildResponse(
+            "Hierarchical tag created",
+            TagMapper.entityToDto(result),
+        );
     }
 
     @ApiOperation({ summary: "Get all tags in hierarchical structure" })
-    @ApiResponse({
-        status: 200,
-        description: "Returns tag hierarchy",
-        type: [TagHierarchyDto],
+    @ApiOkResponse({
+        description: "Returns { message, data: TagHierarchyDto[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "array",
+                    items: { $ref: "#/components/schemas/TagHierarchyDto" },
+                },
+            },
+        },
     })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get("hierarchy")
-    async getTagHierarchy(@UserId() userId: string) {
+    async getTagHierarchy(
+        @UserId() userId: string,
+    ): Promise<SuccessResponse<TagHierarchyDto[]>> {
         const hierarchy =
             await this.hierarchicalTagService.getTagHierarchy(userId);
-        return buildResponse("Tag hierarchy fetched", hierarchy);
+        return buildResponse(
+            "Tag hierarchy fetched",
+            TagHierarchyMapper.toDtoList(hierarchy),
+        );
     }
 
     @ApiOperation({ summary: "Get tag subtree (tag and all its descendants)" })
     @ApiParam({ name: "tagId", description: "ID of the root tag" })
-    @ApiResponse({
-        status: 200,
-        description: "Returns tag subtree",
-        type: TagHierarchyDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: TagHierarchyDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/TagHierarchyDto" },
+            },
+        },
     })
-    @ApiResponse({ status: 404, description: "Tag not found" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiNotFoundResponse({
+        description: "Tag not found",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get(":tagId/subtree")
     async getTagSubtree(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
-    ) {
+    ): Promise<SuccessResponse<TagHierarchyDto | null>> {
         const subtree = await this.hierarchicalTagService.getTagSubtree(
             userId,
             tagId,
@@ -326,23 +524,37 @@ export class TagController {
         if (!subtree) {
             throw new HttpException("Tag not found", HttpStatus.NOT_FOUND);
         }
-        return buildResponse("Tag subtree fetched", subtree);
+        return buildResponse(
+            "Tag subtree fetched",
+            subtree ? TagHierarchyMapper.toDto(subtree) : null,
+        );
     }
 
     @ApiOperation({ summary: "Get tag path from root to specified tag" })
     @ApiParam({ name: "tagId", description: "ID of the tag" })
-    @ApiResponse({
-        status: 200,
-        description: "Returns tag path",
-        type: TagWithPathDto,
+    @ApiOkResponse({
+        description: "Returns { message, data: TagWithPathDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/TagWithPathDto" },
+            },
+        },
     })
-    @ApiResponse({ status: 404, description: "Tag not found" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiNotFoundResponse({
+        description: "Tag not found",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get(":tagId/path")
     async getTagPath(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
-    ) {
+    ): Promise<SuccessResponse<TagWithPathDto>> {
         const path = await this.hierarchicalTagService.getTagPath(
             userId,
             tagId,
@@ -350,27 +562,48 @@ export class TagController {
         if (!path) {
             throw new HttpException("Tag not found", HttpStatus.NOT_FOUND);
         }
-        return buildResponse("Tag path fetched", path);
+        return buildResponse(
+            "Tag path fetched",
+            TagHierarchyMapper.pathToDto(path),
+        );
     }
 
     @ApiOperation({ summary: "Move tag to a new parent (change hierarchy)" })
     @ApiParam({ name: "tagId", description: "ID of the tag to move" })
-    @ApiResponse({ status: 200, description: "Tag moved successfully" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 404, description: "Tag not found" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiNotFoundResponse({
+        description: "Tag not found",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Patch(":tagId/move")
     async moveTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
         @Body() dto: MoveTagDto,
-    ) {
+    ): Promise<SuccessResponse<TagDto>> {
         const result = await this.hierarchicalTagService.moveTag(
             userId,
             tagId,
-            dto.new_parent_id ?? null,
+            dto.newParentId ?? null,
         );
-        return buildResponse("Tag moved", result);
+        return buildResponse("Tag moved", TagMapper.entityToDto(result));
     }
 
     @ApiOperation({
@@ -384,21 +617,42 @@ export class TagController {
         description: "Include child tags in filter",
         type: Boolean,
     })
-    @ApiResponse({ status: 200, description: "Returns filtered feed items" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: FeedItem[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "array", items: { type: "object" } },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get(":tagId/feed-items")
     async getFeedItemsByTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
         @Query("includeChildren") includeChildren?: string,
-    ) {
+    ): Promise<SuccessResponse<FeedItemDto[]>> {
         const includeChildrenBool = includeChildren === "true";
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
             userId,
             tagId,
             includeChildrenBool,
         );
-        return buildResponse("Feed items by tag fetched", feedItems);
+        // feedItems: Array<feed_item_tags & { feed_item: feed_items }>
+        type FeedItemRow =
+            import("@/types/schema").Database["public"]["Tables"]["feed_items"]["Row"];
+        const dtos = (feedItems as Array<{ feed_item?: FeedItemRow | null }>)
+            .map((r) => r.feed_item ?? null)
+            .filter((r): r is FeedItemRow => r !== null)
+            .map((row) =>
+                FeedItemMapper.rowToDto(row, { isFavorite: false, tags: [] }),
+            );
+        return buildResponse("Feed items by tag fetched", dtos);
     }
 
     @ApiOperation({
@@ -412,14 +666,30 @@ export class TagController {
         description: "Include child tags in filter",
         type: Boolean,
     })
-    @ApiResponse({ status: 200, description: "Returns filtered subscriptions" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: Subscription[] }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "array", items: { type: "object" } },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Get(":tagId/subscriptions")
     async getSubscriptionsByTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
         @Query("includeChildren") includeChildren?: string,
-    ) {
+    ): Promise<
+        SuccessResponse<
+            import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
+        >
+    > {
         const includeChildrenBool = includeChildren === "true";
         const subscriptions =
             await this.hierarchicalTagService.getSubscriptionsByTag(
@@ -427,14 +697,36 @@ export class TagController {
                 tagId,
                 includeChildrenBool,
             );
-        return buildResponse("Subscriptions by tag fetched", subscriptions);
+        // subscriptions: Array<user_subscription_tags & { subscription: user_subscriptions }>
+        type SubRow =
+            import("@/types/schema").Database["public"]["Tables"]["user_subscriptions"]["Row"];
+        const dtos = (subscriptions as Array<{ subscription?: SubRow | null }>)
+            .map((r) => r.subscription ?? null)
+            .filter((r): r is SubRow => r !== null)
+            .map((row) => SubscriptionMapper.rowToDto(row));
+        return buildResponse("Subscriptions by tag fetched", dtos);
     }
 
     @ApiOperation({ summary: "Tag multiple feed items with multiple tags" })
     @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiResponse({ status: 200, description: "Feed item tagged successfully" })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post("feed-items/:feedItemId/bulk")
     @ApiBody({ type: BulkTagDto })
     async tagFeedItem(
@@ -458,12 +750,24 @@ export class TagController {
 
     @ApiOperation({ summary: "Tag subscription with multiple tags" })
     @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiResponse({
-        status: 200,
-        description: "Subscription tagged successfully",
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
     })
-    @ApiResponse({ status: 400, description: "Bad request" })
-    @ApiResponse({ status: 401, description: "Unauthorized" })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @Post("subscriptions/:subscriptionId/bulk")
     @ApiBody({ type: BulkTagDto })
     async tagSubscription(

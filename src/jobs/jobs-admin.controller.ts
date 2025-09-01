@@ -13,14 +13,20 @@ import {
 import {
     ApiBearerAuth,
     ApiBody,
+    ApiForbiddenResponse,
+    ApiNotFoundResponse,
+    ApiOkResponse,
     ApiOperation,
     ApiQuery,
     ApiTags,
+    ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { Job, Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
 
 type DataWithOwner = { userId?: string; user_id?: string } & Record<
@@ -66,6 +72,38 @@ export class JobsAdminController {
     @Get("failed")
     @ApiOperation({ summary: "List failed jobs for current user in a queue" })
     @ApiQuery({ name: "queue", required: true })
+    @ApiOkResponse({
+        description: "Returns { message, data: { queue, count, jobs[] } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        queue: { type: "string" },
+                        count: { type: "number" },
+                        jobs: {
+                            type: "array",
+                            items: {
+                                type: "object",
+                                properties: {
+                                    id: { type: "string" },
+                                    failedReason: { type: "string" },
+                                    timestamp: { type: "number" },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
     async listFailed(
         @SupabaseUser() user: SupabaseUserType,
         @Query("queue") queueName: QueueName,
@@ -75,15 +113,15 @@ export class JobsAdminController {
         const mine = jobs.filter(
             (j) => (j.data?.userId ?? j.data?.user_id) === user.id,
         );
-        return {
+        return buildResponse("Failed jobs fetched", {
             queue: queueName,
             count: mine.length,
             jobs: mine.map((j) => ({
-                id: j.id,
-                failedReason: j.failedReason,
-                timestamp: j.timestamp,
+                id: (j.id ?? "") as string,
+                failedReason: (j.failedReason ?? "") as string,
+                timestamp: (j.timestamp ?? 0) as number,
             })),
-        };
+        });
     }
 
     @Post(":jobId/retry")
@@ -91,6 +129,28 @@ export class JobsAdminController {
         summary: "Retry a specific failed job if it belongs to the user",
     })
     @ApiQuery({ name: "queue", required: true })
+    @ApiOkResponse({
+        description: "Returns { message, data: { retried, jobId } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        retried: { type: "boolean" },
+                        jobId: { type: "string" },
+                    },
+                },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
+    @ApiNotFoundResponse({ description: "Not Found", type: ErrorResponseDto })
     async retryJob(
         @SupabaseUser() user: SupabaseUserType,
         @Param("jobId") jobId: string,
@@ -105,7 +165,7 @@ export class JobsAdminController {
             throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
         }
         await job.retry();
-        return { retried: true, jobId };
+        return buildResponse("Job retried", { retried: true, jobId });
     }
 
     @Post("failed/retry")
@@ -114,6 +174,27 @@ export class JobsAdminController {
     })
     @ApiQuery({ name: "queue", required: true })
     @ApiBody({ type: RetryAllDto })
+    @ApiOkResponse({
+        description: "Returns { message, data: { queue, retried } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: {
+                        queue: { type: "string" },
+                        retried: { type: "number" },
+                    },
+                },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
     async retryAll(
         @SupabaseUser() user: SupabaseUserType,
         @Query("queue") queueName: QueueName,
@@ -134,6 +215,6 @@ export class JobsAdminController {
                 }
             }
         }
-        return { queue: queueName, retried };
+        return buildResponse("Jobs retried", { queue: queueName, retried });
     }
 }

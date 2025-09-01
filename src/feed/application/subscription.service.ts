@@ -4,14 +4,14 @@ import {
     Logger,
     NotFoundException,
 } from "@nestjs/common";
-import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
-import { Database } from "@/types/schema";
-import { SubscriptionRepository } from "../infrastructure/subscription.repository";
-import {
+import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
+import type { Database } from "@/types/schema";
+import type { SubscriptionRepository } from "../infrastructure/subscription.repository";
+import type {
     IntervalDto,
     UpdateSubscriptionIntervalDto,
 } from "./dto/subscription-interval.dto";
-import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
+import type { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 
 type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];
 
@@ -84,7 +84,7 @@ export class SubscriptionService {
         return await this.repo.updateSubscriptionTitle(
             subId,
             userId,
-            dto.feed_title,
+            dto.feedTitle,
         );
     }
 

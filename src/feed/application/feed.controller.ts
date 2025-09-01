@@ -36,13 +36,21 @@ import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
 import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import type { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
-import { buildResponse } from "@/common/utils/response.util";
+import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
+import type { FeedItemDto } from "./dto/feed-item.dto";
 import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
+import type { SubscriptionDto } from "./dto/subscription.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
-import { FeedItemService } from "./feed-item.service";
-import { FeedUseCaseService } from "./feed-usecase.service";
-import { SubscriptionService } from "./subscription.service";
+import { FeedItemMapper } from "./feed-item.mapper";
+import type { FeedItemService } from "./feed-item.service";
+import type { FeedUseCaseService } from "./feed-usecase.service";
+import { SubscriptionMapper } from "./subscription.mapper";
+import type { SubscriptionService } from "./subscription.service";
 
 // 型注釈はOpenAPIスキーマで表現し、戻り値は共通包形式に統一
 
@@ -127,13 +135,16 @@ export class FeedController {
     async getSubscriptions(
         @UserId() userId: string,
         @Query() query: PaginationQueryDto,
-    ) {
+    ): Promise<SuccessResponse<PaginatedResult<SubscriptionDto>>> {
         const result = await this.subscriptionService.getSubscriptionsPaginated(
             userId,
             query.page,
             query.limit,
         );
-        return buildResponse("Subscriptions fetched", result);
+        return buildResponse("Subscriptions fetched", {
+            ...result,
+            data: SubscriptionMapper.listToDto(result.data),
+        });
     }
 
     // @async
@@ -152,16 +163,29 @@ export class FeedController {
         description:
             "Parses the provided feedUrl and auto-sets feed_title; returns 400 if the URL is invalid or already subscribed.",
     })
-    @ApiCreatedResponse({ description: "Subscription created" })
+    @ApiCreatedResponse({
+        description: "Returns { message, data }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
     @ApiBody({ type: AddSubscriptionDto })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
     @ApiBadRequestResponse({
         description: "Invalid URL or duplicate subscription",
+        type: ErrorResponseDto,
     })
     async addSubscription(
         @UserId() userId: string,
         @Body() dto: AddSubscriptionDto,
-    ) {
+    ): Promise<SuccessResponse<SubscriptionDto>> {
         const { feedUrl } = dto;
         if (!feedUrl) {
             throw new HttpException(
@@ -185,7 +209,10 @@ export class FeedController {
             feedUrl,
             feedTitle,
         );
-        return buildResponse("Subscription added", result);
+        return buildResponse(
+            "Subscription added",
+            SubscriptionMapper.rowToDto(result),
+        );
     }
 
     // @async
@@ -204,11 +231,29 @@ export class FeedController {
         description:
             "Fetches the RSS feed for the specified subscription ID and persists items. Processing may take a few seconds.",
     })
-    @ApiAcceptedResponse({ description: "Job accepted" })
+    @ApiAcceptedResponse({
+        description: "Returns { message, data }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
     @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
-    @ApiBadRequestResponse({ description: "Bad request" })
-    @ApiNotFoundResponse({ description: "Subscription not found" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: "Bad request",
+        type: ErrorResponseDto,
+    })
+    @ApiNotFoundResponse({
+        description: "Subscription not found",
+        type: ErrorResponseDto,
+    })
     @HttpCode(HttpStatus.ACCEPTED)
     async fetchSubscription(
         @UserId() userId: string,
@@ -289,14 +334,22 @@ export class FeedController {
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
         @Query() query: PaginationQueryDto,
-    ) {
+    ): Promise<SuccessResponse<PaginatedResult<FeedItemDto>>> {
         const result = await this.feedItemService.getFeedItemsPaginated(
             userId,
             subscriptionId,
             query.page,
             query.limit,
         );
-        return buildResponse("Feed items fetched", result);
+        return buildResponse("Feed items fetched", {
+            ...result,
+            data: result.data.map((it) =>
+                FeedItemMapper.entityToDto(it, {
+                    isFavorite: it.isFavorite,
+                    tags: it.tags,
+                }),
+            ),
+        });
     }
 
     // @async
@@ -315,23 +368,44 @@ export class FeedController {
         summary: "Update subscription",
         description: "Partially update fields such as feed_title.",
     })
-    @ApiOkResponse({ description: "Subscription updated" })
+    @ApiOkResponse({
+        description: "Returns { message, data }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "object" },
+            },
+        },
+    })
     @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
     @ApiBody({ type: UpdateSubscriptionDto })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
-    @ApiBadRequestResponse({ description: "Validation error" })
-    @ApiNotFoundResponse({ description: "Subscription not found" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: "Validation error",
+        type: ErrorResponseDto,
+    })
+    @ApiNotFoundResponse({
+        description: "Subscription not found",
+        type: ErrorResponseDto,
+    })
     async updateSubscription(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) id: number,
         @Body() dto: UpdateSubscriptionDto,
-    ) {
+    ): Promise<SuccessResponse<SubscriptionDto>> {
         const updated = await this.subscriptionService.updateSubscription(
             userId,
             id,
             dto,
         );
-        return buildResponse("Subscription updated", updated);
+        return buildResponse(
+            "Subscription updated",
+            SubscriptionMapper.rowToDto(updated),
+        );
     }
 
     // @async
@@ -350,11 +424,29 @@ export class FeedController {
         description:
             "Deletes the specified subscription. Related feed items are removed via ON DELETE CASCADE.",
     })
-    @ApiOkResponse({ description: "Subscription deleted" })
+    @ApiOkResponse({
+        description: "Returns { message, data: null }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "null", nullable: true },
+            },
+        },
+    })
     @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiUnauthorizedResponse({ description: "Unauthorized" })
-    @ApiBadRequestResponse({ description: "Deletion error" })
-    @ApiNotFoundResponse({ description: "Subscription not found" })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiBadRequestResponse({
+        description: "Deletion error",
+        type: ErrorResponseDto,
+    })
+    @ApiNotFoundResponse({
+        description: "Subscription not found",
+        type: ErrorResponseDto,
+    })
     async deleteSubscription(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,

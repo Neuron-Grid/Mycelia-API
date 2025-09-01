@@ -4,24 +4,24 @@ export class FavoriteDto {
     @ApiProperty({ description: "Favorite ID", example: 123 })
     id!: number;
 
-    @ApiProperty({ description: "ユーザーID(UUID)" })
-    user_id!: string;
+    @ApiProperty({ description: "User ID (UUID)" })
+    userId!: string;
 
-    @ApiProperty({ description: "フィードアイテムID", example: 456 })
-    feed_item_id!: number;
-
-    @ApiProperty({
-        description: "作成日時(ISO)",
-        example: "2025-08-26T00:00:00.000Z",
-    })
-    created_at!: string;
+    @ApiProperty({ description: "Feed item ID", example: 456 })
+    feedItemId!: number;
 
     @ApiProperty({
-        description: "更新日時(ISO)",
+        description: "Created at (ISO)",
         example: "2025-08-26T00:00:00.000Z",
     })
-    updated_at!: string;
+    createdAt!: string;
 
-    @ApiProperty({ description: "ソフトデリートフラグ", example: false })
-    soft_deleted!: boolean;
+    @ApiProperty({
+        description: "Updated at (ISO)",
+        example: "2025-08-26T00:00:00.000Z",
+    })
+    updatedAt!: string;
+
+    @ApiProperty({ description: "Soft delete flag", example: false })
+    softDeleted!: boolean;
 }

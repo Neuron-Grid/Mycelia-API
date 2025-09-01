@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { HttpException, HttpStatus } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import type { NextFunction, Request, Response } from "express";
 
@@ -48,13 +49,11 @@ export function createCsrfMiddleware(_cfg: ConfigService) {
         ).cookies?.["XSRF-TOKEN"];
 
         if (!cookieToken || !header || cookieToken !== header) {
-            res.status(403).json({
-                statusCode: 403,
-                message: { message: "CSRF token mismatch" },
-                path: req.url,
-                timestamp: new Date().toISOString(),
-            });
-            return;
+            // Let the global exception filter shape the error payload
+            throw new HttpException(
+                { message: "CSRF token mismatch" },
+                HttpStatus.FORBIDDEN,
+            );
         }
 
         return next();
@@ -69,7 +68,11 @@ export function createHttpsEnforceMiddleware(cfg: ConfigService) {
     const isProd =
         (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
 
-    return function httpsOnly(req: Request, res: Response, next: NextFunction) {
+    return function httpsOnly(
+        req: Request,
+        _res: Response,
+        next: NextFunction,
+    ) {
         if (!isProd) return next();
         const xfProto = (req.headers["x-forwarded-proto"] as string | undefined)
             ?.split(",")[0]
@@ -78,8 +81,11 @@ export function createHttpsEnforceMiddleware(cfg: ConfigService) {
             (req as unknown as { secure?: boolean }).secure ||
             xfProto === "https";
         if (!secure) {
-            res.status(403).send("HTTPS required");
-            return;
+            // Unify error shape via global exception filter
+            throw new HttpException(
+                { message: "HTTPS required" },
+                HttpStatus.FORBIDDEN,
+            );
         }
         return next();
     };

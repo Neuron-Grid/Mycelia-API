@@ -1,7 +1,9 @@
 // @file アプリケーションのルートコントローラ
 import { Controller, Get } from "@nestjs/common";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see ./app.service
 import type { AppService } from "@/app.service";
+import { buildResponse } from "@/common/utils/response.util";
 
 @Controller()
 // @public
@@ -19,7 +21,18 @@ export class AppController {
     // const msg = appController.getHello()
     // @see AppService.getHello
     @Get()
-    getHello(): string {
-        return this.appService.getHello();
+    @ApiTags("Root")
+    @ApiOkResponse({
+        description: "Returns { message, data: string }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { type: "string" },
+            },
+        },
+    })
+    getHello() {
+        return buildResponse("OK", this.appService.getHello());
     }
 }

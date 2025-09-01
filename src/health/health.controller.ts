@@ -5,12 +5,10 @@ import { Controller, Get } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
 import { Job, Queue } from "bullmq";
+import { buildResponse } from "@/common/utils/response.util";
 import { RedisService } from "@/shared/redis/redis.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
-import {
-    HealthCheckResponseDto,
-    JobCountsDto,
-} from "./dto/health-check-response.dto";
+import { JobCountsDto } from "./dto/health-check-response.dto";
 
 // BullMQ の戻り値用
 // Swagger DTOとは別物
@@ -54,10 +52,16 @@ export class HealthController {
     // @see HealthCheckResponseDto
     @Get()
     @ApiOkResponse({
-        description: "System health status",
-        type: HealthCheckResponseDto,
+        description: "Returns { message, data: HealthCheckResponseDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/HealthCheckResponseDto" },
+            },
+        },
     })
-    async checkHealth(): Promise<HealthCheckResponseDto> {
+    async checkHealth() {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();
         const queues = [
@@ -78,12 +82,12 @@ export class HealthController {
             results.map((r) => [r.name, r.counts]),
         ) as unknown as JobCountsDto;
 
-        return {
+        return buildResponse("Health checked", {
             status: "OK",
             db: "OK",
             bullQueue: { status: bullStatus, jobCounts },
             redis: "OK",
-        };
+        });
     }
     // @async
     // @private

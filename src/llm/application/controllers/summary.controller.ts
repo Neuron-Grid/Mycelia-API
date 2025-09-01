@@ -9,14 +9,21 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import {
+    ApiAcceptedResponse,
+    ApiBadRequestResponse,
     ApiBearerAuth,
     ApiBody,
+    ApiForbiddenResponse,
+    ApiInternalServerErrorResponse,
     ApiOperation,
     ApiParam,
     ApiTags,
+    ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse } from "@/common/utils/response.util";
 import { RegenerateScriptDto } from "@/llm/application/dto/regenerate-script.dto";
 import { RegenerateSummaryDto } from "@/llm/application/dto/regenerate-summary.dto";
 import { SupabaseUser } from "../../../auth/supabase-user.decorator";
@@ -46,11 +53,37 @@ export class SummaryController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @ApiBody({ type: RegenerateSummaryDto })
+    @ApiAcceptedResponse({
+        description: "Returns { message, data: { jobId } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: { jobId: { type: "string", nullable: true } },
+                },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
+    @ApiBadRequestResponse({
+        description: "Bad Request",
+        type: ErrorResponseDto,
+    })
+    @ApiInternalServerErrorResponse({
+        description: "Server Error",
+        type: ErrorResponseDto,
+    })
     async regenerateSummary(
         @Param("userId") targetUserId: string,
         @SupabaseUser() requestingUser: SupabaseUserType,
         @Body() body?: RegenerateSummaryDto,
-    ): Promise<{ message: string; jobId?: string }> {
+    ) {
         // 戻り値の型を明確化
         this.logger.log(
             `User ${requestingUser.id} requesting summary regeneration for user ${targetUserId}`,
@@ -77,7 +110,9 @@ export class SummaryController {
                 ); // await を追加
             const message = `Summary regeneration job (ID: ${result.jobId}) has been queued for user ${targetUserId} (date: ${body?.date || "today"}).`;
             this.logger.log(message);
-            return { message, jobId: result.jobId };
+            return buildResponse("Summary regeneration queued", {
+                jobId: result.jobId,
+            });
         } catch (error: unknown) {
             const errorMessage =
                 error instanceof Error
@@ -104,11 +139,37 @@ export class SummaryController {
     @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
     @ApiBody({ type: RegenerateScriptDto })
+    @ApiAcceptedResponse({
+        description: "Returns { message, data: { jobId } }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: {
+                    type: "object",
+                    properties: { jobId: { type: "string", nullable: true } },
+                },
+            },
+        },
+    })
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
+    @ApiBadRequestResponse({
+        description: "Bad Request",
+        type: ErrorResponseDto,
+    })
+    @ApiInternalServerErrorResponse({
+        description: "Server Error",
+        type: ErrorResponseDto,
+    })
     async regenerateScript(
         @Param("summaryId") summaryIdParam: string, // パラメータは文字列で来るので変換が必要
         @SupabaseUser() user: SupabaseUserType, // requestingUser の方が意図が明確かも
         @Body() body?: RegenerateScriptDto,
-    ): Promise<{ message: string; jobId?: string }> {
+    ) {
         // 戻り値の型を明確化
         const summaryId = Number.parseInt(summaryIdParam, 10);
         if (Number.isNaN(summaryId)) {
@@ -151,7 +212,9 @@ export class SummaryController {
                 );
             const message = `Script regeneration job (ID: ${result.jobId}) has been queued for summary ID ${summaryId}.`;
             this.logger.log(message);
-            return { message, jobId: result.jobId };
+            return buildResponse("Script regeneration queued", {
+                jobId: result.jobId,
+            });
         } catch (error: unknown) {
             const errorMessage =
                 error instanceof Error

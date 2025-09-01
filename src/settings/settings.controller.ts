@@ -14,11 +14,14 @@ import {
     ApiOkResponse,
     ApiOperation,
     ApiTags,
+    ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
+import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
 import { DomainConfigService } from "@/domain-config/domain-config.service";
 import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
 import { JobsService } from "@/jobs/jobs.service";
@@ -26,9 +29,12 @@ import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-
 import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
 import { PreviewScheduleDto } from "@/settings/dto/preview-schedule.dto";
 import { RunSummaryNowDto } from "@/settings/dto/run-summary-now.dto";
+import { SettingsMapper } from "@/settings/dto/settings.mapper";
 import { SettingsOverviewDto } from "@/settings/dto/settings-overview.dto";
 import { UpdatePodcastSettingDto } from "@/settings/dto/update-podcast-setting.dto";
 import { UpdateSummarySettingDto } from "@/settings/dto/update-summary-setting.dto";
+import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
+import { UserSettingsBasicMapper } from "@/settings/dto/user-settings-basic.mapper";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 @ApiTags("settings")
@@ -51,10 +57,22 @@ export class SettingsController {
     @ApiOperation({ summary: "User settings and schedule overview" })
     @ApiBearerAuth()
     @ApiOkResponse({
-        description: "Settings overview",
-        type: SettingsOverviewDto,
+        description: "Returns { message, data: SettingsOverviewDto }",
+        schema: {
+            type: "object",
+            properties: {
+                message: { type: "string" },
+                data: { $ref: "#/components/schemas/SettingsOverviewDto" },
+            },
+        },
     })
-    async getSettings(@SupabaseUser() user: User) {
+    @ApiUnauthorizedResponse({
+        description: "Unauthorized",
+        type: ErrorResponseDto,
+    })
+    async getSettings(
+        @SupabaseUser() user: User,
+    ): Promise<SuccessResponse<SettingsOverviewDto>> {
         const userId = user.id;
         const base = await this.userSettingsRepo.getByUserId(userId);
         const next = await this.jobsService.getUserScheduleInfo(userId);
@@ -78,7 +96,7 @@ export class SettingsController {
             lastStatus = state === "failed" ? "failed" : "skipped";
         }
 
-        return {
+        const src = {
             summary_enabled: base?.summary_enabled ?? false,
             podcast_enabled: base?.podcast_enabled ?? false,
             podcast_schedule_time:
@@ -89,7 +107,11 @@ export class SettingsController {
             last_summary_at: latestSummary?.updated_at ?? null,
             last_podcast_at: latestPodcast?.updated_at ?? null,
             last_status: lastStatus,
-        };
+        } as const;
+        return buildResponse(
+            "Settings overview fetched",
+            SettingsMapper.toDto(src),
+        );
     }
 
     @Post("schedule/reload")
@@ -103,7 +125,7 @@ export class SettingsController {
     async reloadMySchedule(@SupabaseUser() user: User) {
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
         const next = await this.jobsService.getUserScheduleInfo(user.id);
-        return { reloaded: true, ...next };
+        return buildResponse("Schedule reloaded", next);
     }
 
     @Post("schedule/preview")
@@ -133,10 +155,10 @@ export class SettingsController {
             if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
             return d.toISOString();
         };
-        return {
-            next_run_at_summary: toIsoNext(sH, sM),
-            next_run_at_podcast: toIsoNext(pH, pM),
-        };
+        return buildResponse("Schedule preview", {
+            nextRunAtSummary: toIsoNext(sH, sM),
+            nextRunAtPodcast: toIsoNext(pH, pM),
+        });
     }
 
     @Get("jobs/status")
@@ -223,7 +245,7 @@ export class SettingsController {
             }
         }
 
-        return {
+        return buildResponse("Jobs status fetched", {
             date: today,
             summary: { state: summaryState, jobId: summaryJobId },
             script: {
@@ -234,7 +256,7 @@ export class SettingsController {
                 state: podcastState,
                 jobId: summary ? `podcast:${userId}:${summary.id}` : null,
             },
-        };
+        });
     }
 
     @Put("settings/summary")
@@ -248,7 +270,7 @@ export class SettingsController {
     async updateSummarySetting(
         @SupabaseUser() user: User,
         @Body() body: UpdateSummarySettingDto,
-    ) {
+    ): Promise<SuccessResponse<UserSettingsBasicDto>> {
         if (typeof body?.enabled !== "boolean") {
             throw new BadRequestException("enabled must be boolean");
         }
@@ -258,8 +280,11 @@ export class SettingsController {
             body.enabled,
         );
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
-        const base = await this.userSettingsRepo.getByUserId(user.id);
-        return base;
+        const updated = await this.userSettingsRepo.getByUserId(user.id);
+        return buildResponse(
+            "Summary setting updated",
+            UserSettingsBasicMapper.fromRepoRow(updated),
+        );
     }
 
     @Put("settings/podcast")
@@ -273,7 +298,7 @@ export class SettingsController {
     async updatePodcastSetting(
         @SupabaseUser() user: User,
         @Body() body: UpdatePodcastSettingDto,
-    ) {
+    ): Promise<SuccessResponse<UserSettingsBasicDto>> {
         if (typeof body?.enabled !== "boolean")
             throw new BadRequestException("enabled must be boolean");
         const settings = await this.userSettingsRepo.getByUserId(user.id);
@@ -282,14 +307,18 @@ export class SettingsController {
                 "Podcast cannot be enabled when summary is disabled",
             );
         }
-        const updated = await this.domainConfigService.updatePodcastSettings(
+        await this.domainConfigService.updatePodcastSettings(
             user.id,
             body.enabled,
             body.time,
             body.language,
         );
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
-        return updated;
+        const row = await this.userSettingsRepo.getByUserId(user.id);
+        return buildResponse(
+            "Podcast setting updated",
+            UserSettingsBasicMapper.fromRepoRow(row),
+        );
     }
 
     @Post("summaries/run-now")
@@ -308,7 +337,11 @@ export class SettingsController {
             user.id,
             dateJst,
         );
-        return { enqueued: true, flowId: flow.flowId, date: dateJst };
+        return buildResponse("Enqueued", {
+            enqueued: true,
+            flowId: flow.flowId,
+            date: dateJst,
+        });
     }
 
     @Post("podcasts/run-now")
@@ -319,7 +352,7 @@ export class SettingsController {
     @ApiBearerAuth()
     async runPodcastNow(@SupabaseUser() user: User) {
         const today = this.formatDateJst(new Date());
-        await this.podcastQueue.add(
+        const job = await this.podcastQueue.add(
             "generatePodcastForToday",
             { userId: user.id },
             {
@@ -328,7 +361,9 @@ export class SettingsController {
                 removeOnFail: 5,
             },
         );
-        return { enqueued: true };
+        return buildResponse("Enqueued", {
+            jobId: job?.id ?? `podcast-for-today:${user.id}:${today}`,
+        });
     }
 
     private formatDateJst(date: Date): string {

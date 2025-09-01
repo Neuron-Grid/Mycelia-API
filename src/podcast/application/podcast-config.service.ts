@@ -31,11 +31,42 @@ export class PodcastConfigService {
     //  @returns 更新後のポッドキャスト設定
     async updatePodcastConfig(
         userId: string,
-        input: PodcastConfigInput,
+        input:
+            | PodcastConfigInput
+            | {
+                  podcastEnabled?: boolean;
+                  podcastScheduleTime?: string | null;
+                  podcastLanguage?: "ja-JP" | "en-US";
+              },
     ): Promise<PodcastConfigResponseDto> {
+        // API層(camel) → DB層(snake)へ正規化
+        type Camel = {
+            podcastEnabled?: boolean;
+            podcastScheduleTime?: string | null;
+            podcastLanguage?: "ja-JP" | "en-US";
+        };
+        type Snake = PodcastConfigInput;
+        const i = input as Camel & Snake;
+        const normalized: PodcastConfigInput = {
+            podcast_enabled:
+                ("podcast_enabled" in i ? i.podcast_enabled : undefined) ??
+                ("podcastEnabled" in i ? i.podcastEnabled : undefined),
+            podcast_schedule_time:
+                ("podcast_schedule_time" in i
+                    ? i.podcast_schedule_time
+                    : undefined) ??
+                ("podcastScheduleTime" in i
+                    ? i.podcastScheduleTime
+                    : undefined) ??
+                null,
+            podcast_language:
+                ("podcast_language" in i ? i.podcast_language : undefined) ??
+                ("podcastLanguage" in i ? i.podcastLanguage : undefined),
+        };
+
         const updated = await this.podcastConfigRepository.upsert(
             userId,
-            input,
+            normalized,
         );
         if (!updated) {
             throw new NotFoundException(

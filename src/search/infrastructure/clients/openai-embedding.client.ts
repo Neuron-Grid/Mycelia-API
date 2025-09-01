@@ -16,6 +16,15 @@ export class OpenAIEmbeddingClient {
         }
     }
 
+    // OpenAI Embeddings API response shapes
+    private static readonly errorShape: {
+        error?: { message?: string };
+    } = {};
+
+    private static readonly embeddingShape: {
+        data: Array<{ embedding: number[] }>;
+    } = { data: [] };
+
     // エラー種別を明確化するための簡易HTTPエラー
     private httpError(status: number, message: string): Error {
         const err = new Error(message) as Error & { status?: number };
@@ -49,8 +58,9 @@ export class OpenAIEmbeddingClient {
             if (!response.ok) {
                 let detail: string | undefined;
                 try {
-                    const errorData = await response.json();
-                    detail = errorData.error?.message;
+                    const errorData =
+                        (await response.json()) as typeof OpenAIEmbeddingClient.errorShape;
+                    detail = errorData?.error?.message;
                 } catch {
                     /* ignore parse error */
                 }
@@ -60,13 +70,14 @@ export class OpenAIEmbeddingClient {
                 );
             }
 
-            const result = await response.json();
+            const result =
+                (await response.json()) as typeof OpenAIEmbeddingClient.embeddingShape;
 
-            if (!result.data || result.data.length === 0) {
+            if (!result?.data || result.data.length === 0) {
                 throw new Error("No embedding data returned from OpenAI API");
             }
 
-            const embedding = result.data[0].embedding;
+            const embedding = result.data[0]?.embedding ?? [];
             this.logger.debug(
                 `Generated embedding for text (${text.length} chars): ${embedding.length} dimensions`,
             );
@@ -112,8 +123,9 @@ export class OpenAIEmbeddingClient {
             if (!response.ok) {
                 let detail: string | undefined;
                 try {
-                    const errorData = await response.json();
-                    detail = errorData.error?.message;
+                    const errorData =
+                        (await response.json()) as typeof OpenAIEmbeddingClient.errorShape;
+                    detail = errorData?.error?.message;
                 } catch {
                     /* ignore parse error */
                 }
@@ -123,15 +135,14 @@ export class OpenAIEmbeddingClient {
                 );
             }
 
-            const result = await response.json();
+            const result =
+                (await response.json()) as typeof OpenAIEmbeddingClient.embeddingShape;
 
-            if (!result.data || result.data.length === 0) {
+            if (!result?.data || result.data.length === 0) {
                 throw new Error("No embedding data returned from OpenAI API");
             }
 
-            const embeddings = result.data.map(
-                (item: { embedding: number[] }) => item.embedding,
-            );
+            const embeddings = result.data.map((item) => item.embedding ?? []);
             this.logger.debug(`Generated ${embeddings.length} embeddings`);
 
             return embeddings;

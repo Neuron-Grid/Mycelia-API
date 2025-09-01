@@ -47,9 +47,9 @@ export class HierarchicalTagService {
         dto: CreateHierarchicalTagDto,
     ): Promise<TagEntity> {
         // 親タグの検証
-        if (dto.parent_tag_id) {
+        if (dto.parentTagId) {
             const parentTag = await this.tagRepository.findById(
-                dto.parent_tag_id,
+                dto.parentTagId,
                 userId,
             );
             if (!parentTag) {
@@ -59,8 +59,8 @@ export class HierarchicalTagService {
             // 循環参照のチェック
             const isCircular = await this.wouldCreateCircularReference(
                 userId,
-                dto.parent_tag_id,
-                dto.tag_name,
+                dto.parentTagId,
+                dto.tagName,
             );
             if (isCircular) {
                 throw new BadRequestException(
@@ -69,7 +69,7 @@ export class HierarchicalTagService {
             }
 
             // 深度制限のチェック（最大5階層）
-            const depth = await this.getTagDepth(userId, dto.parent_tag_id);
+            const depth = await this.getTagDepth(userId, dto.parentTagId);
             if (depth >= 4) {
                 // 0-indexed なので4が最大（5階層）
                 throw new BadRequestException(
@@ -81,8 +81,8 @@ export class HierarchicalTagService {
         // 同一親の下でのタグ名重複チェック
         const duplicateTag = await this.tagRepository.findByNameAndParent(
             userId,
-            dto.tag_name,
-            dto.parent_tag_id || null,
+            dto.tagName,
+            dto.parentTagId || null,
         );
         if (duplicateTag) {
             throw new BadRequestException(
@@ -94,8 +94,8 @@ export class HierarchicalTagService {
         let tagEmbedding: number[] | undefined;
         try {
             const tagText = dto.description
-                ? `${dto.tag_name} ${dto.description}`
-                : dto.tag_name;
+                ? `${dto.tagName} ${dto.description}`
+                : dto.tagName;
             tagEmbedding = await this.embeddingService.generateEmbedding(
                 this.embeddingService.preprocessText(tagText),
             );
@@ -107,15 +107,15 @@ export class HierarchicalTagService {
 
         // タグ作成
         const tag = await this.tagRepository.create(userId, {
-            tag_name: dto.tag_name,
-            parent_tag_id: dto.parent_tag_id || null,
+            tag_name: dto.tagName,
+            parent_tag_id: dto.parentTagId || null,
             description: dto.description,
             color: dto.color,
             tag_emb: tagEmbedding,
         });
 
         this.logger.log(
-            `Created hierarchical tag: ${dto.tag_name} for user ${userId}`,
+            `Created hierarchical tag: ${dto.tagName} for user ${userId}`,
         );
         // バックグラウンドでも最新埋め込みを維持（DBトリガーや将来の仕様変更に対応）
         await this.embeddingQueueService.addSingleEmbeddingJob(

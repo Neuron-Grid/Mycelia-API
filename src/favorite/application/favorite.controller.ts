@@ -20,9 +20,10 @@ import {
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { buildResponse } from "@/common/utils/response.util";
+import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
 import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
 import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
+import { FavoriteMapper } from "./favorite.mapper";
 import { FavoriteService } from "./favorite.service";
 
 @ApiTags("Favorites")
@@ -64,9 +65,14 @@ export class FavoriteController {
             },
         },
     })
-    async getUserFavorites(@UserId() userId: string) {
+    async getUserFavorites(
+        @UserId() userId: string,
+    ): Promise<SuccessResponse<FavoriteDto[]>> {
         const favorites = await this.favoriteService.getUserFavorites(userId);
-        return buildResponse("Favorites fetched", favorites);
+        return buildResponse(
+            "Favorites fetched",
+            FavoriteMapper.listToDto(favorites),
+        );
     }
 
     // @async
@@ -126,12 +132,15 @@ export class FavoriteController {
     async favoriteItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-    ) {
+    ): Promise<SuccessResponse<FavoriteDto>> {
         const result = await this.favoriteService.favoriteFeedItem(
             userId,
             feedItemId,
         );
-        return buildResponse("Feed item favorited", result);
+        return buildResponse(
+            "Feed item favorited",
+            FavoriteMapper.rowToDto(result),
+        );
     }
 
     // @async

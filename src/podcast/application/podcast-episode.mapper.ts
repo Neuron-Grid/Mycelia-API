@@ -8,13 +8,13 @@ export class PodcastEpisodeMapper {
     toResponseDto(entity: PodcastEpisodeEntity): PodcastEpisodeResponseDto {
         return {
             id: entity.id,
-            user_id: entity.user_id,
-            summary_id: entity.summary_id,
+            userId: entity.user_id,
+            summaryId: entity.summary_id,
             title: entity.title,
-            audio_url: entity.audio_url,
-            soft_deleted: entity.soft_deleted,
-            created_at: entity.created_at,
-            updated_at: entity.updated_at,
+            audioUrl: entity.audio_url,
+            softDeleted: entity.soft_deleted,
+            createdAt: entity.created_at,
+            updatedAt: entity.updated_at,
         };
     }
 

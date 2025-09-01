@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, Length, Min } from "class-validator";
 
 export class CreateHierarchicalTagDto {
@@ -11,7 +11,8 @@ export class CreateHierarchicalTagDto {
     })
     @IsString()
     @Length(1, 100)
-    tag_name!: string;
+    @Transform(({ obj, value }) => value ?? obj.tag_name)
+    tagName!: string;
 
     @ApiPropertyOptional({
         description: "Parent tag ID (null for root)",
@@ -21,7 +22,8 @@ export class CreateHierarchicalTagDto {
     @Type(() => Number)
     @IsInt()
     @Min(1)
-    parent_tag_id?: number;
+    @Transform(({ obj, value }) => value ?? obj.parent_tag_id)
+    parentTagId?: number;
 
     @ApiPropertyOptional({
         description: "Tag description",

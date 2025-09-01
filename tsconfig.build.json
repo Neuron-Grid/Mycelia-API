@@ -4,9 +4,15 @@
     "noEmit": false,
     "declaration": true,
     "removeComments": true,
-    "verbatimModuleSyntax": true,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true
   },
-  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts", "**/*.e2e-spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts"
+  ]
 }

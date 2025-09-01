@@ -8,10 +8,10 @@ export const PodcastConfigMapper = {
     //  @returns PodcastConfigResponseDto
     toResponseDto(config: PodcastConfig): PodcastConfigResponseDto {
         return {
-            podcast_enabled: config.podcast_enabled,
-            podcast_schedule_time: config.podcast_schedule_time,
-            podcast_language: config.podcast_language,
-            updated_at: config.updated_at,
+            podcastEnabled: config.podcast_enabled,
+            podcastScheduleTime: config.podcast_schedule_time,
+            podcastLanguage: config.podcast_language,
+            updatedAt: config.updated_at,
         };
     },
 
@@ -19,10 +19,10 @@ export const PodcastConfigMapper = {
     //  @returns PodcastConfigResponseDto
     createDefaultResponse(): PodcastConfigResponseDto {
         return {
-            podcast_enabled: false,
-            podcast_schedule_time: null,
-            podcast_language: "ja-JP",
-            updated_at: new Date().toISOString(),
+            podcastEnabled: false,
+            podcastScheduleTime: null,
+            podcastLanguage: "ja-JP",
+            updatedAt: new Date().toISOString(),
         };
     },
 };
