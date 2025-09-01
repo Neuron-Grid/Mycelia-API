@@ -9,7 +9,7 @@ import {
     ValidateNested,
 } from "class-validator";
 import { IntervalDto } from "../../feed/application/dto/subscription-interval.dto";
-import { Database } from "../../types/schema";
+import type { Database } from "../../types/schema";
 
 type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 

@@ -41,16 +41,16 @@ import {
     buildResponse,
     type SuccessResponse,
 } from "@/common/utils/response.util";
+import { FeedItemService } from "@/feed/application/feed-item.service";
+import { FeedUseCaseService } from "@/feed/application/feed-usecase.service";
+import { SubscriptionService } from "@/feed/application/subscription.service";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
 import type { FeedItemDto } from "./dto/feed-item.dto";
 import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
 import type { SubscriptionDto } from "./dto/subscription.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { FeedItemMapper } from "./feed-item.mapper";
-import type { FeedItemService } from "./feed-item.service";
-import type { FeedUseCaseService } from "./feed-usecase.service";
 import { SubscriptionMapper } from "./subscription.mapper";
-import type { SubscriptionService } from "./subscription.service";
 
 // 型注釈はOpenAPIスキーマで表現し、戻り値は共通包形式に統一
 

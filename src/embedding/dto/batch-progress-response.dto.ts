@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { BatchProgress, TableType } from "../types/embedding-batch.types";
+import type { BatchProgress, TableType } from "../types/embedding-batch.types";
 
 export class BatchProgressItemDto implements BatchProgress {
     @ApiProperty({ example: "user-uuid-123" })

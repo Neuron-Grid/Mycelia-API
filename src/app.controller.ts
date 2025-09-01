@@ -2,7 +2,7 @@
 import { Controller, Get } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see ./app.service
-import type { AppService } from "@/app.service";
+import { AppService } from "@/app.service";
 import { buildResponse } from "@/common/utils/response.util";
 
 @Controller()

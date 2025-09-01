@@ -4,11 +4,11 @@ import {
     Injectable,
     UnauthorizedException,
 } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import type { Request } from "express";
-import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import type { JwtAuthClaims } from "@/types/auth-claims";
 import type { Database } from "@/types/schema";
 

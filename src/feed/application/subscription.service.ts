@@ -5,8 +5,8 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
+import { SubscriptionRepository } from "@/feed/infrastructure/subscription.repository";
 import type { Database } from "@/types/schema";
-import type { SubscriptionRepository } from "../infrastructure/subscription.repository";
 import type {
     IntervalDto,
     UpdateSubscriptionIntervalDto,

@@ -1,9 +1,9 @@
 // @file 認証・ユーザー管理のサービス層
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import type { User } from "@supabase/supabase-js";
-import type { DomainConfigService } from "@/domain-config/domain-config.service";
-import type { AuthRepositoryPort } from "./domain/auth.repository";
+import { AuthRepositoryPort } from "@/auth/domain/auth.repository";
+import { DomainConfigService } from "@/domain-config/domain-config.service";
 
 @Injectable()
 // @public
@@ -14,6 +14,7 @@ export class AuthService {
     // @since 1.0.0
     // @public
     constructor(
+        @Inject(AuthRepositoryPort)
         private readonly authRepo: AuthRepositoryPort,
         private readonly domainCfg: DomainConfigService,
     ) {}

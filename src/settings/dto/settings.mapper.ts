@@ -1,4 +1,4 @@
-import { SettingsOverviewDto } from "./settings-overview.dto";
+import type { SettingsOverviewDto } from "./settings-overview.dto";
 
 export type SettingsOverviewSource = {
     summary_enabled: boolean;

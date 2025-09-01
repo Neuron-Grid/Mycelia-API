@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsArray, IsEnum, IsOptional } from "class-validator";
-import { TableType } from "../types/embedding-batch.types";
+import type { TableType } from "../types/embedding-batch.types";
 
 export class BatchUpdateRequestDto {
     @ApiProperty({

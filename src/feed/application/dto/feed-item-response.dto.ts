@@ -1,4 +1,4 @@
-import { Database } from "@/types/schema";
+import type { Database } from "@/types/schema";
 import { FeedItemEntity } from "../../domain/feed-item.entity";
 
 type FeedItemRow = Database["public"]["Tables"]["feed_items"]["Row"];

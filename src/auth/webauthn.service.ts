@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-import type { RedisService } from "@/shared/redis/redis.service";
-import type { AuthRepositoryPort } from "./domain/auth.repository";
+import { Inject, Injectable } from "@nestjs/common";
+import { AuthRepositoryPort } from "@/auth/domain/auth.repository";
+import { RedisService } from "@/shared/redis/redis.service";
 
 /**
  * WebAuthn(パスキー) MFA のドメインサービス
@@ -19,6 +19,7 @@ export class WebAuthnService {
     private static readonly CHALLENGE_TTL_SEC = 300;
 
     constructor(
+        @Inject(AuthRepositoryPort)
         private readonly authRepo: AuthRepositoryPort,
         private readonly redisService: RedisService,
     ) {}

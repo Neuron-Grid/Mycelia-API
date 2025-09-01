@@ -1,4 +1,4 @@
-import { BatchItem, TableType } from "../types/embedding-batch.types";
+import type { BatchItem, TableType } from "../types/embedding-batch.types";
 
 export interface IBatchDataService {
     getMissingEmbeddingsCount(
