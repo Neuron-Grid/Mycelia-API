@@ -262,6 +262,7 @@ export class TagController {
         name: "tagId",
         description: "ID of the tag to detach",
         type: Number,
+        required: true,
     })
     @ApiOkResponse({
         description: "Returns { message, data: null }",
@@ -285,7 +286,7 @@ export class TagController {
     async detachTagFromFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Query("tagId") tagId?: string,
+        @Query("tagId") tagId: string,
     ): Promise<SuccessResponse<null>> {
         if (!tagId) {
             throw new HttpException(
@@ -381,6 +382,7 @@ export class TagController {
         name: "tagId",
         description: "ID of the tag to detach",
         type: Number,
+        required: true,
     })
     @ApiOkResponse({
         description: "Returns { message, data: null }",
@@ -404,7 +406,7 @@ export class TagController {
     async detachTagFromSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Query("tagId") tagId?: string,
+        @Query("tagId") tagId: string,
     ): Promise<SuccessResponse<null>> {
         if (!tagId) {
             throw new HttpException(

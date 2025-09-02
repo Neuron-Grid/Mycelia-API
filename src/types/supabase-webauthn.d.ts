@@ -13,9 +13,6 @@
 import "@supabase/supabase-js";
 
 declare module "@supabase/supabase-js" {
-    // Fallback for SDK response type when not exported by the installed version
-    // The concrete shape is not relied upon in our code paths; we only need a nominal type.
-    interface AuthMFAEnrollResponse {}
     /* ------------------------------------------------------------------
      * Enroll
      * ------------------------------------------------------------------ */
@@ -44,16 +41,18 @@ declare module "@supabase/supabase-js" {
      * ------------------------------------------------------------------ */
     interface AuthMFAApi {
         /** Enroll (register) WebAuthn factor */
-        enroll(params: MFAEnrollWebAuthnParams): Promise<AuthMFAEnrollResponse>;
+        enroll(
+            params: MFAEnrollWebAuthnParams,
+        ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;
 
         /** Finish WebAuthn registration */
         verify(
             params: MFAVerifyWebAuthnAttestationParams,
-        ): Promise<AuthMFAEnrollResponse>;
+        ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;
 
         /** Verify a WebAuthn login assertion */
         verify(
             params: MFAVerifyWebAuthnAssertionParams,
-        ): Promise<AuthMFAEnrollResponse>;
+        ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;
     }
 }
