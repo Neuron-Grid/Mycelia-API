@@ -1,13 +1,17 @@
 // @file システムヘルスチェックAPIのコントローラ
+
+import { TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
-import { Controller, Get } from "@nestjs/common";
+import { Controller } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
 import { Job, Queue } from "bullmq";
+import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { RedisService } from "@/shared/redis/redis.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
+import type { HealthCheckResponseDto } from "./dto/health-check-response.dto";
 import { JobCountsDto } from "./dto/health-check-response.dto";
 
 // BullMQ の戻り値用
@@ -50,7 +54,7 @@ export class HealthController {
     // @example
     // await healthController.checkHealth()
     // @see HealthCheckResponseDto
-    @Get()
+    @TypedRoute.Get("")
     @ApiOkResponse({
         description: "Returns { message, data: HealthCheckResponseDto }",
         schema: {
@@ -61,7 +65,7 @@ export class HealthController {
             },
         },
     })
-    async checkHealth() {
+    async checkHealth(): Promise<SuccessResponse<HealthCheckResponseDto>> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();
         const queues = [

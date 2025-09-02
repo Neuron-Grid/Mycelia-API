@@ -1,42 +1,35 @@
+name: mycelia
+
 services:
-  # mycelia-api:
-  build:
-    context: ./
-    dockerfile: Containerfile
-    network: host
-  container_name: mycelia-api
-  restart: unless-stopped
-  ports:
-    - "3000:3000"
-  env_file: .env
-  volumes:
-    - ./container/mycelia-api:/data
-  depends_on:
-    - redis
+  mycelia-api:
+    build:
+      context: ./
+      dockerfile: Containerfile
+      network: host
+    container_name: mycelia-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - "./container/mycelia-api:/data"
+    depends_on:
+      redis:
+        condition: service_healthy
+        restart: true
 
   redis:
     image: docker.io/library/redis:latest
     restart: unless-stopped
     container_name: redis
-    platform: linux/x86_64
     ports:
       - "6379:6379"
     volumes:
-      - ./container/redis-data:/data
-
-  # nginx:
-  #   image: nginx:1.26-alpine
-  #   container_name: nginx
-  #   restart: unless-stopped
-  #   environment:
-  #     DOMAIN: ${DOMAIN:?err}
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   depends_on:
-  #     - mycelia-api
-  #     - redis
-  #   volumes:
-  #     - /etc/letsencrypt/live/${DOMAIN}/fullchain.pem:/etc/nginx/certs/fullchain.pem:ro
-  #     - /etc/letsencrypt/live/${DOMAIN}/privkey.pem:/etc/nginx/certs/privkey.pem:ro
-  #     - ./nginx/mycelia-api.conf.template:/etc/nginx/templates/mycelia-api.conf.template:ro
+      - "./container/redis-data:/data"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s

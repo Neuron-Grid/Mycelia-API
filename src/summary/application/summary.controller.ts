@@ -1,4 +1,5 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { TypedRoute } from "@nestia/core";
+import { Body, Controller, UseGuards } from "@nestjs/common";
 import {
     ApiBadRequestResponse,
     ApiBearerAuth,
@@ -22,7 +23,7 @@ import { CreateSummaryDto } from "@/summary/dto/create-summary.dto";
 export class SummaryController {
     constructor(private readonly summaryService: SummaryService) {}
 
-    @Post()
+    @TypedRoute.Post()
     @ApiOperation({ summary: "Create a new summary" })
     @ApiCreatedResponse({
         description: "Returns { message, data: { summary, id? } }",

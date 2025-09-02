@@ -1,14 +1,11 @@
+import { TypedRoute } from "@nestia/core";
 import {
     Body,
     Controller,
-    Delete,
-    Get,
     HttpException,
     HttpStatus,
     Param,
     ParseIntPipe,
-    Patch,
-    Post,
     Query,
     UseGuards,
 } from "@nestjs/common";
@@ -76,7 +73,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get()
+    @TypedRoute.Get()
     async getAllTags(
         @UserId() userId: string,
     ): Promise<SuccessResponse<TagDto[]>> {
@@ -103,7 +100,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post()
+    @TypedRoute.Post()
     async createTag(
         @UserId() userId: string,
         @Body() dto: CreateTagDto,
@@ -142,7 +139,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Patch(":tagId")
+    @TypedRoute.Patch(":tagId")
     async updateTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
@@ -177,11 +174,11 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Delete(":tagId")
+    @TypedRoute.Delete(":tagId")
     async deleteTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         await this.tagService.deleteTagForUser(userId, tagId);
         return buildResponse("Tag deleted", null);
     }
@@ -203,7 +200,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get("feed-items/:feedItemId")
+    @TypedRoute.Get("feed-items/:feedItemId")
     async getFeedItemTags(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
@@ -238,13 +235,13 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post("feed-items/:feedItemId")
+    @TypedRoute.Post("feed-items/:feedItemId")
     @ApiBody({ type: AttachTagDto })
     async attachTagToFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
         @Body() body: AttachTagDto,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!body.tagId) {
             throw new HttpException(
                 "tagId is required",
@@ -284,12 +281,12 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Delete("feed-items/:feedItemId")
+    @TypedRoute.Delete("feed-items/:feedItemId")
     async detachTagFromFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
         @Query("tagId") tagId?: string,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!tagId) {
             throw new HttpException(
                 "tagId is required as query",
@@ -322,7 +319,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get("subscriptions/:subscriptionId")
+    @TypedRoute.Get("subscriptions/:subscriptionId")
     async getSubscriptionTags(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
@@ -357,13 +354,13 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post("subscriptions/:subscriptionId")
+    @TypedRoute.Post("subscriptions/:subscriptionId")
     @ApiBody({ type: AttachTagDto })
     async attachTagToSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
         @Body() body: AttachTagDto,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!body.tagId) {
             throw new HttpException(
                 "tagId is required",
@@ -403,12 +400,12 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Delete("subscriptions/:subscriptionId")
+    @TypedRoute.Delete("subscriptions/:subscriptionId")
     async detachTagFromSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
         @Query("tagId") tagId?: string,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!tagId) {
             throw new HttpException(
                 "tagId is required as query",
@@ -447,7 +444,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post("hierarchical")
+    @TypedRoute.Post("hierarchical")
     async createHierarchicalTag(
         @UserId() userId: string,
         @Body() dto: CreateHierarchicalTagDto,
@@ -480,7 +477,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get("hierarchy")
+    @TypedRoute.Get("hierarchy")
     async getTagHierarchy(
         @UserId() userId: string,
     ): Promise<SuccessResponse<TagHierarchyDto[]>> {
@@ -512,7 +509,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get(":tagId/subtree")
+    @TypedRoute.Get(":tagId/subtree")
     async getTagSubtree(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
@@ -550,7 +547,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get(":tagId/path")
+    @TypedRoute.Get(":tagId/path")
     async getTagPath(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
@@ -592,7 +589,7 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Patch(":tagId/move")
+    @TypedRoute.Patch(":tagId/move")
     async moveTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
@@ -631,13 +628,13 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get(":tagId/feed-items")
+    @TypedRoute.Get(":tagId/feed-items")
     async getFeedItemsByTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
-        @Query("includeChildren") includeChildren?: string,
+        @Query("includeChildren") includeChildren?: boolean,
     ): Promise<SuccessResponse<FeedItemDto[]>> {
-        const includeChildrenBool = includeChildren === "true";
+        const includeChildrenBool = includeChildren === true;
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
             userId,
             tagId,
@@ -680,17 +677,17 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Get(":tagId/subscriptions")
+    @TypedRoute.Get(":tagId/subscriptions")
     async getSubscriptionsByTag(
         @UserId() userId: string,
         @Param("tagId", ParseIntPipe) tagId: number,
-        @Query("includeChildren") includeChildren?: string,
+        @Query("includeChildren") includeChildren?: boolean,
     ): Promise<
         SuccessResponse<
             import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
         >
     > {
-        const includeChildrenBool = includeChildren === "true";
+        const includeChildrenBool = includeChildren === true;
         const subscriptions =
             await this.hierarchicalTagService.getSubscriptionsByTag(
                 userId,
@@ -727,13 +724,13 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post("feed-items/:feedItemId/bulk")
+    @TypedRoute.Post("feed-items/:feedItemId/bulk")
     @ApiBody({ type: BulkTagDto })
     async tagFeedItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
         @Body() body: BulkTagDto,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(
                 "tagIds array is required",
@@ -768,13 +765,13 @@ export class TagController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    @Post("subscriptions/:subscriptionId/bulk")
+    @TypedRoute.Post("subscriptions/:subscriptionId/bulk")
     @ApiBody({ type: BulkTagDto })
     async tagSubscription(
         @UserId() userId: string,
         @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
         @Body() body: BulkTagDto,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(
                 "tagIds array is required",

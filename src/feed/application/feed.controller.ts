@@ -1,16 +1,14 @@
 // @file フィード購読・フィードアイテム管理のREST APIコントローラ
+
+import { TypedRoute } from "@nestia/core";
 import {
     Body,
     Controller,
-    Delete,
-    Get,
     HttpCode,
     HttpException,
     HttpStatus,
     Param,
     ParseIntPipe,
-    Patch,
-    Post,
     Query,
     UseGuards,
 } from "@nestjs/common";
@@ -26,7 +24,6 @@ import {
     ApiOkResponse,
     ApiOperation,
     ApiParam,
-    ApiQuery,
     ApiTags,
     ApiUnauthorizedResponse,
     getSchemaPath,
@@ -35,7 +32,6 @@ import {
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
 import { ErrorResponseDto } from "@/common/dto/error-response.dto";
-import type { PaginationQueryDto } from "@/common/dto/pagination-query.dto";
 import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import {
     buildResponse,
@@ -80,13 +76,14 @@ export class FeedController {
     // @public
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
-    // @param {PaginationQueryDto} query - ページネーション用クエリ
+    // @param {number} page - ページ番号
+    // @param {number} limit - 件数上限
     // @returns {Promise<PaginatedResult<SubscriptionRow>>} - 購読一覧（ページネーション対応）
     // @throws {HttpException} - 認証エラーや取得失敗時
     // @example
     // const result = await feedController.getSubscriptions(user, { page: 1, limit: 10 })
     // @see SubscriptionService.getSubscriptionsPaginated
-    @Get()
+    @TypedRoute.Get()
     @ApiOperation({
         summary: "List subscriptions (paginated)",
         description:
@@ -112,18 +109,7 @@ export class FeedController {
             },
         },
     })
-    @ApiQuery({
-        name: "page",
-        required: false,
-        type: Number,
-        description: "Page number (1-based)",
-    })
-    @ApiQuery({
-        name: "limit",
-        required: false,
-        type: Number,
-        description: "Items per page (max 100)",
-    })
+    // QueryはDTOとして受け取り、nestiaで型から自動展開
     @ApiUnauthorizedResponse({
         description: "Unauthorized",
         type: ErrorResponseDto,
@@ -134,12 +120,13 @@ export class FeedController {
     })
     async getSubscriptions(
         @UserId() userId: string,
-        @Query() query: PaginationQueryDto,
+        @Query("page") page?: number,
+        @Query("limit") limit?: number,
     ): Promise<SuccessResponse<PaginatedResult<SubscriptionDto>>> {
         const result = await this.subscriptionService.getSubscriptionsPaginated(
             userId,
-            query.page,
-            query.limit,
+            page ?? 1,
+            limit ?? 100,
         );
         return buildResponse("Subscriptions fetched", {
             ...result,
@@ -157,7 +144,7 @@ export class FeedController {
     // @example
     // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
     // @see SubscriptionService.addSubscription
-    @Post()
+    @TypedRoute.Post()
     @ApiOperation({
         summary: "Subscribe to a new RSS feed",
         description:
@@ -225,7 +212,7 @@ export class FeedController {
     // @example
     // await feedController.fetchSubscription(user, 123)
     // @see FeedUseCaseService.fetchFeedItems
-    @Post(":id/fetch")
+    @TypedRoute.Post(":id/fetch")
     @ApiOperation({
         summary: "Fetch subscription now",
         description:
@@ -258,7 +245,7 @@ export class FeedController {
     async fetchSubscription(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
-    ) {
+    ): Promise<SuccessResponse<Record<string, unknown>>> {
         const result = await this.feedUseCase.fetchFeedItems(
             subscriptionId,
             userId,
@@ -271,13 +258,14 @@ export class FeedController {
     // @since 1.0.0
     // @param {User} user - Supabase認証ユーザー
     // @param {number} subscriptionId - 購読ID
-    // @param {PaginationQueryDto} query - ページネーション用クエリ
+    // @param {number} page - ページ番号
+    // @param {number} limit - 件数上限
     // @returns {Promise<PaginatedResult<FeedItemRow>>} - フィードアイテム一覧（ページネーション対応）
     // @throws {HttpException} - 認証エラーや取得失敗時
     // @example
     // const items = await feedController.getSubscriptionItems(user, 123, { page: 1, limit: 10 })
     // @see FeedItemService.getFeedItemsPaginated
-    @Get(":id/items")
+    @TypedRoute.Get(":id/items")
     @ApiOperation({
         summary: "List feed items for a subscription (paginated)",
         description:
@@ -306,18 +294,7 @@ export class FeedController {
         },
     })
     @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiQuery({
-        name: "page",
-        required: false,
-        type: Number,
-        description: "Page number (1-based)",
-    })
-    @ApiQuery({
-        name: "limit",
-        required: false,
-        type: Number,
-        description: "Items per page (max 100)",
-    })
+    // QueryはDTOとして受け取り、nestiaで型から自動展開
     @ApiUnauthorizedResponse({
         description: "Unauthorized",
         type: ErrorResponseDto,
@@ -333,13 +310,14 @@ export class FeedController {
     async getSubscriptionItems(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
-        @Query() query: PaginationQueryDto,
+        @Query("page") page?: number,
+        @Query("limit") limit?: number,
     ): Promise<SuccessResponse<PaginatedResult<FeedItemDto>>> {
         const result = await this.feedItemService.getFeedItemsPaginated(
             userId,
             subscriptionId,
-            query.page,
-            query.limit,
+            page ?? 1,
+            limit ?? 100,
         );
         return buildResponse("Feed items fetched", {
             ...result,
@@ -363,7 +341,7 @@ export class FeedController {
     // @example
     // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
     // @see SubscriptionService.updateSubscription
-    @Patch(":id")
+    @TypedRoute.Patch(":id")
     @ApiOperation({
         summary: "Update subscription",
         description: "Partially update fields such as feed_title.",
@@ -418,7 +396,7 @@ export class FeedController {
     // @example
     // await feedController.deleteSubscription(user, 123)
     // @see SubscriptionService.deleteSubscription
-    @Delete(":id")
+    @TypedRoute.Delete(":id")
     @ApiOperation({
         summary: "Delete subscription",
         description:
@@ -450,7 +428,7 @@ export class FeedController {
     async deleteSubscription(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) subscriptionId: number,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         await this.subscriptionService.deleteSubscription(
             userId,
             subscriptionId,

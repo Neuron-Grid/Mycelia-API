@@ -106,21 +106,26 @@ export class EmbeddingQueueService {
 
             return jobs
                 .filter((job) => job.data.userId === userId)
-                .map((job) => ({
-                    userId: job.data.userId,
-                    tableType: job.data.tableType,
-                    status: job.finishedOn
-                        ? "completed"
-                        : job.processedOn
-                          ? "running"
-                          : "waiting",
-                    progress: job.progress || 0,
-                    totalRecords: job.data.totalEstimate,
-                    processedRecords: Math.floor(
-                        ((job.progress || 0) / 100) *
-                            (job.data.totalEstimate || 0),
-                    ),
-                }));
+                .map((job) => {
+                    const progress =
+                        typeof job.progress === "number" ? job.progress : 0;
+                    const total =
+                        typeof job.data.totalEstimate === "number"
+                            ? job.data.totalEstimate
+                            : 0;
+                    return {
+                        userId: job.data.userId,
+                        tableType: job.data.tableType,
+                        status: job.finishedOn
+                            ? "completed"
+                            : job.processedOn
+                              ? "running"
+                              : "waiting",
+                        progress,
+                        totalRecords: total,
+                        processedRecords: Math.floor((progress / 100) * total),
+                    } as BatchProgress;
+                });
         } catch (error) {
             this.logger.error(`Failed to get batch progress: ${error.message}`);
             throw error;

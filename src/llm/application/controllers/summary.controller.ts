@@ -1,3 +1,4 @@
+import { TypedRoute } from "@nestia/core";
 import {
     Body,
     Controller,
@@ -5,7 +6,6 @@ import {
     HttpStatus,
     Logger,
     Param,
-    Post,
     UseGuards,
 } from "@nestjs/common";
 import {
@@ -23,6 +23,7 @@ import {
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { RegenerateScriptDto } from "@/llm/application/dto/regenerate-script.dto";
 import { RegenerateSummaryDto } from "@/llm/application/dto/regenerate-summary.dto";
@@ -40,7 +41,7 @@ export class SummaryController {
         private readonly dailySummaryRepository: DailySummaryRepository,
     ) {}
 
-    @Post("summaries/users/:userId/regenerate") // パスをよりRESTfulに、summaryを複数形に
+    @TypedRoute.Post("summaries/users/:userId/regenerate") // パスをよりRESTfulに、summaryを複数形に
     @ApiOperation({
         summary:
             "Regenerate summary for a user (typically for today or a specific date)",
@@ -83,7 +84,7 @@ export class SummaryController {
         @Param("userId") targetUserId: string,
         @SupabaseUser() requestingUser: SupabaseUserType,
         @Body() body?: RegenerateSummaryDto,
-    ) {
+    ): Promise<SuccessResponse<{ jobId?: string }>> {
         // 戻り値の型を明確化
         this.logger.log(
             `User ${requestingUser.id} requesting summary regeneration for user ${targetUserId}`,
@@ -129,7 +130,7 @@ export class SummaryController {
         }
     }
 
-    @Post("scripts/summaries/:summaryId/regenerate") // パスをよりRESTfulに、scriptを複数形、summaryを複数形に
+    @TypedRoute.Post("scripts/summaries/:summaryId/regenerate") // パスをよりRESTfulに、scriptを複数形、summaryを複数形に
     @ApiOperation({ summary: "Regenerate script_text for a specific summary" })
     @ApiParam({
         name: "summaryId",
@@ -169,7 +170,7 @@ export class SummaryController {
         @Param("summaryId") summaryIdParam: string, // パラメータは文字列で来るので変換が必要
         @SupabaseUser() user: SupabaseUserType, // requestingUser の方が意図が明確かも
         @Body() body?: RegenerateScriptDto,
-    ) {
+    ): Promise<SuccessResponse<{ jobId?: string }>> {
         // 戻り値の型を明確化
         const summaryId = Number.parseInt(summaryIdParam, 10);
         if (Number.isNaN(summaryId)) {

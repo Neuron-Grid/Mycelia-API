@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { TypedRoute } from "@nestia/core";
+import { Controller, Query, UseGuards } from "@nestjs/common";
 import {
     ApiBearerAuth,
     ApiExtraModels,
@@ -24,7 +25,7 @@ import { SearchService } from "../services/search.service";
 export class SearchController {
     constructor(private readonly searchService: SearchService) {}
 
-    @Get("all")
+    @TypedRoute.Get("all")
     @ApiOperation({
         summary: "Search across all content types",
         description:
@@ -104,7 +105,7 @@ export class SearchController {
         );
     }
 
-    @Get("feed-items")
+    @TypedRoute.Get("feed-items")
     @ApiOperation({
         summary: "Search feed items",
         description: "Search only feed items using vector similarity",
@@ -171,7 +172,7 @@ export class SearchController {
         );
     }
 
-    @Get("summaries")
+    @TypedRoute.Get("summaries")
     @ApiOperation({
         summary: "Search summaries",
         description: "Search only daily summaries using vector similarity",
@@ -238,7 +239,7 @@ export class SearchController {
         );
     }
 
-    @Get("podcasts")
+    @TypedRoute.Get("podcasts")
     @ApiOperation({
         summary: "Search podcast episodes",
         description: "Search only podcast episodes using vector similarity",

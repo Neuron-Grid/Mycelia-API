@@ -1,11 +1,9 @@
+import { TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
 import {
     BadRequestException,
     Body,
     Controller,
-    Get,
-    Post,
-    Put,
     UseGuards,
 } from "@nestjs/common";
 import {
@@ -53,7 +51,7 @@ export class SettingsController {
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
     ) {}
 
-    @Get("settings")
+    @TypedRoute.Get("settings")
     @ApiOperation({ summary: "User settings and schedule overview" })
     @ApiBearerAuth()
     @ApiOkResponse({
@@ -114,7 +112,7 @@ export class SettingsController {
         );
     }
 
-    @Post("schedule/reload")
+    @TypedRoute.Post("schedule/reload")
     @ApiOperation({
         summary:
             "Reload schedule (central scheduler; changes take effect immediately)",
@@ -122,13 +120,15 @@ export class SettingsController {
             "中央スケジューラ方式のため、設定変更は即時反映されます。個別ユーザーのrepeatable再登録は不要です。",
     })
     @ApiBearerAuth()
-    async reloadMySchedule(@SupabaseUser() user: User) {
+    async reloadMySchedule(
+        @SupabaseUser() user: User,
+    ): Promise<SuccessResponse<Record<string, unknown>>> {
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
         const next = await this.jobsService.getUserScheduleInfo(user.id);
         return buildResponse("Schedule reloaded", next);
     }
 
-    @Post("schedule/preview")
+    @TypedRoute.Post("schedule/preview")
     @ApiOperation({
         summary:
             "Preview next run times at a given JST time (with jitter and fixed offset)",
@@ -138,7 +138,7 @@ export class SettingsController {
     previewSchedule(
         @SupabaseUser() user: User,
         @Body() body: PreviewScheduleDto,
-    ) {
+    ): SuccessResponse<{ nextRunAtSummary: string; nextRunAtPodcast: string }> {
         const { timeJst } = body || ({} as PreviewScheduleDto);
         if (!/^([0-1]?\d|2[0-3]):[0-5]\d$/.test(String(timeJst))) {
             throw new BadRequestException("timeJst must be HH:mm (JST)");
@@ -161,10 +161,17 @@ export class SettingsController {
         });
     }
 
-    @Get("jobs/status")
+    @TypedRoute.Get("jobs/status")
     @ApiOperation({ summary: "Today's summary → script → podcast progress" })
     @ApiBearerAuth()
-    async jobsStatus(@SupabaseUser() user: User) {
+    async jobsStatus(@SupabaseUser() user: User): Promise<
+        SuccessResponse<{
+            date: string;
+            summary: { state: string; jobId: string | null };
+            script: { state: string; jobId: string | null };
+            podcast: { state: string; jobId: string | null };
+        }>
+    > {
         const userId = user.id;
         const today = this.formatDateJst(new Date());
         const summaryJobId = `summary:${userId}:${today}`;
@@ -259,7 +266,7 @@ export class SettingsController {
         });
     }
 
-    @Put("settings/summary")
+    @TypedRoute.Put("settings/summary")
     @ApiOperation({
         summary: "Update summary feature enabled/disabled",
         description:
@@ -287,7 +294,7 @@ export class SettingsController {
         );
     }
 
-    @Put("settings/podcast")
+    @TypedRoute.Put("settings/podcast")
     @ApiOperation({
         summary: "Update podcast settings (enabled/time/language)",
         description:
@@ -321,7 +328,7 @@ export class SettingsController {
         );
     }
 
-    @Post("summaries/run-now")
+    @TypedRoute.Post("summaries/run-now")
     @ApiOperation({
         summary:
             "Enqueue today's summary → script → podcast flow immediately (idempotent)",
@@ -331,7 +338,9 @@ export class SettingsController {
     async runSummaryNow(
         @SupabaseUser() user: User,
         @Body() body?: RunSummaryNowDto,
-    ) {
+    ): Promise<
+        SuccessResponse<{ enqueued: boolean; flowId: string; date: string }>
+    > {
         const dateJst = body?.date ?? this.formatDateJst(new Date());
         const flow = await this.flowOrchestrator.createDailyFlow(
             user.id,
@@ -344,13 +353,15 @@ export class SettingsController {
         });
     }
 
-    @Post("podcasts/run-now")
+    @TypedRoute.Post("podcasts/run-now")
     @ApiOperation({
         summary:
             "Enqueue podcast generation for today if a summary exists (idempotent)",
     })
     @ApiBearerAuth()
-    async runPodcastNow(@SupabaseUser() user: User) {
+    async runPodcastNow(
+        @SupabaseUser() user: User,
+    ): Promise<SuccessResponse<{ jobId: string | number | null }>> {
         const today = this.formatDateJst(new Date());
         const job = await this.podcastQueue.add(
             "generatePodcastForToday",

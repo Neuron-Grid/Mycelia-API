@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Put, UseGuards } from "@nestjs/common";
+import { TypedRoute } from "@nestia/core";
+import { Body, Controller, UseGuards } from "@nestjs/common";
 import {
     ApiBearerAuth,
     ApiOperation,
@@ -20,7 +21,7 @@ import { PodcastConfigService } from "./podcast-config.service";
 export class PodcastConfigController {
     constructor(private readonly podcastConfigService: PodcastConfigService) {}
 
-    @Get()
+    @TypedRoute.Get()
     @ApiOperation({ summary: "Get podcast settings" })
     @ApiResponse({
         status: 200,
@@ -38,14 +39,20 @@ export class PodcastConfigController {
         description: "Unauthorized",
         type: ErrorResponseDto,
     })
-    async getPodcastConfig(@SupabaseUser() user: User) {
+    async getPodcastConfig(
+        @SupabaseUser() user: User,
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-config.dto").PodcastConfigResponseDto
+        >
+    > {
         const dto = await this.podcastConfigService.getUserPodcastConfig(
             user.id,
         );
         return buildResponse("Podcast settings fetched", dto);
     }
 
-    @Put()
+    @TypedRoute.Put()
     @ApiOperation({ summary: "Update podcast settings" })
     @ApiResponse({
         status: 200,
@@ -71,7 +78,11 @@ export class PodcastConfigController {
     async updatePodcastConfig(
         @SupabaseUser() user: User,
         @Body() updateDto: UpdatePodcastConfigDto,
-    ) {
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-config.dto").PodcastConfigResponseDto
+        >
+    > {
         const dto = await this.podcastConfigService.updatePodcastConfig(
             user.id,
             updateDto,

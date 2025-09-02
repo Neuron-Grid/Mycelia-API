@@ -6,7 +6,13 @@
     "removeComments": true,
     "module": "CommonJS",
     "moduleResolution": "node",
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "incremental": false,
+    "plugins": [
+      {
+        "transform": "typia/lib/transform"
+      }
+    ]
   },
   "exclude": [
     "node_modules",

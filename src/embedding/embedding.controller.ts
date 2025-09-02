@@ -1,10 +1,9 @@
+import { TypedRoute } from "@nestia/core";
 import {
     Body,
     Controller,
-    Get,
     HttpCode,
     HttpStatus,
-    Post,
     UseGuards,
 } from "@nestjs/common";
 import {
@@ -18,8 +17,10 @@ import {
 import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { ErrorResponseDto } from "@/common/dto/error-response.dto";
+import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { SupabaseUser } from "../auth/supabase-user.decorator";
+import type { BatchProgressItemDto } from "./dto/batch-progress-response.dto";
 import { BatchUpdateRequestDto } from "./dto/batch-update-request.dto";
 import { EmbeddingQueueService } from "./queue/embedding-queue.service";
 
@@ -32,7 +33,7 @@ export class EmbeddingController {
         private readonly embeddingQueueService: EmbeddingQueueService,
     ) {}
 
-    @Post("batch-update")
+    @TypedRoute.Post("batch-update")
     @HttpCode(HttpStatus.ACCEPTED)
     @ApiOperation({
         summary: "Trigger batch embedding update",
@@ -59,7 +60,7 @@ export class EmbeddingController {
     async triggerBatchUpdate(
         @SupabaseUser() user: User,
         @Body() request: BatchUpdateRequestDto,
-    ) {
+    ): Promise<SuccessResponse<{ userId: string }>> {
         await this.embeddingQueueService.addUserEmbeddingBatchJob(
             user.id,
             request.tableTypes,
@@ -67,7 +68,7 @@ export class EmbeddingController {
         return buildResponse("Batch update initiated", { userId: user.id });
     }
 
-    @Get("progress")
+    @TypedRoute.Get("progress")
     @ApiOperation({
         summary: "Get batch progress",
         description: "Get current progress of batch embedding updates",
@@ -87,10 +88,21 @@ export class EmbeddingController {
             },
         },
     })
-    async getBatchProgress(@SupabaseUser() user: User) {
+    async getBatchProgress(
+        @SupabaseUser() user: User,
+    ): Promise<SuccessResponse<BatchProgressItemDto[]>> {
         const progress = await this.embeddingQueueService.getBatchProgress(
             user.id,
         );
-        return buildResponse("Progress retrieved successfully", progress);
+        // ここではBatchProgress（サービスの戻り値）を外向けDTOに合わせる
+        const mapped = progress.map((p) => ({
+            userId: p.userId,
+            tableType: p.tableType,
+            status: p.status,
+            progress: p.progress,
+            totalRecords: p.totalRecords ?? 0,
+            processedRecords: p.processedRecords,
+        }));
+        return buildResponse("Progress retrieved successfully", mapped);
     }
 }

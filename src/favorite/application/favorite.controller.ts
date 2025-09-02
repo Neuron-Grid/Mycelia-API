@@ -1,13 +1,7 @@
 // @file お気に入り機能のAPIコントローラ
-import {
-    Controller,
-    Delete,
-    Get,
-    Param,
-    ParseIntPipe,
-    Post,
-    UseGuards,
-} from "@nestjs/common";
+
+import { TypedRoute } from "@nestia/core";
+import { Controller, Param, ParseIntPipe, UseGuards } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
 import {
     ApiBearerAuth,
@@ -51,7 +45,7 @@ export class FavoriteController {
     // @example
     // await favoriteController.getUserFavorites(user)
     // @see FavoriteService.getUserFavorites
-    @Get()
+    @TypedRoute.Get()
     @ApiOkResponse({
         description: "Favorites list",
         schema: {
@@ -85,7 +79,7 @@ export class FavoriteController {
     // @example
     // await favoriteController.checkFavorite(user, 1)
     // @see FavoriteService.isFavorited
-    @Get(":feedItemId/is-favorited")
+    @TypedRoute.Get(":feedItemId/is-favorited")
     @ApiOkResponse({
         description: "Favorite check",
         schema: {
@@ -99,7 +93,7 @@ export class FavoriteController {
     async checkFavorite(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-    ) {
+    ): Promise<SuccessResponse<CheckFavoriteResponseDto>> {
         const isFav = await this.favoriteService.isFavorited(
             userId,
             feedItemId,
@@ -117,7 +111,7 @@ export class FavoriteController {
     // @example
     // await favoriteController.favoriteItem(user, 1)
     // @see FavoriteService.favoriteFeedItem
-    @Post(":feedItemId")
+    @TypedRoute.Post(":feedItemId")
     @ApiResponse({
         status: 201,
         description: "Favorited successfully",
@@ -153,7 +147,7 @@ export class FavoriteController {
     // @example
     // await favoriteController.unfavoriteItem(user, 1)
     // @see FavoriteService.unfavoriteFeedItem
-    @Delete(":feedItemId")
+    @TypedRoute.Delete(":feedItemId")
     @ApiOkResponse({
         description: "Unfavorited successfully",
         schema: {
@@ -167,7 +161,7 @@ export class FavoriteController {
     async unfavoriteItem(
         @UserId() userId: string,
         @Param("feedItemId", ParseIntPipe) feedItemId: number,
-    ) {
+    ): Promise<SuccessResponse<null>> {
         await this.favoriteService.unfavoriteFeedItem(userId, feedItemId);
         return buildResponse("Feed item unfavorited", null);
     }

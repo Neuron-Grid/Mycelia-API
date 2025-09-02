@@ -1,12 +1,11 @@
+import { TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
 import {
     Body,
     Controller,
-    Get,
     HttpException,
     HttpStatus,
     Param,
-    Post,
     Query,
     UseGuards,
 } from "@nestjs/common";
@@ -69,7 +68,7 @@ export class JobsAdminController {
         }
     }
 
-    @Get("failed")
+    @TypedRoute.Get("failed")
     @ApiOperation({ summary: "List failed jobs for current user in a queue" })
     @ApiQuery({ name: "queue", required: true })
     @ApiOkResponse({
@@ -124,7 +123,7 @@ export class JobsAdminController {
         });
     }
 
-    @Post(":jobId/retry")
+    @TypedRoute.Post(":jobId/retry")
     @ApiOperation({
         summary: "Retry a specific failed job if it belongs to the user",
     })
@@ -168,7 +167,7 @@ export class JobsAdminController {
         return buildResponse("Job retried", { retried: true, jobId });
     }
 
-    @Post("failed/retry")
+    @TypedRoute.Post("failed/retry")
     @ApiOperation({
         summary: "Retry all failed jobs for current user in the queue",
     })

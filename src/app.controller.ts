@@ -1,5 +1,7 @@
 // @file アプリケーションのルートコントローラ
-import { Controller, Get } from "@nestjs/common";
+
+import { TypedRoute } from "@nestia/core";
+import { Controller } from "@nestjs/common";
 import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see ./app.service
 import { AppService } from "@/app.service";
@@ -20,7 +22,7 @@ export class AppController {
     // @example
     // const msg = appController.getHello()
     // @see AppService.getHello
-    @Get()
+    @TypedRoute.Get()
     @ApiTags("Root")
     @ApiOkResponse({
         description: "Returns { message, data: string }",

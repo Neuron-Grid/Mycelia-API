@@ -1,17 +1,14 @@
+import { TypedRoute } from "@nestia/core";
 import {
     BadRequestException,
     Body,
     Controller,
-    Delete,
-    Get,
     HttpCode,
     HttpException,
     HttpStatus,
     Logger,
     Param,
     ParseIntPipe,
-    Post,
-    Put,
     Query,
     UseGuards,
 } from "@nestjs/common";
@@ -59,7 +56,7 @@ export class PodcastEpisodeController {
         private readonly podcastEpisodeMapper: PodcastEpisodeMapper,
     ) {}
 
-    @Get()
+    @TypedRoute.Get()
     @ApiOperation({ summary: "Get user podcast episodes with pagination" })
     @ApiQuery({
         name: "page",
@@ -91,9 +88,13 @@ export class PodcastEpisodeController {
     })
     async getEpisodes(
         @UserId() userId: string,
-        @Query("page") page = 1,
-        @Query("limit") limit = 20,
-    ) {
+        @Query("page") page?: number,
+        @Query("limit") limit?: number,
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-episode.dto").PodcastEpisodeListResponseDto
+        >
+    > {
         // パラメータの検証
         const validPage = Math.max(1, Number(page));
         const validLimit = Math.min(Math.max(1, Number(limit)), 100); // 最大100件
@@ -123,7 +124,7 @@ export class PodcastEpisodeController {
         });
     }
 
-    @Get(":id")
+    @TypedRoute.Get(":id")
     @ApiOperation({ summary: "Get a specific podcast episode by ID" })
     @ApiParam({
         name: "id",
@@ -151,7 +152,11 @@ export class PodcastEpisodeController {
     async getEpisodeById(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
-    ) {
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
+        >
+    > {
         this.logger.log(`User ${userId} requesting episode ${episodeId}`);
 
         const episode = await this.podcastEpisodeRepository.findById(
@@ -172,7 +177,7 @@ export class PodcastEpisodeController {
         );
     }
 
-    @Post()
+    @TypedRoute.Post()
     @ApiOperation({ summary: "Create a new podcast episode" })
     @ApiCreatedResponse({
         description: "Returns { message, data: PodcastEpisodeResponseDto }",
@@ -199,7 +204,11 @@ export class PodcastEpisodeController {
     async createEpisode(
         @UserId() userId: string,
         @Body() createDto: CreatePodcastEpisodeDto,
-    ) {
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
+        >
+    > {
         this.logger.log(
             `User ${userId} creating episode for summary ${createDto.summaryId}`,
         );
@@ -244,7 +253,7 @@ export class PodcastEpisodeController {
         );
     }
 
-    @Put(":id")
+    @TypedRoute.Put(":id")
     @ApiOperation({ summary: "Update a podcast episode" })
     @ApiParam({
         name: "id",
@@ -273,7 +282,11 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
         @Body() updateDto: UpdatePodcastEpisodeDto,
-    ) {
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<
+            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
+        >
+    > {
         this.logger.log(`User ${userId} updating episode ${episodeId}`);
 
         // 所有者チェック
@@ -301,7 +314,7 @@ export class PodcastEpisodeController {
         );
     }
 
-    @Delete(":id")
+    @TypedRoute.Delete(":id")
     @ApiOperation({ summary: "Soft delete a podcast episode" })
     @ApiParam({
         name: "id",
@@ -329,7 +342,7 @@ export class PodcastEpisodeController {
     async deleteEpisode(
         @UserId() userId: string,
         @Param("id", ParseIntPipe) episodeId: number,
-    ) {
+    ): Promise<import("@/common/utils/response.util").SuccessResponse<null>> {
         this.logger.log(`User ${userId} deleting episode ${episodeId}`);
 
         // 所有者チェック
@@ -349,7 +362,7 @@ export class PodcastEpisodeController {
         return buildResponse("Episode deleted", null);
     }
 
-    @Post("generate")
+    @TypedRoute.Post("generate")
     @ApiOperation({ summary: "Generate a new podcast episode from a summary" })
     @ApiAcceptedResponse({
         description: "Returns { message, data: { jobId, episodeId } }",
@@ -383,7 +396,12 @@ export class PodcastEpisodeController {
     async generateEpisode(
         @UserId() userId: string,
         @Body() generateDto: GeneratePodcastEpisodeDto,
-    ) {
+    ): Promise<
+        import("@/common/utils/response.util").SuccessResponse<{
+            jobId?: string;
+            episodeId?: number;
+        }>
+    > {
         this.logger.log(
             `User ${userId} requesting podcast generation for summary ${generateDto.summaryId}`,
         );

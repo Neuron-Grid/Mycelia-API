@@ -7,6 +7,7 @@
       "ES2023"
     ],
     "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "exactOptionalPropertyTypes": false,
     "noUncheckedIndexedAccess": false,
     "noPropertyAccessFromIndexSignature": false,
@@ -25,6 +26,11 @@
     "incremental": true,
     "noEmitOnError": true,
     "skipLibCheck": true,
+    "plugins": [
+      {
+        "transform": "typia/lib/transform"
+      }
+    ],
     "rootDir": "src",
     "outDir": "./dist",
     "baseUrl": ".",
@@ -37,8 +43,7 @@
       "node"
     ],
     "sourceMap": false,
-    "declaration": false,
-    "noEmit": true
+    "declaration": false
   },
   "include": [
     "src/**/*.ts",
