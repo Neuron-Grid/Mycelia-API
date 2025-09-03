@@ -15,7 +15,6 @@ import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episo
 import { PreviewScheduleDto } from "@/settings/dto/preview-schedule.dto";
 import { RunSummaryNowDto } from "@/settings/dto/run-summary-now.dto";
 import { SettingsMapper } from "@/settings/dto/settings.mapper";
-import { SettingsOverviewDto } from "@/settings/dto/settings-overview.dto";
 import { UpdatePodcastSettingDto } from "@/settings/dto/update-podcast-setting.dto";
 import { UpdateSummarySettingDto } from "@/settings/dto/update-summary-setting.dto";
 import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
