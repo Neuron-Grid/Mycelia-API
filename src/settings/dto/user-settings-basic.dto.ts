@@ -1,21 +1,17 @@
-import { ApiProperty } from "@nestjs/swagger";
+/**
+ * ユーザー設定（基本） DTO
+ */
 
 export class UserSettingsBasicDto {
-    @ApiProperty({ description: "要約機能の有効/無効" })
+    /** 要約機能の有効/無効 */
     summaryEnabled!: boolean;
 
-    @ApiProperty({ description: "ポッドキャスト機能の有効/無効" })
+    /** ポッドキャスト機能の有効/無効 */
     podcastEnabled!: boolean;
 
-    @ApiProperty({
-        description: "ポッドキャスト実行時刻 (JST, HH:mm)",
-        nullable: true,
-    })
+    /** ポッドキャスト実行時刻 (JST, HH:mm) */
     podcastScheduleTime!: string | null;
 
-    @ApiProperty({
-        description: "ポッドキャスト言語",
-        enum: ["ja-JP", "en-US"],
-    })
+    /** ポッドキャスト言語 */
     podcastLanguage!: "ja-JP" | "en-US";
 }

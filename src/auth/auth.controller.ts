@@ -1,8 +1,7 @@
 // @file 認証・ユーザー管理APIのコントローラ
 
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedRoute } from "@nestia/core";
 import {
-    Body,
     Controller,
     HttpCode,
     HttpStatus,
@@ -10,8 +9,6 @@ import {
     Res,
     UseGuards,
 } from "@nestjs/common";
-// @see https://docs.nestjs.com/openapi/introduction
-import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import type { User } from "@supabase/supabase-js";
@@ -41,7 +38,6 @@ import { SupabaseAuthGuard } from "./supabase-auth.guard";
 import { SupabaseUser } from "./supabase-user.decorator";
 import { UserId } from "./user-id.decorator";
 import { WebAuthnService } from "./webauthn.service";
-@ApiTags("Authentication")
 @Controller({
     path: "auth",
     version: "1",
@@ -68,7 +64,7 @@ export class AuthController {
     // await authController.signUp({ email, password, username })
     // @see AuthService.signUp
     @TypedRoute.Post("signup")
-    async signUp(@Body() signUpDto: SignUpDto) {
+    async signUp(@TypedBody() signUpDto: SignUpDto) {
         const { email, password, username } = signUpDto;
         const result = await this.authService.signUp(email, password, username);
         return buildResponse("Signup successful", result);
@@ -86,20 +82,8 @@ export class AuthController {
     @TypedRoute.Post("login")
     @HttpCode(HttpStatus.OK)
     @Throttle({ default: { limit: 5, ttl: 60 } })
-    @ApiResponse({
-        status: 201,
-        description:
-            "Set-Cookie: __Host-access_token, __Secure-refresh_token を返します",
-        headers: {
-            "Set-Cookie": {
-                description:
-                    "Sets __Host-access_token (Path=/) and __Secure-refresh_token (Path=/api/v1/auth/refresh)",
-                schema: { type: "string" },
-            },
-        },
-    })
     async signIn(
-        @Body() signInDto: SignInDto,
+        @TypedBody() signInDto: SignInDto,
         @Res({ passthrough: true }) res: Response,
     ) {
         const { email, password } = signInDto;
@@ -171,7 +155,7 @@ export class AuthController {
     @TypedRoute.Post("forgot-password")
     @HttpCode(HttpStatus.OK)
     async forgotPassword(
-        @Body() dto: ForgotPasswordDto,
+        @TypedBody() dto: ForgotPasswordDto,
     ): Promise<SuccessResponse<unknown>> {
         const { email } = dto;
         const result = await this.authService.forgotPassword(email);
@@ -190,7 +174,7 @@ export class AuthController {
     @TypedRoute.Post("reset-password")
     @HttpCode(HttpStatus.OK)
     async resetPassword(
-        @Body() dto: ResetPasswordDto,
+        @TypedBody() dto: ResetPasswordDto,
     ): Promise<SuccessResponse<unknown>> {
         const { accessToken, newPassword } = dto;
         const result = await this.authService.resetPassword(
@@ -212,7 +196,7 @@ export class AuthController {
     @TypedRoute.Post("verify-email")
     @HttpCode(HttpStatus.OK)
     async verifyEmail(
-        @Body() dto: VerifyEmailDto,
+        @TypedBody() dto: VerifyEmailDto,
     ): Promise<SuccessResponse<unknown>> {
         const { email, token } = dto;
         const result = await this.authService.verifyEmail(email, token);
@@ -229,18 +213,6 @@ export class AuthController {
     // @see AuthService.signOut
     @TypedRoute.Post("logout")
     @HttpCode(HttpStatus.OK)
-    @ApiResponse({
-        status: 201,
-        description:
-            "Set-Cookie: __Host-access_token, __Secure-refresh_token を無効化して返します",
-        headers: {
-            "Set-Cookie": {
-                description:
-                    "Clears __Host-access_token and __Secure-refresh_token cookies",
-                schema: { type: "string" },
-            },
-        },
-    })
     async signOut(
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<unknown>> {
@@ -282,18 +254,6 @@ export class AuthController {
     @TypedRoute.Post("refresh")
     @HttpCode(HttpStatus.OK)
     @Throttle({ default: { limit: 5, ttl: 60 } })
-    @ApiResponse({
-        status: 201,
-        description:
-            "Set-Cookie: __Host-access_token（必須）と必要に応じて__Secure-refresh_tokenを返します",
-        headers: {
-            "Set-Cookie": {
-                description:
-                    "Sets new __Host-access_token and optionally updates __Secure-refresh_token",
-                schema: { type: "string" },
-            },
-        },
-    })
     async refresh(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
@@ -369,7 +329,6 @@ export class AuthController {
     // await authController.deleteAccount(user)
     // @see AuthService.deleteAccount
     @TypedRoute.Delete("delete")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async deleteAccount(
         @UserId() userId: string,
@@ -389,11 +348,10 @@ export class AuthController {
     // await authController.updateEmail(user, { newEmail: 'new@example.com' })
     // @see AuthService.updateEmail
     @TypedRoute.Patch("update-email")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updateEmail(
         @SupabaseUser() user: User,
-        @Body() dto: UpdateEmailDto,
+        @TypedBody() dto: UpdateEmailDto,
     ): Promise<SuccessResponse<unknown>> {
         const result = await this.authService.updateEmail(user, dto.newEmail);
         return buildResponse("Email updated successfully", result);
@@ -410,11 +368,10 @@ export class AuthController {
     // await authController.updateUsername(user, { newUsername: 'newname' })
     // @see AuthService.updateUsername
     @TypedRoute.Patch("update-username")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updateUsername(
         @SupabaseUser() user: User,
-        @Body() dto: UpdateUsernameDto,
+        @TypedBody() dto: UpdateUsernameDto,
     ): Promise<SuccessResponse<unknown>> {
         const result = await this.authService.updateUsername(
             user,
@@ -434,11 +391,10 @@ export class AuthController {
     // await authController.updatePassword(user, { oldPassword: 'old', newPassword: 'new' })
     // @see AuthService.updatePassword
     @TypedRoute.Patch("update-password")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async updatePassword(
         @SupabaseUser() _user: User,
-        @Body() dto: UpdatePasswordDto,
+        @TypedBody() dto: UpdatePasswordDto,
     ): Promise<SuccessResponse<unknown>> {
         const { oldPassword, newPassword } = dto;
         const result = await this.authService.updatePassword(
@@ -456,7 +412,6 @@ export class AuthController {
     // @example
     // authController.getProfile(user)
     @TypedRoute.Get("profile")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     getProfile(@SupabaseUser() user: User): SuccessResponse<User> {
         return buildResponse("User profile fetched successfully", user);
@@ -477,7 +432,7 @@ export class AuthController {
         default: { limit: 5, ttl: 60 },
     })
     async verifyTotp(
-        @Body() dto: VerifyTotpDto,
+        @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<unknown>> {
         const { factorId, code } = dto;
@@ -499,7 +454,7 @@ export class AuthController {
     @UseGuards(ThrottlerGuard)
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async verifyTotpNew(
-        @Body() dto: VerifyTotpDto,
+        @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<unknown>> {
         const { factorId, code } = dto;
@@ -518,11 +473,10 @@ export class AuthController {
      * ------------------------------------------------------------------ */
     // 登録開始: navigator.credentials.create() 前段で呼び出し
     @TypedRoute.Post("mfa/webauthn/register")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, ThrottlerGuard)
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async startWebAuthnRegistration(
-        @Body() dto: StartWebAuthnRegistrationDto,
+        @TypedBody() dto: StartWebAuthnRegistrationDto,
     ): Promise<SuccessResponse<unknown>> {
         const data = await this.webauthn.startRegistration(dto?.displayName);
         return buildResponse("WebAuthn registration started", data);
@@ -530,11 +484,10 @@ export class AuthController {
 
     // 登録完了: attestationResponse を検証
     @TypedRoute.Post("mfa/webauthn/callback")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, ThrottlerGuard)
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async finishWebAuthnRegistration(
-        @Body() dto: FinishWebAuthnRegistrationDto,
+        @TypedBody() dto: FinishWebAuthnRegistrationDto,
     ): Promise<SuccessResponse<unknown>> {
         const data = await this.webauthn.finishRegistration(
             dto.attestationResponse,
@@ -547,7 +500,7 @@ export class AuthController {
     @UseGuards(ThrottlerGuard)
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async verifyWebAuthnAssertion(
-        @Body() dto: VerifyWebAuthnAssertionDto,
+        @TypedBody() dto: VerifyWebAuthnAssertionDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<unknown>> {
         const data = await this.webauthn.verifyAssertion(dto.assertionResponse);
@@ -563,13 +516,12 @@ export class AuthController {
 
     // TOTP enroll（QR/otpauth URI を返す）
     @TypedRoute.Patch("mfa/totp/enroll")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard, ThrottlerGuard)
     @Throttle({
         default: { limit: 5, ttl: 60 },
     })
     async enrollTotp(
-        @Body() dto: EnrollTotpDto,
+        @TypedBody() dto: EnrollTotpDto,
     ): Promise<SuccessResponse<{ factorId: string; otpauthUri: string }>> {
         const result = await this.authService.enrollTotp(dto?.displayName);
         return buildResponse("TOTP enrollment created", {
@@ -580,13 +532,12 @@ export class AuthController {
 
     // 既存 TOTP factor を無効化
     @TypedRoute.Patch("mfa/totp/disable")
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard, ThrottlerGuard)
     @Throttle({
         default: { limit: 5, ttl: 60 },
     })
     async disableTotp(
-        @Body() dto: DisableTotpDto,
+        @TypedBody() dto: DisableTotpDto,
     ): Promise<SuccessResponse<unknown>> {
         const result = await this.authService.disableTotp(dto.factorId);
         return buildResponse("TOTP factor disabled", result);

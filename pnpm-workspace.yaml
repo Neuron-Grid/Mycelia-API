@@ -5,4 +5,5 @@ ignoredBuiltDependencies:
   - '@nestjs/core'
   - '@swc/core'
   - msgpackr-extract
+  - protobufjs
   - unrs-resolver

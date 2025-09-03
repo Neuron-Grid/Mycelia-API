@@ -1,11 +1,13 @@
-export interface SuccessResponse<T> {
-    message: string;
-    data: T | null;
+export class SuccessResponse<T> {
+    /** Human readable message */
+    message!: string;
+    /** Payload (nullable) */
+    data!: T | null;
 }
 
 export function buildResponse<T>(
     message: string,
     data: T | null = null,
 ): SuccessResponse<T> {
-    return { message, data };
+    return { message, data } as SuccessResponse<T>;
 }

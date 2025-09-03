@@ -1,34 +1,16 @@
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedParam, TypedQuery, TypedRoute } from "@nestia/core";
 import {
     BadRequestException,
-    Body,
     Controller,
     HttpCode,
     HttpException,
     HttpStatus,
     Logger,
-    Param,
-    ParseIntPipe,
-    Query,
     UseGuards,
 } from "@nestjs/common";
-import {
-    ApiAcceptedResponse,
-    ApiBadRequestResponse,
-    ApiBearerAuth,
-    ApiCreatedResponse,
-    ApiNotFoundResponse,
-    ApiOkResponse,
-    ApiOperation,
-    ApiParam,
-    ApiQuery,
-    ApiTags,
-    ApiUnauthorizedResponse,
-    getSchemaPath,
-} from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import { buildResponse } from "@/common/utils/response.util";
+import { parseUInt32 } from "@/common/utils/typed-param";
 import { UserId } from "../../auth/user-id.decorator";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
 import { PodcastEpisodeRepository } from "../infrastructure/podcast-episode.repository";
@@ -36,16 +18,13 @@ import { PodcastQueueService } from "../queue/podcast-queue.service";
 import {
     CreatePodcastEpisodeDto,
     GeneratePodcastEpisodeDto,
-    PodcastEpisodeListResponseDto,
-    PodcastEpisodeResponseDto,
+    // removed unused imports for Swagger-only DTO references
     UpdatePodcastEpisodeDto,
 } from "./dto/podcast-episode.dto";
 import { PodcastEpisodeMapper } from "./podcast-episode.mapper";
 
-@ApiTags("Podcast Episodes")
 @Controller("podcast-episodes")
 @UseGuards(SupabaseAuthGuard)
-@ApiBearerAuth()
 export class PodcastEpisodeController {
     private readonly logger = new Logger(PodcastEpisodeController.name);
 
@@ -56,48 +35,20 @@ export class PodcastEpisodeController {
         private readonly podcastEpisodeMapper: PodcastEpisodeMapper,
     ) {}
 
-    @TypedRoute.Get()
-    @ApiOperation({ summary: "Get user podcast episodes with pagination" })
-    @ApiQuery({
-        name: "page",
-        description: "Page number (1-based)",
-        required: false,
-        type: Number,
-        example: 1,
-    })
-    @ApiQuery({
-        name: "limit",
-        description: "Number of episodes per page",
-        required: false,
-        type: Number,
-        example: 20,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: PodcastEpisodeListResponseDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(PodcastEpisodeListResponseDto) },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /** Get user podcast episodes with pagination */
+    @TypedRoute.Get("")
     async getEpisodes(
         @UserId() userId: string,
-        @Query("page") page?: number,
-        @Query("limit") limit?: number,
+        @TypedQuery<{ page?: number; limit?: number }>()
+        q: { page?: number; limit?: number },
     ): Promise<
         import("@/common/utils/response.util").SuccessResponse<
             import("./dto/podcast-episode.dto").PodcastEpisodeListResponseDto
         >
     > {
         // パラメータの検証
-        const validPage = Math.max(1, Number(page));
-        const validLimit = Math.min(Math.max(1, Number(limit)), 100); // 最大100件
+        const validPage = Math.max(1, Number(q?.page ?? 1));
+        const validLimit = Math.min(Math.max(1, Number(q?.limit ?? 20)), 100); // 最大100件
         const offset = (validPage - 1) * validLimit;
 
         this.logger.log(
@@ -124,34 +75,11 @@ export class PodcastEpisodeController {
         });
     }
 
+    /** Get a specific podcast episode by ID */
     @TypedRoute.Get(":id")
-    @ApiOperation({ summary: "Get a specific podcast episode by ID" })
-    @ApiParam({
-        name: "id",
-        description: "Podcast episode ID",
-        type: Number,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: PodcastEpisodeResponseDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
-            },
-        },
-    })
-    @ApiNotFoundResponse({
-        description: "Podcast episode not found or access denied",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     async getEpisodeById(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) episodeId: number,
+        @TypedParam("id", parseUInt32) episodeId: number,
     ): Promise<
         import("@/common/utils/response.util").SuccessResponse<
             import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
@@ -177,33 +105,11 @@ export class PodcastEpisodeController {
         );
     }
 
-    @TypedRoute.Post()
-    @ApiOperation({ summary: "Create a new podcast episode" })
-    @ApiCreatedResponse({
-        description: "Returns { message, data: PodcastEpisodeResponseDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Invalid request data",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Related summary not found or access denied",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /** Create a new podcast episode */
+    @TypedRoute.Post("")
     async createEpisode(
         @UserId() userId: string,
-        @Body() createDto: CreatePodcastEpisodeDto,
+        @TypedBody() createDto: CreatePodcastEpisodeDto,
     ): Promise<
         import("@/common/utils/response.util").SuccessResponse<
             import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
@@ -253,35 +159,12 @@ export class PodcastEpisodeController {
         );
     }
 
+    /** Update a podcast episode */
     @TypedRoute.Put(":id")
-    @ApiOperation({ summary: "Update a podcast episode" })
-    @ApiParam({
-        name: "id",
-        description: "Podcast episode ID",
-        type: Number,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: PodcastEpisodeResponseDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(PodcastEpisodeResponseDto) },
-            },
-        },
-    })
-    @ApiNotFoundResponse({
-        description: "Podcast episode not found or access denied",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     async updateEpisode(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) episodeId: number,
-        @Body() updateDto: UpdatePodcastEpisodeDto,
+        @TypedParam("id", parseUInt32) episodeId: number,
+        @TypedBody() updateDto: UpdatePodcastEpisodeDto,
     ): Promise<
         import("@/common/utils/response.util").SuccessResponse<
             import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
@@ -314,34 +197,11 @@ export class PodcastEpisodeController {
         );
     }
 
+    /** Soft delete a podcast episode */
     @TypedRoute.Delete(":id")
-    @ApiOperation({ summary: "Soft delete a podcast episode" })
-    @ApiParam({
-        name: "id",
-        description: "Podcast episode ID",
-        type: Number,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { nullable: true, type: "null" },
-            },
-        },
-    })
-    @ApiNotFoundResponse({
-        description: "Podcast episode not found or access denied",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     async deleteEpisode(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) episodeId: number,
+        @TypedParam("id", parseUInt32) episodeId: number,
     ): Promise<import("@/common/utils/response.util").SuccessResponse<null>> {
         this.logger.log(`User ${userId} deleting episode ${episodeId}`);
 
@@ -362,40 +222,12 @@ export class PodcastEpisodeController {
         return buildResponse("Episode deleted", null);
     }
 
+    /** Generate a new podcast episode from a summary */
     @TypedRoute.Post("generate")
-    @ApiOperation({ summary: "Generate a new podcast episode from a summary" })
-    @ApiAcceptedResponse({
-        description: "Returns { message, data: { jobId, episodeId } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        jobId: { type: "string", nullable: true },
-                        episodeId: { type: "number", nullable: true },
-                    },
-                },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Invalid request data",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Related summary not found or access denied",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @HttpCode(HttpStatus.ACCEPTED)
     async generateEpisode(
         @UserId() userId: string,
-        @Body() generateDto: GeneratePodcastEpisodeDto,
+        @TypedBody() generateDto: GeneratePodcastEpisodeDto,
     ): Promise<
         import("@/common/utils/response.util").SuccessResponse<{
             jobId?: string;

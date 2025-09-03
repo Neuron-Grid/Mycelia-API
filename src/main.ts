@@ -1,5 +1,3 @@
-import { writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { ValidationPipe } from "@nestjs/common";
 // @see https://docs.nestjs.com/techniques/configuration
 import { ConfigService } from "@nestjs/config";
@@ -8,7 +6,6 @@ import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 // @see https://www.npmjs.com/package/helmet
 import helmet from "helmet";
-import { dump as yamlDump } from "js-yaml";
 import {
     createCsrfMiddleware,
     createHttpsEnforceMiddleware,
@@ -74,59 +71,8 @@ async function bootstrap() {
         .set("trust proxy", Number(cfg.get<number>("TRUST_PROXY_HOPS") || 0));
     app.enableShutdownHooks();
 
-    // Swagger（nestjs版）の生成は開発環境のみ
-    if (cfg.get("NODE_ENV") === "development") {
-        const { SwaggerModule, DocumentBuilder } = await import(
-            "@nestjs/swagger"
-        );
-        const swaggerConfig = new DocumentBuilder()
-            .setTitle("API Documentation")
-            .setDescription("API Documentation")
-            .setVersion("1.0")
-            .addBearerAuth()
-            .build();
-        const swaggerDocument = SwaggerModule.createDocument(
-            app,
-            swaggerConfig,
-        );
-
-        // 出力パスは固定（devのみ）
-        // Nestia 生成の swagger.yaml と衝突しないように別名に変更
-        const outPath = resolve(process.cwd(), "swagger.nestjs.yaml");
-
-        try {
-            const yaml = yamlDump(swaggerDocument);
-            // 明示的にencoding/flagを指定
-            // 安全側の上書き
-            writeFileSync(outPath, yaml, { encoding: "utf8", flag: "w" });
-        } catch (err) {
-            // 生成失敗時もアプリ起動は継続させるが、開発環境のみ警告
-            const e = err as NodeJS.ErrnoException;
-            const message = e?.message ?? String(e);
-
-            // NodeのWarning機構
-            process.emitWarning(
-                `[Swagger] Failed to generate swagger.yaml: ${message}`,
-                {
-                    type: "SwaggerGenerationWarning",
-                    code: "SWAGGER_YAML_WRITE_FAILED",
-                    detail: `path=${outPath}${e?.code ? `; errno=${e.code}` : ""}`,
-                },
-            );
-
-            // 標準の警告出力
-            console.warn(
-                `[Swagger] Failed to generate swagger.yaml. The application will continue to start.\n` +
-                    `  path: ${outPath}\n` +
-                    (e?.code ? `  code: ${e.code}\n` : "") +
-                    `  message: ${message}\n` +
-                    `  hint: Check write permissions for the output directory, available disk space, and your @nestjs/swagger configuration.`,
-            );
-        }
-
-        // Swagger UIは開発環境のみで有効化
-        SwaggerModule.setup("api/docs", app, swaggerDocument);
-    }
+    // OpenAPIは開発時に nestia で静的生成（swagger.json）し、
+    // ランタイムでの @nestjs/swagger による生成・出力は行わない。
 
     // start server
     const port = Number(cfg.get<string>("PORT")) || 3000;

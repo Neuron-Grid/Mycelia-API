@@ -1,6 +1,6 @@
-import { ApiProperty } from "@nestjs/swagger";
+/** お気に入り判定レスポンス */
 
 export class CheckFavoriteResponseDto {
-    @ApiProperty({ description: "お気に入り判定", example: true })
+    /** お気に入り判定 */
     favorited!: boolean;
 }

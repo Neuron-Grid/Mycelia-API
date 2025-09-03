@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
     IsNotEmpty,
     IsObject,
@@ -14,10 +13,7 @@ import {
  * displayName を（任意で）送信してデバイス識別名とする。
  */
 export class StartWebAuthnRegistrationDto {
-    @ApiPropertyOptional({
-        example: "MacBook Pro Touch ID",
-        description: "登録するパスキーを識別する任意の表示名",
-    })
+    /** 登録するパスキーを識別する任意の表示名 */
     @IsOptional()
     @IsString()
     @MaxLength(64)
@@ -31,20 +27,7 @@ export class StartWebAuthnRegistrationDto {
  * JSON へシリアライズしたものをそのまま送信する想定。
  */
 export class FinishWebAuthnRegistrationDto {
-    @ApiProperty({
-        description: "navigator.credentials.create() で得た credential 全体",
-        type: "object",
-        additionalProperties: true,
-        example: {
-            id: "credentialId",
-            rawId: "BASE64URL",
-            type: "public-key",
-            response: {
-                attestationObject: "BASE64URL",
-                clientDataJSON: "BASE64URL",
-            },
-        },
-    })
+    /** navigator.credentials.create() で得た credential 全体 */
     @IsNotEmpty()
     @IsObject()
     attestationResponse!: Record<string, unknown>;
@@ -57,30 +40,12 @@ export class FinishWebAuthnRegistrationDto {
  * JSON で送信する。
  */
 export class VerifyWebAuthnAssertionDto {
-    @ApiProperty({
-        example: "webauthn_factor_id",
-        description: "Supabase が払い出した WebAuthn ファクター ID",
-    })
+    /** Supabase が払い出した WebAuthn ファクター ID */
     @IsString()
     @IsNotEmpty()
     factorId!: string;
 
-    @ApiProperty({
-        description: "navigator.credentials.get() で得た credential 全体",
-        type: "object",
-        additionalProperties: true,
-        example: {
-            id: "credentialId",
-            rawId: "BASE64URL",
-            type: "public-key",
-            response: {
-                authenticatorData: "BASE64URL",
-                clientDataJSON: "BASE64URL",
-                signature: "BASE64URL",
-                userHandle: "BASE64URL",
-            },
-        },
-    })
+    /** navigator.credentials.get() で得た credential 全体 */
     @IsNotEmpty()
     @IsObject()
     assertionResponse!: Record<string, unknown>;

@@ -179,6 +179,11 @@ export class CloudflareR2Service {
         }
     }
 
+    // 既定バケットからオブジェクトを削除（アプリ内部向け）
+    async deleteObject(key: string): Promise<void> {
+        await this.deleteFile(this.bucketName, key);
+    }
+
     // ユーザーのポッドキャストファイルを一括削除
     async deleteUserPodcasts(userId: string): Promise<void> {
         try {
@@ -340,5 +345,38 @@ export class CloudflareR2Service {
     // ユーザー分離の確認（指定したキーが指定ユーザーのものかチェック）
     isUserFile(key: string, userId: string): boolean {
         return key.startsWith(`podcasts/${userId}/`);
+    }
+
+    // URL指定でユーザー所有を検証して削除
+    async deleteByUrl(url: string, userId: string): Promise<void> {
+        const key = this.extractKeyFromUrl(url);
+        if (!key) throw new Error("Invalid podcast object URL");
+        if (!this.isUserFile(key, userId))
+            throw new Error("Access denied to podcast object");
+        await this.deleteObject(key);
+    }
+
+    // ユーザー配下（podcasts/{userId}/）にオブジェクトが残っていないか確認
+    async isUserNamespaceEmpty(userId: string): Promise<boolean> {
+        try {
+            const prefix = `podcasts/${userId}/`;
+            const res = await this.s3Client.send(
+                new ListObjectsV2Command({
+                    Bucket: this.bucketName,
+                    Prefix: prefix,
+                    MaxKeys: 1,
+                }),
+            );
+            const count =
+                (res as { KeyCount?: number }).KeyCount ??
+                (Array.isArray(res.Contents) ? res.Contents.length : 0);
+            return count === 0;
+        } catch (e) {
+            // バケット不存在などは空扱い（冪等運用）
+            this.logger.warn(
+                `isUserNamespaceEmpty failed: ${(e as Error).message}`,
+            );
+            return true;
+        }
     }
 }

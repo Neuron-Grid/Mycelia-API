@@ -48,10 +48,10 @@ pnpm start:prod
 環境変数
 - 具体的なキー値は `.env` を使用します（内容は公開しません）
 - 例や用途は `.env.example` を参照してください（編集して実値を設定）
-- ローカル開発では `NODE_ENV` の設定は必須ではありません（Swaggerは `NODE_ENV=development` のときに `/api/docs` が有効）
 
 APIドキュメント
-- 開発モードでは Swagger を `http://localhost:3000/api/docs` で提供します
+- OpenAPI は `nestia` により静的に `swagger.json` を生成します（`pnpm openapi:gen`）。
+- ランタイムUIは提供しません。必要に応じて外部のSwagger UI等に `swagger.json` を読み込んでください。
 - すべてのAPIプレフィックスは `/api/v1/` です
 
 整形/規約

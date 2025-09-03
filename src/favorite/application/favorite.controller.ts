@@ -1,33 +1,24 @@
 // @file お気に入り機能のAPIコントローラ
 
-import { TypedRoute } from "@nestia/core";
-import { Controller, Param, ParseIntPipe, UseGuards } from "@nestjs/common";
+import { TypedParam, TypedRoute } from "@nestia/core";
+import { Controller, UseGuards } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import {
-    ApiBearerAuth,
-    ApiExtraModels,
-    ApiOkResponse,
-    ApiResponse,
-    ApiTags,
-    getSchemaPath,
-} from "@nestjs/swagger";
+
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
 import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
+import { parseUInt32 } from "@/common/utils/typed-param";
 import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
 import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
 import { FavoriteMapper } from "./favorite.mapper";
 import { FavoriteService } from "./favorite.service";
 
-@ApiTags("Favorites")
-@ApiBearerAuth()
 @Controller({
     path: "favorites",
     version: "1",
 })
 @UseGuards(SupabaseAuthGuard)
-@ApiExtraModels(FavoriteDto, CheckFavoriteResponseDto)
 // @public
 // @since 1.0.0
 export class FavoriteController {
@@ -45,20 +36,8 @@ export class FavoriteController {
     // @example
     // await favoriteController.getUserFavorites(user)
     // @see FavoriteService.getUserFavorites
-    @TypedRoute.Get()
-    @ApiOkResponse({
-        description: "Favorites list",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "array",
-                    items: { $ref: getSchemaPath(FavoriteDto) },
-                },
-            },
-        },
-    })
+    /** Favorites list */
+    @TypedRoute.Get("")
     async getUserFavorites(
         @UserId() userId: string,
     ): Promise<SuccessResponse<FavoriteDto[]>> {
@@ -79,20 +58,11 @@ export class FavoriteController {
     // @example
     // await favoriteController.checkFavorite(user, 1)
     // @see FavoriteService.isFavorited
+    /** Favorite check */
     @TypedRoute.Get(":feedItemId/is-favorited")
-    @ApiOkResponse({
-        description: "Favorite check",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(CheckFavoriteResponseDto) },
-            },
-        },
-    })
     async checkFavorite(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
+        @TypedParam("feedItemId", parseUInt32) feedItemId: number,
     ): Promise<SuccessResponse<CheckFavoriteResponseDto>> {
         const isFav = await this.favoriteService.isFavorited(
             userId,
@@ -111,21 +81,11 @@ export class FavoriteController {
     // @example
     // await favoriteController.favoriteItem(user, 1)
     // @see FavoriteService.favoriteFeedItem
+    /** Favorite a feed item */
     @TypedRoute.Post(":feedItemId")
-    @ApiResponse({
-        status: 201,
-        description: "Favorited successfully",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: getSchemaPath(FavoriteDto) },
-            },
-        },
-    })
     async favoriteItem(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
+        @TypedParam("feedItemId", parseUInt32) feedItemId: number,
     ): Promise<SuccessResponse<FavoriteDto>> {
         const result = await this.favoriteService.favoriteFeedItem(
             userId,
@@ -147,20 +107,11 @@ export class FavoriteController {
     // @example
     // await favoriteController.unfavoriteItem(user, 1)
     // @see FavoriteService.unfavoriteFeedItem
+    /** Unfavorite a feed item */
     @TypedRoute.Delete(":feedItemId")
-    @ApiOkResponse({
-        description: "Unfavorited successfully",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { nullable: true, type: "null" },
-            },
-        },
-    })
     async unfavoriteItem(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
+        @TypedParam("feedItemId", parseUInt32) feedItemId: number,
     ): Promise<SuccessResponse<null>> {
         await this.favoriteService.unfavoriteFeedItem(userId, feedItemId);
         return buildResponse("Feed item unfavorited", null);

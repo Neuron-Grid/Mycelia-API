@@ -1,48 +1,30 @@
 // @file フィード購読・フィードアイテム管理のREST APIコントローラ
 
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedParam, TypedQuery, TypedRoute } from "@nestia/core";
 import {
-    Body,
     Controller,
     HttpCode,
     HttpException,
     HttpStatus,
-    Param,
-    ParseIntPipe,
-    Query,
     UseGuards,
 } from "@nestjs/common";
 // @see https://docs.nestjs.com/openapi/introduction
-import {
-    ApiAcceptedResponse,
-    ApiBadRequestResponse,
-    ApiBearerAuth,
-    ApiBody,
-    ApiCreatedResponse,
-    ApiExtraModels,
-    ApiNotFoundResponse,
-    ApiOkResponse,
-    ApiOperation,
-    ApiParam,
-    ApiTags,
-    ApiUnauthorizedResponse,
-    getSchemaPath,
-} from "@nestjs/swagger";
+
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import {
     buildResponse,
     type SuccessResponse,
 } from "@/common/utils/response.util";
+import { parseUInt32 } from "@/common/utils/typed-param";
 import { FeedItemService } from "@/feed/application/feed-item.service";
 import { FeedUseCaseService } from "@/feed/application/feed-usecase.service";
 import { SubscriptionService } from "@/feed/application/subscription.service";
 import { AddSubscriptionDto } from "./dto/add-subscription.dto";
 import type { FeedItemDto } from "./dto/feed-item.dto";
-import { FeedItemResponseDto } from "./dto/feed-item-response.dto";
+// import removed: FeedItemResponseDto only used for @nestjs/swagger
 import type { SubscriptionDto } from "./dto/subscription.dto";
 import { UpdateSubscriptionDto } from "./dto/update-subscription.dto";
 import { FeedItemMapper } from "./feed-item.mapper";
@@ -50,9 +32,6 @@ import { SubscriptionMapper } from "./subscription.mapper";
 
 // 型注釈はOpenAPIスキーマで表現し、戻り値は共通包形式に統一
 
-@ApiTags("Feed")
-@ApiBearerAuth()
-@ApiExtraModels(FeedItemResponseDto)
 @Controller({
     path: "feed",
     version: "1",
@@ -83,50 +62,19 @@ export class FeedController {
     // @example
     // const result = await feedController.getSubscriptions(user, { page: 1, limit: 10 })
     // @see SubscriptionService.getSubscriptionsPaginated
-    @TypedRoute.Get()
-    @ApiOperation({
-        summary: "List subscriptions (paginated)",
-        description:
-            "Returns the logged-in user's subscriptions paginated by page and limit.",
-    })
-    @ApiOkResponse({
-        description:
-            "Returns { message, data: PaginatedResult<UserSubscription> }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        data: { type: "array", items: { type: "object" } },
-                        total: { type: "number" },
-                        page: { type: "number" },
-                        limit: { type: "number" },
-                        hasNext: { type: "boolean" },
-                    },
-                },
-            },
-        },
-    })
-    // QueryはDTOとして受け取り、nestiaで型から自動展開
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
+    /** List subscriptions (paginated) */
+    @TypedRoute.Get("")
     async getSubscriptions(
         @UserId() userId: string,
-        @Query("page") page?: number,
-        @Query("limit") limit?: number,
+        @TypedQuery<{ page?: number; limit?: number }>()
+        q: { page?: number; limit?: number },
     ): Promise<SuccessResponse<PaginatedResult<SubscriptionDto>>> {
+        const page = q?.page ?? 1;
+        const limit = q?.limit ?? 100;
         const result = await this.subscriptionService.getSubscriptionsPaginated(
             userId,
-            page ?? 1,
-            limit ?? 100,
+            page,
+            limit,
         );
         return buildResponse("Subscriptions fetched", {
             ...result,
@@ -144,34 +92,11 @@ export class FeedController {
     // @example
     // await feedController.addSubscription(user, { feedUrl: 'https://example.com/rss.xml' })
     // @see SubscriptionService.addSubscription
-    @TypedRoute.Post()
-    @ApiOperation({
-        summary: "Subscribe to a new RSS feed",
-        description:
-            "Parses the provided feedUrl and auto-sets feed_title; returns 400 if the URL is invalid or already subscribed.",
-    })
-    @ApiCreatedResponse({
-        description: "Returns { message, data }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiBody({ type: AddSubscriptionDto })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Invalid URL or duplicate subscription",
-        type: ErrorResponseDto,
-    })
+    /** Subscribe to a new RSS feed */
+    @TypedRoute.Post("")
     async addSubscription(
         @UserId() userId: string,
-        @Body() dto: AddSubscriptionDto,
+        @TypedBody() dto: AddSubscriptionDto,
     ): Promise<SuccessResponse<SubscriptionDto>> {
         const { feedUrl } = dto;
         if (!feedUrl) {
@@ -212,39 +137,12 @@ export class FeedController {
     // @example
     // await feedController.fetchSubscription(user, 123)
     // @see FeedUseCaseService.fetchFeedItems
+    /** Fetch subscription now */
     @TypedRoute.Post(":id/fetch")
-    @ApiOperation({
-        summary: "Fetch subscription now",
-        description:
-            "Fetches the RSS feed for the specified subscription ID and persists items. Processing may take a few seconds.",
-    })
-    @ApiAcceptedResponse({
-        description: "Returns { message, data }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Subscription not found",
-        type: ErrorResponseDto,
-    })
     @HttpCode(HttpStatus.ACCEPTED)
     async fetchSubscription(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) subscriptionId: number,
+        @TypedParam("id", parseUInt32) subscriptionId: number,
     ): Promise<SuccessResponse<Record<string, unknown>>> {
         const result = await this.feedUseCase.fetchFeedItems(
             subscriptionId,
@@ -265,59 +163,21 @@ export class FeedController {
     // @example
     // const items = await feedController.getSubscriptionItems(user, 123, { page: 1, limit: 10 })
     // @see FeedItemService.getFeedItemsPaginated
+    /** List feed items for a subscription (paginated) */
     @TypedRoute.Get(":id/items")
-    @ApiOperation({
-        summary: "List feed items for a subscription (paginated)",
-        description:
-            "Returns feed items for the specified subscription ID paginated by page and limit.",
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: PaginatedResult<FeedItem> }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        data: {
-                            type: "array",
-                            items: { $ref: getSchemaPath(FeedItemResponseDto) },
-                        },
-                        total: { type: "number" },
-                        page: { type: "number" },
-                        limit: { type: "number" },
-                        hasNext: { type: "boolean" },
-                    },
-                },
-            },
-        },
-    })
-    @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    // QueryはDTOとして受け取り、nestiaで型から自動展開
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Subscription not found",
-        type: ErrorResponseDto,
-    })
     async getSubscriptionItems(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) subscriptionId: number,
-        @Query("page") page?: number,
-        @Query("limit") limit?: number,
+        @TypedParam("id", parseUInt32) subscriptionId: number,
+        @TypedQuery<{ page?: number; limit?: number }>()
+        q: { page?: number; limit?: number },
     ): Promise<SuccessResponse<PaginatedResult<FeedItemDto>>> {
+        const page = q?.page ?? 1;
+        const limit = q?.limit ?? 100;
         const result = await this.feedItemService.getFeedItemsPaginated(
             userId,
             subscriptionId,
-            page ?? 1,
-            limit ?? 100,
+            page,
+            limit,
         );
         return buildResponse("Feed items fetched", {
             ...result,
@@ -341,39 +201,12 @@ export class FeedController {
     // @example
     // await feedController.updateSubscription(user, 123, { feedTitle: '新タイトル' })
     // @see SubscriptionService.updateSubscription
+    /** Update subscription (partial) */
     @TypedRoute.Patch(":id")
-    @ApiOperation({
-        summary: "Update subscription",
-        description: "Partially update fields such as feed_title.",
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiBody({ type: UpdateSubscriptionDto })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Validation error",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Subscription not found",
-        type: ErrorResponseDto,
-    })
     async updateSubscription(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) id: number,
-        @Body() dto: UpdateSubscriptionDto,
+        @TypedParam("id", parseUInt32) id: number,
+        @TypedBody() dto: UpdateSubscriptionDto,
     ): Promise<SuccessResponse<SubscriptionDto>> {
         const updated = await this.subscriptionService.updateSubscription(
             userId,
@@ -396,38 +229,11 @@ export class FeedController {
     // @example
     // await feedController.deleteSubscription(user, 123)
     // @see SubscriptionService.deleteSubscription
+    /** Delete subscription */
     @TypedRoute.Delete(":id")
-    @ApiOperation({
-        summary: "Delete subscription",
-        description:
-            "Deletes the specified subscription. Related feed items are removed via ON DELETE CASCADE.",
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiParam({ name: "id", type: Number, description: "Subscription ID" })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiBadRequestResponse({
-        description: "Deletion error",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Subscription not found",
-        type: ErrorResponseDto,
-    })
     async deleteSubscription(
         @UserId() userId: string,
-        @Param("id", ParseIntPipe) subscriptionId: number,
+        @TypedParam("id", parseUInt32) subscriptionId: number,
     ): Promise<SuccessResponse<null>> {
         await this.subscriptionService.deleteSubscription(
             userId,

@@ -3,8 +3,6 @@
 import { TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Controller } from "@nestjs/common";
-// @see https://docs.nestjs.com/openapi/introduction
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see https://docs.bullmq.io/
 import { Job, Queue } from "bullmq";
 import type { SuccessResponse } from "@/common/utils/response.util";
@@ -19,7 +17,6 @@ import { JobCountsDto } from "./dto/health-check-response.dto";
 // @typedef {Awaited<ReturnType<Queue['getJobCounts']>>} RawJobCounts - BullMQジョブカウント型
 type RawJobCounts = Awaited<ReturnType<Queue["getJobCounts"]>>;
 
-@ApiTags("Health")
 @Controller("health")
 // @public
 // @since 1.0.0
@@ -55,16 +52,7 @@ export class HealthController {
     // await healthController.checkHealth()
     // @see HealthCheckResponseDto
     @TypedRoute.Get("")
-    @ApiOkResponse({
-        description: "Returns { message, data: HealthCheckResponseDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: "#/components/schemas/HealthCheckResponseDto" },
-            },
-        },
-    })
+    /** Returns health check results */
     async checkHealth(): Promise<SuccessResponse<HealthCheckResponseDto>> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();

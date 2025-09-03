@@ -1,5 +1,5 @@
 // @file ヘルスチェックAPIのレスポンスDTO定義
-import { ApiProperty } from "@nestjs/swagger";
+/** DTOs for health check responses */
 
 // @class JobCountsDto
 // @public
@@ -8,31 +8,31 @@ export class JobCountsDto {
     // @property
     // @type {number}
     // @example 0
-    @ApiProperty({ example: 0 })
+    /** waiting jobs count */
     waiting: number;
 
     // @property
     // @type {number}
     // @example 0
-    @ApiProperty({ example: 0 })
+    /** active jobs count */
     active: number;
 
     // @property
     // @type {number}
     // @example 10
-    @ApiProperty({ example: 10 })
+    /** completed jobs count */
     completed: number;
 
     // @property
     // @type {number}
     // @example 0
-    @ApiProperty({ example: 0 })
+    /** failed jobs count */
     failed: number;
 
     // @property
     // @type {number}
     // @example 0
-    @ApiProperty({ example: 0 })
+    /** delayed jobs count */
     delayed: number;
 }
 
@@ -43,13 +43,13 @@ export class BullQueueDto {
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: "OK" })
+    /** queue status */
     status: string;
 
     // @property
     // @type {JobCountsDto}
     // @see JobCountsDto
-    @ApiProperty({ type: JobCountsDto })
+    /** job counts */
     jobCounts: JobCountsDto;
 }
 
@@ -60,27 +60,24 @@ export class HealthCheckResponseDto {
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: "OK", description: "Overall system status" })
+    /** Overall system status */
     status: string;
 
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({ example: "OK", description: "DB connection status" })
+    /** DB connection status */
     db: string;
 
     // @property
     // @type {BullQueueDto}
     // @see BullQueueDto
-    @ApiProperty({ type: BullQueueDto })
+    /** bull queue status */
     bullQueue: BullQueueDto;
 
     // @property
     // @type {string}
     // @example 'OK'
-    @ApiProperty({
-        example: "OK",
-        description: "Status of Redis connectivity (OK or NG: <error-message>)",
-    })
+    /** Status of Redis connectivity (OK or NG: <error-message>) */
     redis: string;
 }

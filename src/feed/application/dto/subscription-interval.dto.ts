@@ -1,15 +1,8 @@
-import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { IsInt, IsOptional, Max, Min, ValidateNested } from "class-validator";
 
 export class IntervalDto {
-    @ApiProperty({
-        description: "Hours (0-23)",
-        minimum: 0,
-        maximum: 23,
-        required: false,
-        default: 0,
-    })
+    /** Hours (0-23) */
     @IsOptional()
     @Type(() => Number)
     @IsInt()
@@ -17,13 +10,7 @@ export class IntervalDto {
     @Max(23)
     hours = 0;
 
-    @ApiProperty({
-        description: "Minutes (0-59)",
-        minimum: 0,
-        maximum: 59,
-        required: false,
-        default: 5,
-    })
+    /** Minutes (0-59) */
     @IsOptional()
     @Type(() => Number)
     @IsInt()
@@ -91,10 +78,7 @@ export class IntervalDto {
 }
 
 export class UpdateSubscriptionIntervalDto {
-    @ApiProperty({
-        description: "Refresh interval settings",
-        type: IntervalDto,
-    })
+    /** Refresh interval settings */
     @ValidateNested()
     @Type(() => IntervalDto)
     interval!: IntervalDto;

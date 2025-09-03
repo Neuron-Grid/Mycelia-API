@@ -1,37 +1,22 @@
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedParam, TypedRoute } from "@nestia/core";
 import {
-    Body,
     Controller,
     HttpException,
     HttpStatus,
     Logger,
-    Param,
     UseGuards,
 } from "@nestjs/common";
-import {
-    ApiAcceptedResponse,
-    ApiBadRequestResponse,
-    ApiBearerAuth,
-    ApiBody,
-    ApiForbiddenResponse,
-    ApiInternalServerErrorResponse,
-    ApiOperation,
-    ApiParam,
-    ApiTags,
-    ApiUnauthorizedResponse,
-} from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
+import { parseUInt32 } from "@/common/utils/typed-param";
 import { RegenerateScriptDto } from "@/llm/application/dto/regenerate-script.dto";
 import { RegenerateSummaryDto } from "@/llm/application/dto/regenerate-summary.dto";
 import { SupabaseUser } from "../../../auth/supabase-user.decorator";
 import { DailySummaryRepository } from "../../infrastructure/repositories/daily-summary.repository";
 import { SummaryScriptService } from "../services/summary-script.service";
 
-@ApiTags("Summary & Script Regeneration")
 @Controller() // グローバルPrefix `api/v1` を利用（ベースパスは空）
 export class SummaryController {
     private readonly logger = new Logger(SummaryController.name); // Loggerインスタンス
@@ -41,49 +26,13 @@ export class SummaryController {
         private readonly dailySummaryRepository: DailySummaryRepository,
     ) {}
 
+    /** Regenerate summary for a user */
     @TypedRoute.Post("summaries/users/:userId/regenerate") // パスをよりRESTfulに、summaryを複数形に
-    @ApiOperation({
-        summary:
-            "Regenerate summary for a user (typically for today or a specific date)",
-    })
-    @ApiParam({
-        name: "userId",
-        description: "User ID for whom to regenerate summary",
-        type: "string",
-    })
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @ApiBody({ type: RegenerateSummaryDto })
-    @ApiAcceptedResponse({
-        description: "Returns { message, data: { jobId } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: { jobId: { type: "string", nullable: true } },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
-    @ApiBadRequestResponse({
-        description: "Bad Request",
-        type: ErrorResponseDto,
-    })
-    @ApiInternalServerErrorResponse({
-        description: "Server Error",
-        type: ErrorResponseDto,
-    })
     async regenerateSummary(
-        @Param("userId") targetUserId: string,
+        @TypedParam("userId", (v) => v) targetUserId: string,
         @SupabaseUser() requestingUser: SupabaseUserType,
-        @Body() body?: RegenerateSummaryDto,
+        @TypedBody() body?: RegenerateSummaryDto,
     ): Promise<SuccessResponse<{ jobId?: string }>> {
         // 戻り値の型を明確化
         this.logger.log(
@@ -130,55 +79,15 @@ export class SummaryController {
         }
     }
 
+    /** Regenerate script_text for a specific summary */
     @TypedRoute.Post("scripts/summaries/:summaryId/regenerate") // パスをよりRESTfulに、scriptを複数形、summaryを複数形に
-    @ApiOperation({ summary: "Regenerate script_text for a specific summary" })
-    @ApiParam({
-        name: "summaryId",
-        description: "ID of the daily_summary to regenerate script for",
-        type: "number",
-    })
-    @ApiBearerAuth()
     @UseGuards(SupabaseAuthGuard)
-    @ApiBody({ type: RegenerateScriptDto })
-    @ApiAcceptedResponse({
-        description: "Returns { message, data: { jobId } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: { jobId: { type: "string", nullable: true } },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
-    @ApiBadRequestResponse({
-        description: "Bad Request",
-        type: ErrorResponseDto,
-    })
-    @ApiInternalServerErrorResponse({
-        description: "Server Error",
-        type: ErrorResponseDto,
-    })
     async regenerateScript(
-        @Param("summaryId") summaryIdParam: string, // パラメータは文字列で来るので変換が必要
+        @TypedParam("summaryId", parseUInt32) summaryId: number,
         @SupabaseUser() user: SupabaseUserType, // requestingUser の方が意図が明確かも
-        @Body() body?: RegenerateScriptDto,
+        @TypedBody() body?: RegenerateScriptDto,
     ): Promise<SuccessResponse<{ jobId?: string }>> {
         // 戻り値の型を明確化
-        const summaryId = Number.parseInt(summaryIdParam, 10);
-        if (Number.isNaN(summaryId)) {
-            throw new HttpException(
-                "Invalid summary ID format",
-                HttpStatus.BAD_REQUEST,
-            );
-        }
 
         this.logger.log(
             `User ${user.id} requesting script regeneration for summary ID ${summaryId}`,

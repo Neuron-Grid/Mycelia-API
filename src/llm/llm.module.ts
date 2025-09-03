@@ -18,7 +18,6 @@ import {
     SummaryScriptService,
 } from "./application/services/summary-script.service";
 import { GeminiFlashClient } from "./infrastructure/clients/gemini-flash.client";
-import { MockLlmService } from "./infrastructure/clients/mock-llm.service";
 import { DailySummaryRepository } from "./infrastructure/repositories/daily-summary.repository";
 import { WorkerDailySummaryRepository } from "./infrastructure/repositories/worker-daily-summary.repository";
 import { ScriptWorker } from "./infrastructure/workers/script.worker";
@@ -84,11 +83,8 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
                 configService: ConfigService,
                 httpClient: HttpService,
             ) => {
-                // useFactoryで依存性注入
-                if (configService.get<string>("TEST_MODE") === "true") {
-                    return new MockLlmService();
-                }
-                return new GeminiFlashClient(httpClient, configService); // httpClient と configService を注入
+                // 本番コードでは常に実クライアントを提供
+                return new GeminiFlashClient(httpClient, configService);
             },
             inject: [ConfigService, HttpService], // 注入するものを指定
         },

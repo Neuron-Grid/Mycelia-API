@@ -25,7 +25,7 @@
     "isolatedModules": true,
     "incremental": false,
     "noEmitOnError": true,
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "sourceMap": false,
     "declaration": false,
     "rootDir": "src",
@@ -39,12 +39,20 @@
     "types": [
       "node"
     ],
+    "plugins": [
+      {
+        "transform": "typia/lib/transform",
+        "resolvePathAliases": true,
+        "tsConfig": "./tsconfig.json"
+      },
+      {
+        "transform": "@nestia/core/lib/transform"
+      },
+      {
+        "transform": "@nestia/sdk/lib/transform"
+      },
+    ]
   },
-  "plugins": [
-    {
-      "transform": "typia/lib/transform"
-    }
-  ],
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts"

@@ -1,12 +1,7 @@
-import { ApiProperty } from "@nestjs/swagger";
 import { ArrayNotEmpty, IsArray, IsInt, Min } from "class-validator";
 
 export class BulkTagDto {
-    @ApiProperty({
-        description: "IDs of tags to apply",
-        example: [1, 2, 3],
-        type: [Number],
-    })
+    /** IDs of tags to apply */
     @IsArray()
     @ArrayNotEmpty()
     @IsInt({ each: true })

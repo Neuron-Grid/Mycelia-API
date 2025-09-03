@@ -1,27 +1,23 @@
-import { ApiProperty } from "@nestjs/swagger";
+/**
+ * お気に入り DTO
+ */
 
 export class FavoriteDto {
-    @ApiProperty({ description: "Favorite ID", example: 123 })
+    /** Favorite ID */
     id!: number;
 
-    @ApiProperty({ description: "User ID (UUID)" })
+    /** User ID (UUID) */
     userId!: string;
 
-    @ApiProperty({ description: "Feed item ID", example: 456 })
+    /** Feed item ID */
     feedItemId!: number;
 
-    @ApiProperty({
-        description: "Created at (ISO)",
-        example: "2025-08-26T00:00:00.000Z",
-    })
+    /** Created at (ISO) */
     createdAt!: string;
 
-    @ApiProperty({
-        description: "Updated at (ISO)",
-        example: "2025-08-26T00:00:00.000Z",
-    })
+    /** Updated at (ISO) */
     updatedAt!: string;
 
-    @ApiProperty({ description: "Soft delete flag", example: false })
+    /** Soft delete flag */
     softDeleted!: boolean;
 }

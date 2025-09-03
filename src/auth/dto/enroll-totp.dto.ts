@@ -1,4 +1,3 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
 import { IsOptional, IsString, MaxLength } from "class-validator";
 
 /**
@@ -9,10 +8,7 @@ import { IsOptional, IsString, MaxLength } from "class-validator";
  * displayName オプションを持たせている。
  */
 export class EnrollTotpDto {
-    @ApiPropertyOptional({
-        example: "iPhone 15",
-        description: "この TOTP デバイスを識別する任意の表示名",
-    })
+    /** この TOTP デバイスを識別する任意の表示名 */
     @IsOptional()
     @IsString()
     @MaxLength(64)

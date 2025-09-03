@@ -2,9 +2,9 @@
 
 import { TypedRoute } from "@nestia/core";
 import { Controller } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 // @see ./app.service
 import { AppService } from "@/app.service";
+import { GreetingResponseDto } from "@/common/dto/greeting-response.dto";
 import { buildResponse } from "@/common/utils/response.util";
 
 @Controller()
@@ -22,19 +22,9 @@ export class AppController {
     // @example
     // const msg = appController.getHello()
     // @see AppService.getHello
-    @TypedRoute.Get()
-    @ApiTags("Root")
-    @ApiOkResponse({
-        description: "Returns { message, data: string }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "string" },
-            },
-        },
-    })
-    getHello() {
+    @TypedRoute.Get("")
+    /** Root endpoint returning greeting message */
+    getHello(): GreetingResponseDto {
         return buildResponse("OK", this.appService.getHello());
     }
 }

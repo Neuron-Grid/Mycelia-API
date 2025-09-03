@@ -1,4 +1,3 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
     IsBoolean,
@@ -14,28 +13,18 @@ import type { Database } from "../../types/schema";
 type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
 
 export class UpdateUserSettingsDto {
-    @ApiPropertyOptional({
-        description: "Default RSS feed refresh interval",
-        type: IntervalDto,
-    })
+    /** Default RSS feed refresh interval */
     @IsOptional()
     @ValidateNested()
     @Type(() => IntervalDto)
     refresh_every?: IntervalDto;
 
-    @ApiPropertyOptional({
-        description: "Enable/disable the podcast feature",
-        example: true,
-    })
+    /** Enable/disable the podcast feature */
     @IsOptional()
     @IsBoolean()
     podcast_enabled?: boolean;
 
-    @ApiPropertyOptional({
-        description: "Podcast generation schedule time (HH:MM)",
-        pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
-        example: "07:30",
-    })
+    /** Podcast generation schedule time (HH:MM) */
     @IsOptional()
     @IsString()
     @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
@@ -43,11 +32,7 @@ export class UpdateUserSettingsDto {
     })
     podcast_schedule_time?: string;
 
-    @ApiPropertyOptional({
-        description: "Podcast language",
-        enum: ["ja-JP", "en-US"],
-        example: "ja-JP",
-    })
+    /** Podcast language */
     @IsOptional()
     @IsString()
     @IsIn(["ja-JP", "en-US"])
@@ -127,46 +112,25 @@ export class UpdateUserSettingsDto {
 }
 
 export class UserSettingsResponseDto {
-    @ApiProperty({
-        description: "User ID",
-        example: "123e4567-e89b-12d3-a456-426614174000",
-    })
+    /** User ID (UUID) */
     user_id!: string;
 
-    @ApiProperty({
-        description: "RSS feed refresh interval",
-        type: IntervalDto,
-    })
+    /** RSS feed refresh interval */
     refresh_every!: IntervalDto;
 
-    @ApiProperty({
-        description: "Whether the podcast feature is enabled",
-        example: true,
-    })
+    /** Whether the podcast feature is enabled */
     podcast_enabled!: boolean;
 
-    @ApiProperty({
-        description: "Podcast generation schedule time",
-        example: "07:30",
-    })
+    /** Podcast generation schedule time */
     podcast_schedule_time!: string | null;
 
-    @ApiProperty({
-        description: "Podcast language",
-        example: "ja-JP",
-    })
+    /** Podcast language */
     podcast_language!: "ja-JP" | "en-US";
 
-    @ApiProperty({
-        description: "Created at",
-        example: "2023-12-01T00:00:00Z",
-    })
+    /** Created at (ISO) */
     created_at!: string;
 
-    @ApiProperty({
-        description: "Updated at",
-        example: "2023-12-01T00:00:00Z",
-    })
+    /** Updated at (ISO) */
     updated_at!: string;
 
     // ファクトリメソッド: データベースレコードから作成

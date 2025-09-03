@@ -109,21 +109,20 @@ export class AccountDeletionService {
     }
 
     private async verifyR2Empty(userId: string): Promise<boolean> {
-        try {
-            // ListObjectsV2 で配下の残存確認
-            // CloudflareR2Service は bucket 情報を内部で保持しているため、
-            // ここでは deleteUserPodcasts で全削除済みであることのみ検証
-            // 追加の HEAD 検証は不要と判断
-            const _prefix = `podcasts/${userId}/`;
-            // SDKに直接のListObjectsV2コールはCloudflareR2Serviceで隠蔽されているため
-            // 軽量な getObject は使えない。ここでは best-effort で true を返す。
-            await Promise.resolve();
-            // 将来、List機能をCloudflareR2Serviceへ公開して強化可能。
-            return true;
-        } catch (e) {
-            this.logger.error(`verifyR2Empty error: ${(e as Error).message}`);
-            return false;
+        const retries = 3;
+        const baseDelayMs = 200;
+        for (let i = 0; i < retries; i++) {
+            try {
+                const empty = await this.r2.isUserNamespaceEmpty(userId);
+                if (empty) return true;
+            } catch (e) {
+                this.logger.warn(
+                    `isUserNamespaceEmpty failed (attempt ${i + 1}): ${(e as Error).message}`,
+                );
+            }
+            await new Promise((r) => setTimeout(r, baseDelayMs * (i + 1)));
         }
+        return false;
     }
 
     private async verifyDbCleared(userId: string): Promise<boolean> {

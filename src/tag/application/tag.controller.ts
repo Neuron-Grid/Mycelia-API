@@ -1,31 +1,15 @@
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedParam, TypedQuery, TypedRoute } from "@nestia/core";
 import {
     Body,
     Controller,
     HttpException,
     HttpStatus,
-    Param,
-    ParseIntPipe,
-    Query,
     UseGuards,
 } from "@nestjs/common";
-import {
-    ApiBadRequestResponse,
-    ApiBearerAuth,
-    ApiBody,
-    ApiCreatedResponse,
-    ApiNotFoundResponse,
-    ApiOkResponse,
-    ApiOperation,
-    ApiParam,
-    ApiQuery,
-    ApiTags,
-    ApiUnauthorizedResponse,
-} from "@nestjs/swagger";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
+import { parseUInt32 } from "@/common/utils/typed-param";
 import { FeedItemDto } from "@/feed/application/dto/feed-item.dto";
 import { FeedItemMapper } from "@/feed/application/feed-item.mapper";
 import { SubscriptionMapper } from "@/feed/application/subscription.mapper";
@@ -45,8 +29,6 @@ import { TagMapper } from "./tag.mapper";
 import { TagService } from "./tag.service";
 import { TagHierarchyMapper } from "./tag-hierarchy.mapper";
 
-@ApiTags("Tags")
-@ApiBearerAuth()
 @Controller({
     path: "tags",
     version: "1",
@@ -58,22 +40,11 @@ export class TagController {
         private readonly hierarchicalTagService: HierarchicalTagService,
     ) {}
 
-    @ApiOperation({ summary: "Get all tags for current user" })
-    @ApiOkResponse({
-        description: "Returns { message, data: Tag[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "array", items: { type: "object" } },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @TypedRoute.Get()
+    /**
+     * Get all tags for current user.
+     * - 認証ユーザーの全タグ一覧を返します。
+     */
+    @TypedRoute.Get("")
     async getAllTags(
         @UserId() userId: string,
     ): Promise<SuccessResponse<TagDto[]>> {
@@ -81,29 +52,14 @@ export class TagController {
         return buildResponse("Tag list fetched", TagMapper.listToDto(tags));
     }
 
-    @ApiOperation({ summary: "Create a new tag" })
-    @ApiCreatedResponse({
-        description: "Returns { message, data: Tag }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @TypedRoute.Post()
+    /**
+     * Create a new tag.
+     * - `tagName`は必須、`parentTagId`は任意。
+     */
+    @TypedRoute.Post("")
     async createTag(
         @UserId() userId: string,
-        @Body() dto: CreateTagDto,
+        @TypedBody() dto: CreateTagDto,
     ): Promise<SuccessResponse<TagDto>> {
         if (!dto.tagName) {
             throw new HttpException(
@@ -119,31 +75,15 @@ export class TagController {
         return buildResponse("Tag created", TagMapper.rowToDto(result));
     }
 
-    @ApiOperation({ summary: "Update a tag" })
-    @ApiParam({ name: "tagId", description: "ID of the tag to update" })
-    @ApiOkResponse({
-        description: "Returns { message, data: Tag }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Update a tag.
+     * - 指定IDのタグ名や親タグを変更します。
+     */
     @TypedRoute.Patch(":tagId")
     async updateTag(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
-        @Body() dto: UpdateTagDto,
+        @TypedParam("tagId", parseUInt32) tagId: number,
+        @TypedBody() dto: UpdateTagDto,
     ): Promise<SuccessResponse<TagDto>> {
         const updated = await this.tagService.updateTagForUser(
             userId,
@@ -154,56 +94,29 @@ export class TagController {
         return buildResponse("Tag updated", TagMapper.rowToDto(updated));
     }
 
-    @ApiOperation({ summary: "Delete a tag" })
-    @ApiParam({ name: "tagId", description: "ID of the tag to delete" })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Delete a tag.
+     * - 指定IDのタグを削除します。
+     */
     @TypedRoute.Delete(":tagId")
     async deleteTag(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
+        @TypedParam("tagId", parseUInt32) tagId: number,
     ): Promise<SuccessResponse<null>> {
         await this.tagService.deleteTagForUser(userId, tagId);
         return buildResponse("Tag deleted", null);
     }
 
     // FeedItemとの紐付け
-    @ApiOperation({ summary: "Get tags for a feed item" })
-    @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiOkResponse({
-        description: "Returns { message, data: Tag[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "array", items: { type: "object" } },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Get tags for a feed item.
+     * - 指定フィードアイテムに付与されたタグ一覧。
+     */
     @TypedRoute.Get("feed-items/:feedItemId")
     async getFeedItemTags(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
+        @TypedParam("feedItemId", parseUInt32)
+        feedItemId: number,
     ): Promise<SuccessResponse<TagDto[]>> {
         const result = await this.tagService.getTagsByFeedItem(
             userId,
@@ -215,32 +128,16 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Attach a tag to a feed item" })
-    @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Attach a tag to a feed item.
+     * - 指定フィードアイテムにタグを付与します。
+     */
     @TypedRoute.Post("feed-items/:feedItemId")
-    @ApiBody({ type: AttachTagDto })
     async attachTagToFeedItem(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Body() body: AttachTagDto,
+        @TypedParam("feedItemId", parseUInt32)
+        feedItemId: number,
+        @TypedBody() body: AttachTagDto,
     ): Promise<SuccessResponse<null>> {
         if (!body.tagId) {
             throw new HttpException(
@@ -256,74 +153,38 @@ export class TagController {
         return buildResponse("Tag attached to feed item", null);
     }
 
-    @ApiOperation({ summary: "Detach a tag from a feed item" })
-    @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiQuery({
-        name: "tagId",
-        description: "ID of the tag to detach",
-        type: Number,
-        required: true,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Detach a tag from a feed item.
+     * - クエリ`tagId`で分離対象タグを指定。
+     */
     @TypedRoute.Delete("feed-items/:feedItemId")
     async detachTagFromFeedItem(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Query("tagId") tagId: string,
+        @TypedParam("feedItemId", parseUInt32)
+        feedItemId: number,
+        @TypedQuery<{ tagId: number }>() query: { tagId: number },
     ): Promise<SuccessResponse<null>> {
-        if (!tagId) {
+        const tagId = query?.tagId;
+        if (!tagId && tagId !== 0) {
             throw new HttpException(
                 "tagId is required as query",
                 HttpStatus.BAD_REQUEST,
             );
         }
-        const parsedTagId = Number.parseInt(tagId, 10);
-        await this.tagService.detachTagFromFeedItem(
-            userId,
-            feedItemId,
-            parsedTagId,
-        );
+        await this.tagService.detachTagFromFeedItem(userId, feedItemId, tagId);
         return buildResponse("Tag detached from feed item", null);
     }
 
     // UserSubscriptionとの紐付け
-    @ApiOperation({ summary: "Get tags for a subscription" })
-    @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiOkResponse({
-        description: "Returns { message, data: Tag[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "array", items: { type: "object" } },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Get tags for a subscription.
+     * - 指定購読に付与されたタグ一覧。
+     */
     @TypedRoute.Get("subscriptions/:subscriptionId")
     async getSubscriptionTags(
         @UserId() userId: string,
-        @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
+        @TypedParam("subscriptionId", parseUInt32)
+        subscriptionId: number,
     ): Promise<SuccessResponse<TagDto[]>> {
         const result = await this.tagService.getTagsBySubscription(
             userId,
@@ -335,32 +196,15 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Attach a tag to a subscription" })
-    @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Attach a tag to a subscription.
+     */
     @TypedRoute.Post("subscriptions/:subscriptionId")
-    @ApiBody({ type: AttachTagDto })
     async attachTagToSubscription(
         @UserId() userId: string,
-        @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Body() body: AttachTagDto,
+        @TypedParam("subscriptionId", parseUInt32)
+        subscriptionId: number,
+        @TypedBody() body: AttachTagDto,
     ): Promise<SuccessResponse<null>> {
         if (!body.tagId) {
             throw new HttpException(
@@ -376,76 +220,33 @@ export class TagController {
         return buildResponse("Tag attached to subscription", null);
     }
 
-    @ApiOperation({ summary: "Detach a tag from a subscription" })
-    @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiQuery({
-        name: "tagId",
-        description: "ID of the tag to detach",
-        type: Number,
-        required: true,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Detach a tag from a subscription.
+     */
     @TypedRoute.Delete("subscriptions/:subscriptionId")
     async detachTagFromSubscription(
         @UserId() userId: string,
-        @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Query("tagId") tagId: string,
+        @TypedParam("subscriptionId", parseUInt32)
+        subscriptionId: number,
+        @TypedQuery<{ tagId: number }>() query: { tagId: number },
     ): Promise<SuccessResponse<null>> {
-        if (!tagId) {
+        const tagId = query?.tagId;
+        if (!tagId && tagId !== 0) {
             throw new HttpException(
                 "tagId is required as query",
                 HttpStatus.BAD_REQUEST,
             );
         }
-        const parsedTagId = Number.parseInt(tagId, 10);
         await this.tagService.detachTagFromSubscription(
             userId,
             subscriptionId,
-            parsedTagId,
+            tagId,
         );
         return buildResponse("Tag detached from subscription", null);
     }
 
     // 階層化タグの高度な機能
 
-    @ApiOperation({
-        summary: "Create a hierarchical tag with advanced features",
-    })
-    @ApiCreatedResponse({
-        description: "Returns { message, data }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @TypedRoute.Post("hierarchical")
     async createHierarchicalTag(
         @UserId() userId: string,
@@ -461,24 +262,6 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Get all tags in hierarchical structure" })
-    @ApiOkResponse({
-        description: "Returns { message, data: TagHierarchyDto[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "array",
-                    items: { $ref: "#/components/schemas/TagHierarchyDto" },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @TypedRoute.Get("hierarchy")
     async getTagHierarchy(
         @UserId() userId: string,
@@ -491,30 +274,10 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Get tag subtree (tag and all its descendants)" })
-    @ApiParam({ name: "tagId", description: "ID of the root tag" })
-    @ApiOkResponse({
-        description: "Returns { message, data: TagHierarchyDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: "#/components/schemas/TagHierarchyDto" },
-            },
-        },
-    })
-    @ApiNotFoundResponse({
-        description: "Tag not found",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @TypedRoute.Get(":tagId/subtree")
     async getTagSubtree(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
+        @TypedParam("tagId", parseUInt32) tagId: number,
     ): Promise<SuccessResponse<TagHierarchyDto | null>> {
         const subtree = await this.hierarchicalTagService.getTagSubtree(
             userId,
@@ -529,30 +292,10 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Get tag path from root to specified tag" })
-    @ApiParam({ name: "tagId", description: "ID of the tag" })
-    @ApiOkResponse({
-        description: "Returns { message, data: TagWithPathDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: "#/components/schemas/TagWithPathDto" },
-            },
-        },
-    })
-    @ApiNotFoundResponse({
-        description: "Tag not found",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @TypedRoute.Get(":tagId/path")
     async getTagPath(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
+        @TypedParam("tagId", parseUInt32) tagId: number,
     ): Promise<SuccessResponse<TagWithPathDto>> {
         const path = await this.hierarchicalTagService.getTagPath(
             userId,
@@ -567,35 +310,11 @@ export class TagController {
         );
     }
 
-    @ApiOperation({ summary: "Move tag to a new parent (change hierarchy)" })
-    @ApiParam({ name: "tagId", description: "ID of the tag to move" })
-    @ApiOkResponse({
-        description: "Returns { message, data }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "object" },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiNotFoundResponse({
-        description: "Tag not found",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     @TypedRoute.Patch(":tagId/move")
     async moveTag(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
-        @Body() dto: MoveTagDto,
+        @TypedParam("tagId", parseUInt32) tagId: number,
+        @TypedBody() dto: MoveTagDto,
     ): Promise<SuccessResponse<TagDto>> {
         const result = await this.hierarchicalTagService.moveTag(
             userId,
@@ -605,38 +324,18 @@ export class TagController {
         return buildResponse("Tag moved", TagMapper.entityToDto(result));
     }
 
-    @ApiOperation({
-        summary:
-            "Get feed items filtered by tag (with optional child inclusion)",
-    })
-    @ApiParam({ name: "tagId", description: "ID of the tag" })
-    @ApiQuery({
-        name: "includeChildren",
-        required: false,
-        description: "Include child tags in filter",
-        type: Boolean,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: FeedItem[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "array", items: { type: "object" } },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Get feed items filtered by tag.
+     * - `includeChildren=true`で子孫タグも含めます。
+     */
     @TypedRoute.Get(":tagId/feed-items")
     async getFeedItemsByTag(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
-        @Query("includeChildren") includeChildren?: boolean,
+        @TypedParam("tagId", parseUInt32) tagId: number,
+        @TypedQuery<{ includeChildren?: boolean }>()
+        query: { includeChildren?: boolean },
     ): Promise<SuccessResponse<FeedItemDto[]>> {
-        const includeChildrenBool = includeChildren === true;
+        const includeChildrenBool = query?.includeChildren === true;
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
             userId,
             tagId,
@@ -654,42 +353,22 @@ export class TagController {
         return buildResponse("Feed items by tag fetched", dtos);
     }
 
-    @ApiOperation({
-        summary:
-            "Get subscriptions filtered by tag (with optional child inclusion)",
-    })
-    @ApiParam({ name: "tagId", description: "ID of the tag" })
-    @ApiQuery({
-        name: "includeChildren",
-        required: false,
-        description: "Include child tags in filter",
-        type: Boolean,
-    })
-    @ApiOkResponse({
-        description: "Returns { message, data: Subscription[] }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "array", items: { type: "object" } },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Get subscriptions filtered by tag.
+     * - `includeChildren=true`で子孫タグも含めます。
+     */
     @TypedRoute.Get(":tagId/subscriptions")
     async getSubscriptionsByTag(
         @UserId() userId: string,
-        @Param("tagId", ParseIntPipe) tagId: number,
-        @Query("includeChildren") includeChildren?: boolean,
+        @TypedParam("tagId", parseUInt32) tagId: number,
+        @TypedQuery<{ includeChildren?: boolean }>()
+        query: { includeChildren?: boolean },
     ): Promise<
         SuccessResponse<
             import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
         >
     > {
-        const includeChildrenBool = includeChildren === true;
+        const includeChildrenBool = query?.includeChildren === true;
         const subscriptions =
             await this.hierarchicalTagService.getSubscriptionsByTag(
                 userId,
@@ -706,32 +385,15 @@ export class TagController {
         return buildResponse("Subscriptions by tag fetched", dtos);
     }
 
-    @ApiOperation({ summary: "Tag multiple feed items with multiple tags" })
-    @ApiParam({ name: "feedItemId", description: "ID of the feed item" })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Tag feed item with multiple tags.
+     */
     @TypedRoute.Post("feed-items/:feedItemId/bulk")
-    @ApiBody({ type: BulkTagDto })
     async tagFeedItem(
         @UserId() userId: string,
-        @Param("feedItemId", ParseIntPipe) feedItemId: number,
-        @Body() body: BulkTagDto,
+        @TypedParam("feedItemId", parseUInt32)
+        feedItemId: number,
+        @TypedBody() body: BulkTagDto,
     ): Promise<SuccessResponse<null>> {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(
@@ -747,32 +409,15 @@ export class TagController {
         return buildResponse("Feed item tagged with multiple tags", null);
     }
 
-    @ApiOperation({ summary: "Tag subscription with multiple tags" })
-    @ApiParam({ name: "subscriptionId", description: "ID of the subscription" })
-    @ApiOkResponse({
-        description: "Returns { message, data: null }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { type: "null", nullable: true },
-            },
-        },
-    })
-    @ApiBadRequestResponse({
-        description: "Bad request",
-        type: ErrorResponseDto,
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
+    /**
+     * Tag subscription with multiple tags.
+     */
     @TypedRoute.Post("subscriptions/:subscriptionId/bulk")
-    @ApiBody({ type: BulkTagDto })
     async tagSubscription(
         @UserId() userId: string,
-        @Param("subscriptionId", ParseIntPipe) subscriptionId: number,
-        @Body() body: BulkTagDto,
+        @TypedParam("subscriptionId", parseUInt32)
+        subscriptionId: number,
+        @TypedBody() body: BulkTagDto,
     ): Promise<SuccessResponse<null>> {
         if (!body.tagIds || !Array.isArray(body.tagIds)) {
             throw new HttpException(

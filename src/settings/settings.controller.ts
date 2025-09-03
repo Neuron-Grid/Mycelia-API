@@ -1,24 +1,11 @@
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
-import {
-    BadRequestException,
-    Body,
-    Controller,
-    UseGuards,
-} from "@nestjs/common";
-import {
-    ApiBearerAuth,
-    ApiBody,
-    ApiOkResponse,
-    ApiOperation,
-    ApiTags,
-    ApiUnauthorizedResponse,
-} from "@nestjs/swagger";
+import { BadRequestException, Controller, UseGuards } from "@nestjs/common";
+
 import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
 import { DomainConfigService } from "@/domain-config/domain-config.service";
 import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
@@ -35,7 +22,6 @@ import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
 import { UserSettingsBasicMapper } from "@/settings/dto/user-settings-basic.mapper";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
-@ApiTags("settings")
 @Controller()
 @UseGuards(SupabaseAuthGuard)
 export class SettingsController {
@@ -51,26 +37,16 @@ export class SettingsController {
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
     ) {}
 
+    /**
+     * User settings and schedule overview.
+     * - 現在の設定と次回実行予定、直近の実行履歴概要を返します。
+     */
     @TypedRoute.Get("settings")
-    @ApiOperation({ summary: "User settings and schedule overview" })
-    @ApiBearerAuth()
-    @ApiOkResponse({
-        description: "Returns { message, data: SettingsOverviewDto }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: { $ref: "#/components/schemas/SettingsOverviewDto" },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
     async getSettings(
         @SupabaseUser() user: User,
-    ): Promise<SuccessResponse<SettingsOverviewDto>> {
+    ): Promise<
+        import("@/settings/dto/settings-overview.response.dto").SettingsOverviewResponseDto
+    > {
         const userId = user.id;
         const base = await this.userSettingsRepo.getByUserId(userId);
         const next = await this.jobsService.getUserScheduleInfo(userId);
@@ -112,14 +88,10 @@ export class SettingsController {
         );
     }
 
+    /**
+     * Reload schedule (central scheduler; immediate effect).
+     */
     @TypedRoute.Post("schedule/reload")
-    @ApiOperation({
-        summary:
-            "Reload schedule (central scheduler; changes take effect immediately)",
-        description:
-            "中央スケジューラ方式のため、設定変更は即時反映されます。個別ユーザーのrepeatable再登録は不要です。",
-    })
-    @ApiBearerAuth()
     async reloadMySchedule(
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<Record<string, unknown>>> {
@@ -128,16 +100,14 @@ export class SettingsController {
         return buildResponse("Schedule reloaded", next);
     }
 
+    /**
+     * Preview next run times at a given JST time.
+     * - 安定ジッター＋固定オフセットを考慮したサマリ/ポッドキャストの次回時刻を試算。
+     */
     @TypedRoute.Post("schedule/preview")
-    @ApiOperation({
-        summary:
-            "Preview next run times at a given JST time (with jitter and fixed offset)",
-    })
-    @ApiBearerAuth()
-    @ApiBody({ type: PreviewScheduleDto })
     previewSchedule(
         @SupabaseUser() user: User,
-        @Body() body: PreviewScheduleDto,
+        @TypedBody() body: PreviewScheduleDto,
     ): SuccessResponse<{ nextRunAtSummary: string; nextRunAtPodcast: string }> {
         const { timeJst } = body || ({} as PreviewScheduleDto);
         if (!/^([0-1]?\d|2[0-3]):[0-5]\d$/.test(String(timeJst))) {
@@ -161,9 +131,10 @@ export class SettingsController {
         });
     }
 
+    /**
+     * Today's summary → script → podcast progress.
+     */
     @TypedRoute.Get("jobs/status")
-    @ApiOperation({ summary: "Today's summary → script → podcast progress" })
-    @ApiBearerAuth()
     async jobsStatus(@SupabaseUser() user: User): Promise<
         SuccessResponse<{
             date: string;
@@ -266,17 +237,14 @@ export class SettingsController {
         });
     }
 
+    /**
+     * Update summary feature enabled/disabled.
+     * - 中央スケジューラにより即時反映（安定ジッター適用）。
+     */
     @TypedRoute.Put("settings/summary")
-    @ApiOperation({
-        summary: "Update summary feature enabled/disabled",
-        description:
-            "中央スケジューラにより、変更は即時に有効化/無効化されます（安定ジッター適用）。",
-    })
-    @ApiBearerAuth()
-    @ApiBody({ type: UpdateSummarySettingDto })
     async updateSummarySetting(
         @SupabaseUser() user: User,
-        @Body() body: UpdateSummarySettingDto,
+        @TypedBody() body: UpdateSummarySettingDto,
     ): Promise<SuccessResponse<UserSettingsBasicDto>> {
         if (typeof body?.enabled !== "boolean") {
             throw new BadRequestException("enabled must be boolean");
@@ -294,17 +262,14 @@ export class SettingsController {
         );
     }
 
+    /**
+     * Update podcast settings (enabled/time/language).
+     * - 指定時刻（JST）＋安定ジッター、要約実行の+10分後に実施。
+     */
     @TypedRoute.Put("settings/podcast")
-    @ApiOperation({
-        summary: "Update podcast settings (enabled/time/language)",
-        description:
-            "中央スケジューラ方式。指定時刻（JST）＋安定ジッターで運用され、要約の+10分後にポッドキャストが実行されます。",
-    })
-    @ApiBearerAuth()
-    @ApiBody({ type: UpdatePodcastSettingDto })
     async updatePodcastSetting(
         @SupabaseUser() user: User,
-        @Body() body: UpdatePodcastSettingDto,
+        @TypedBody() body: UpdatePodcastSettingDto,
     ): Promise<SuccessResponse<UserSettingsBasicDto>> {
         if (typeof body?.enabled !== "boolean")
             throw new BadRequestException("enabled must be boolean");
@@ -328,16 +293,13 @@ export class SettingsController {
         );
     }
 
+    /**
+     * Enqueue today's summary → script → podcast flow immediately (idempotent).
+     */
     @TypedRoute.Post("summaries/run-now")
-    @ApiOperation({
-        summary:
-            "Enqueue today's summary → script → podcast flow immediately (idempotent)",
-    })
-    @ApiBearerAuth()
-    @ApiBody({ type: RunSummaryNowDto })
     async runSummaryNow(
         @SupabaseUser() user: User,
-        @Body() body?: RunSummaryNowDto,
+        @TypedBody() body?: RunSummaryNowDto,
     ): Promise<
         SuccessResponse<{ enqueued: boolean; flowId: string; date: string }>
     > {
@@ -353,12 +315,10 @@ export class SettingsController {
         });
     }
 
+    /**
+     * Enqueue podcast generation for today if a summary exists (idempotent).
+     */
     @TypedRoute.Post("podcasts/run-now")
-    @ApiOperation({
-        summary:
-            "Enqueue podcast generation for today if a summary exists (idempotent)",
-    })
-    @ApiBearerAuth()
     async runPodcastNow(
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<{ jobId: string | number | null }>> {

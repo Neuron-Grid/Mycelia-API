@@ -1,51 +1,32 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+/**
+ * 設定の概要 DTO
+ */
 
 export class SettingsOverviewDto {
-    @ApiProperty({ description: "要約機能の有効/無効" })
+    /** 要約機能の有効/無効 */
     summaryEnabled!: boolean;
 
-    @ApiProperty({ description: "ポッドキャスト機能の有効/無効" })
+    /** ポッドキャスト機能の有効/無効 */
     podcastEnabled!: boolean;
 
-    @ApiPropertyOptional({
-        description: "ポッドキャスト実行時刻 (JST, HH:mm)",
-        nullable: true,
-    })
+    /** ポッドキャスト実行時刻 (JST, HH:mm) */
     podcastScheduleTime!: string | null;
 
-    @ApiProperty({
-        description: "ポッドキャスト言語",
-        enum: ["ja-JP", "en-US"],
-    })
+    /** ポッドキャスト言語 */
     podcastLanguage!: "ja-JP" | "en-US";
 
-    @ApiPropertyOptional({
-        description: "次回要約実行予定日時 (ISO)",
-        nullable: true,
-    })
+    /** 次回要約実行予定日時 (ISO) */
     nextRunAtSummary!: string | null;
 
-    @ApiPropertyOptional({
-        description: "次回ポッドキャスト実行予定日時 (ISO)",
-        nullable: true,
-    })
+    /** 次回ポッドキャスト実行予定日時 (ISO) */
     nextRunAtPodcast!: string | null;
 
-    @ApiPropertyOptional({
-        description: "直近の要約更新日時 (ISO)",
-        nullable: true,
-    })
+    /** 直近の要約更新日時 (ISO) */
     lastSummaryAt!: string | null;
 
-    @ApiPropertyOptional({
-        description: "直近のポッドキャスト更新日時 (ISO)",
-        nullable: true,
-    })
+    /** 直近のポッドキャスト更新日時 (ISO) */
     lastPodcastAt!: string | null;
 
-    @ApiProperty({
-        description: "直近ステータス",
-        enum: ["success", "failed", "skipped", "unknown"],
-    })
+    /** 直近ステータス */
     lastStatus!: "success" | "failed" | "skipped" | "unknown";
 }

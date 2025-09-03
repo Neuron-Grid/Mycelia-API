@@ -353,7 +353,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                         key &&
                         this.cloudflareR2Service.isUserFile(key, userId)
                     ) {
-                        await this.cloudflareR2Service.deleteFile("", key); // bucketは内部で処理
+                        await this.cloudflareR2Service.deleteObject(key);
                     }
                 }
 

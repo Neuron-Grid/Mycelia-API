@@ -1,5 +1,5 @@
-import "reflect-metadata";
 import type { INestiaConfig } from "@nestia/sdk";
+import "reflect-metadata";
 
 const config: INestiaConfig = {
     // PoC段階ではHealth配下のみを対象にしてnestiaのルート検出/生成を確認

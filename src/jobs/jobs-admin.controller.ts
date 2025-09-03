@@ -1,30 +1,15 @@
-import { TypedRoute } from "@nestia/core";
+import { TypedBody, TypedParam, TypedQuery, TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
 import {
-    Body,
     Controller,
     HttpException,
     HttpStatus,
-    Param,
-    Query,
     UseGuards,
 } from "@nestjs/common";
-import {
-    ApiBearerAuth,
-    ApiBody,
-    ApiForbiddenResponse,
-    ApiNotFoundResponse,
-    ApiOkResponse,
-    ApiOperation,
-    ApiQuery,
-    ApiTags,
-    ApiUnauthorizedResponse,
-} from "@nestjs/swagger";
 import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { Job, Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
-import { ErrorResponseDto } from "@/common/dto/error-response.dto";
 import { buildResponse } from "@/common/utils/response.util";
 import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
 
@@ -39,8 +24,6 @@ type QueueName =
     | "script-generate"
     | "podcastQueue";
 
-@ApiTags("Jobs Admin")
-@ApiBearerAuth()
 @UseGuards(SupabaseAuthGuard)
 @Controller("jobs")
 export class JobsAdminController {
@@ -68,45 +51,13 @@ export class JobsAdminController {
         }
     }
 
+    /** List failed jobs for current user in a queue */
     @TypedRoute.Get("failed")
-    @ApiOperation({ summary: "List failed jobs for current user in a queue" })
-    @ApiQuery({ name: "queue", required: true })
-    @ApiOkResponse({
-        description: "Returns { message, data: { queue, count, jobs[] } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        queue: { type: "string" },
-                        count: { type: "number" },
-                        jobs: {
-                            type: "array",
-                            items: {
-                                type: "object",
-                                properties: {
-                                    id: { type: "string" },
-                                    failedReason: { type: "string" },
-                                    timestamp: { type: "number" },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
     async listFailed(
         @SupabaseUser() user: SupabaseUserType,
-        @Query("queue") queueName: QueueName,
+        @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
     ) {
+        const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const jobs = await queue.getFailed(0, 100);
         const mine = jobs.filter(
@@ -123,38 +74,14 @@ export class JobsAdminController {
         });
     }
 
+    /** Retry a specific failed job if it belongs to the user */
     @TypedRoute.Post(":jobId/retry")
-    @ApiOperation({
-        summary: "Retry a specific failed job if it belongs to the user",
-    })
-    @ApiQuery({ name: "queue", required: true })
-    @ApiOkResponse({
-        description: "Returns { message, data: { retried, jobId } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        retried: { type: "boolean" },
-                        jobId: { type: "string" },
-                    },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
-    @ApiNotFoundResponse({ description: "Not Found", type: ErrorResponseDto })
     async retryJob(
         @SupabaseUser() user: SupabaseUserType,
-        @Param("jobId") jobId: string,
-        @Query("queue") queueName: QueueName,
+        @TypedParam("jobId", (v) => v) jobId: string,
+        @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
     ) {
+        const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const job = await queue.getJob(jobId);
         if (!job)
@@ -167,38 +94,14 @@ export class JobsAdminController {
         return buildResponse("Job retried", { retried: true, jobId });
     }
 
+    /** Retry all failed jobs for current user in the queue */
     @TypedRoute.Post("failed/retry")
-    @ApiOperation({
-        summary: "Retry all failed jobs for current user in the queue",
-    })
-    @ApiQuery({ name: "queue", required: true })
-    @ApiBody({ type: RetryAllDto })
-    @ApiOkResponse({
-        description: "Returns { message, data: { queue, retried } }",
-        schema: {
-            type: "object",
-            properties: {
-                message: { type: "string" },
-                data: {
-                    type: "object",
-                    properties: {
-                        queue: { type: "string" },
-                        retried: { type: "number" },
-                    },
-                },
-            },
-        },
-    })
-    @ApiUnauthorizedResponse({
-        description: "Unauthorized",
-        type: ErrorResponseDto,
-    })
-    @ApiForbiddenResponse({ description: "Forbidden", type: ErrorResponseDto })
     async retryAll(
         @SupabaseUser() user: SupabaseUserType,
-        @Query("queue") queueName: QueueName,
-        @Body() body?: RetryAllDto,
+        @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
+        @TypedBody() body?: RetryAllDto,
     ) {
+        const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const limit = body?.max ?? 100;
         const jobs: Job<DataWithOwner>[] = await queue.getFailed(0, limit);

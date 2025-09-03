@@ -1,57 +1,31 @@
-import { ApiProperty } from "@nestjs/swagger";
+/**
+ * 検索レスポンス DTO
+ */
 
 export class SearchResultDto {
-    @ApiProperty({
-        description: "Content ID",
-        example: 123,
-    })
+    /** Content ID */
     id: number;
 
-    @ApiProperty({
-        description: "Content title",
-        example: "AI Breakthrough in Medical Research",
-    })
+    /** Content title */
     title: string;
 
-    @ApiProperty({
-        description: "Content text",
-        example: "A new AI system has been developed...",
-    })
+    /** Content text */
     content: string;
 
-    @ApiProperty({
-        description: "Similarity score (0.0-1.0)",
-        minimum: 0,
-        maximum: 1,
-        example: 0.85,
-    })
+    /** Similarity score (0.0-1.0) */
     similarity: number;
 
-    @ApiProperty({
-        description: "Content type",
-        enum: ["feed_item", "summary", "podcast"],
-        example: "feed_item",
-    })
+    /** Content type */
     type: "feed_item" | "summary" | "podcast";
 
-    @ApiProperty({
-        description: "Additional metadata",
-        required: false,
-        example: { link: "https://example.com", published_at: "2024-01-01" },
-    })
+    /** Additional metadata */
     metadata?: Record<string, string | number | boolean | null>;
 }
 
 export class SearchResponseDto {
-    @ApiProperty({
-        description: "Response message",
-        example: "Search completed successfully",
-    })
+    /** Response message */
     message: string;
 
-    @ApiProperty({
-        description: "Search results",
-        type: [SearchResultDto],
-    })
+    /** Search results */
     data: SearchResultDto[];
 }
