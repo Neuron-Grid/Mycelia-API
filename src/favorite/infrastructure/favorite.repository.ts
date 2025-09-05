@@ -14,11 +14,11 @@ export class FavoriteRepository {
     constructor(private readonly supabaseService: SupabaseRequestService) {}
 
     // 指定ユーザーのお気に入り一覧を取得
-    async findAllByUserId(userId: string): Promise<FavoritesRow[]> {
+    async findAllByUserId(userId: string) {
         const supabase = this.supabaseService.getClient();
         const { data, error } = await supabase
             .from("feed_item_favorites")
-            .select("*")
+            .select("*, feed_item:feed_items(*)")
             .eq("user_id", userId)
             .eq("soft_deleted", false)
             .order("created_at", { ascending: false });

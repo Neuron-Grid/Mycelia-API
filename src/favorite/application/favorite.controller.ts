@@ -1,9 +1,6 @@
 // @file お気に入り機能のAPIコントローラ
-
 import { TypedParam, TypedRoute } from "@nestia/core";
 import { Controller, UseGuards } from "@nestjs/common";
-// @see https://docs.nestjs.com/openapi/introduction
-
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
@@ -11,6 +8,7 @@ import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
 import { parseUInt32 } from "@/common/utils/typed-param";
 import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
 import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
+import { FeedItemMapper } from "@/feed/application/feed-item.mapper";
 import { FavoriteMapper } from "./favorite.mapper";
 import { FavoriteService } from "./favorite.service";
 
@@ -36,16 +34,27 @@ export class FavoriteController {
     // @example
     // await favoriteController.getUserFavorites(user)
     // @see FavoriteService.getUserFavorites
-    /** Favorites list */
+    /** Favorites list (with feed item details) */
     @TypedRoute.Get("")
     async getUserFavorites(
         @UserId() userId: string,
-    ): Promise<SuccessResponse<FavoriteDto[]>> {
+    ): Promise<
+        SuccessResponse<
+            import("@/feed/application/dto/feed-item.dto").FeedItemDto[]
+        >
+    > {
         const favorites = await this.favoriteService.getUserFavorites(userId);
-        return buildResponse(
-            "Favorites fetched",
-            FavoriteMapper.listToDto(favorites),
-        );
+        // favorites: Array<feed_item_favorites & { feed_item: feed_items }>
+        type FeedItemRow =
+            import("@/types/schema").Database["public"]["Tables"]["feed_items"]["Row"];
+        const items = (favorites as Array<{ feed_item?: FeedItemRow | null }>)
+            .map((r) => r.feed_item ?? null)
+            .filter((r): r is FeedItemRow => r !== null)
+            .map((row) =>
+                FeedItemMapper.rowToDto(row, { isFavorite: true, tags: [] }),
+            );
+
+        return buildResponse("Favorites fetched", items);
     }
 
     // @async

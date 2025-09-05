@@ -1,7 +1,7 @@
-import crypto from "node:crypto";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import type { NextFunction, Request, Response } from "express";
+import crypto from "node:crypto";
 
 /**
  * Double submit cookie based CSRF protection.
@@ -9,7 +9,9 @@ import type { NextFunction, Request, Response } from "express";
  * - For non-idempotent methods, requires `X-CSRF-Token` header to match cookie.
  * - Skips a small set of auth endpoints to avoid bootstrap friction.
  */
-export function createCsrfMiddleware(_cfg: ConfigService) {
+export function createCsrfMiddleware(cfg: ConfigService) {
+    const isProd =
+        (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
     const skipPaths = new Set<string>([
         // Allow bootstrap on auth endpoints where client may not yet send header
         "/api/v1/auth/login",
@@ -34,7 +36,7 @@ export function createCsrfMiddleware(_cfg: ConfigService) {
             const token = crypto.randomBytes(32).toString("base64url");
             res.cookie("XSRF-TOKEN", token, {
                 httpOnly: false,
-                secure: true,
+                secure: isProd,
                 sameSite: "lax",
                 path: "/",
                 maxAge: 2 * 60 * 60 * 1000, // 2h
