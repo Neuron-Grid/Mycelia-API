@@ -4,8 +4,11 @@ import { TypedRoute } from "@nestia/core";
 import { Controller } from "@nestjs/common";
 // @see ./app.service
 import { AppService } from "@/app.service";
-import { GreetingResponseDto } from "@/common/dto/greeting-response.dto";
-import { buildResponse } from "@/common/utils/response.util";
+import { GreetingDto } from "@/common/dto/greeting.dto";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 
 @Controller()
 // @public
@@ -22,9 +25,13 @@ export class AppController {
     // @example
     // const msg = appController.getHello()
     // @see AppService.getHello
-    @TypedRoute.Get("")
+    @TypedRoute.Get<
+        import("@/common/utils/response.util").ResponseEnvelope<
+            import("@/common/dto/greeting.dto").GreetingDto
+        >
+    >("")
     /** Root endpoint returning greeting message */
-    getHello(): GreetingResponseDto {
-        return buildResponse("OK", this.appService.getHello());
+    getHello(): SuccessResponse<GreetingDto> {
+        return buildResponse("OK", { greeting: this.appService.getHello() });
     }
 }

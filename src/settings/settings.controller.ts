@@ -6,15 +6,23 @@ import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
-import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 import { DomainConfigService } from "@/domain-config/domain-config.service";
 import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
 import { JobsService } from "@/jobs/jobs.service";
 import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
 import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
+import { EnqueueFlowResponseDto } from "@/settings/dto/enqueue-flow.response.dto";
+import { EnqueueJobResponseDto } from "@/settings/dto/enqueue-job.response.dto";
+import { JobsStatusResponseDto } from "@/settings/dto/jobs-status.response.dto";
 import { PreviewScheduleDto } from "@/settings/dto/preview-schedule.dto";
 import { RunSummaryNowDto } from "@/settings/dto/run-summary-now.dto";
+import { SchedulePreviewResponseDto } from "@/settings/dto/schedule-preview.response.dto";
 import { SettingsMapper } from "@/settings/dto/settings.mapper";
+import type { SettingsOverviewDto } from "@/settings/dto/settings-overview.dto";
 import { UpdatePodcastSettingDto } from "@/settings/dto/update-podcast-setting.dto";
 import { UpdateSummarySettingDto } from "@/settings/dto/update-summary-setting.dto";
 import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
@@ -43,9 +51,7 @@ export class SettingsController {
     @TypedRoute.Get("settings")
     async getSettings(
         @SupabaseUser() user: User,
-    ): Promise<
-        import("@/settings/dto/settings-overview.response.dto").SettingsOverviewResponseDto
-    > {
+    ): Promise<SuccessResponse<SettingsOverviewDto>> {
         const userId = user.id;
         const base = await this.userSettingsRepo.getByUserId(userId);
         const next = await this.jobsService.getUserScheduleInfo(userId);
@@ -91,12 +97,18 @@ export class SettingsController {
      * Reload schedule (central scheduler; immediate effect).
      */
     @TypedRoute.Post("schedule/reload")
-    async reloadMySchedule(
-        @SupabaseUser() user: User,
-    ): Promise<SuccessResponse<Record<string, unknown>>> {
+    async reloadMySchedule(@SupabaseUser() user: User): Promise<
+        SuccessResponse<{
+            nextRunAtSummary: string | null;
+            nextRunAtPodcast: string | null;
+        }>
+    > {
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
         const next = await this.jobsService.getUserScheduleInfo(user.id);
-        return buildResponse("Schedule reloaded", next);
+        return buildResponse("Schedule reloaded", {
+            nextRunAtSummary: next.next_run_at_summary ?? null,
+            nextRunAtPodcast: next.next_run_at_podcast ?? null,
+        });
     }
 
     /**
@@ -107,7 +119,7 @@ export class SettingsController {
     previewSchedule(
         @SupabaseUser() user: User,
         @TypedBody() body: PreviewScheduleDto,
-    ): SuccessResponse<{ nextRunAtSummary: string; nextRunAtPodcast: string }> {
+    ): SuccessResponse<SchedulePreviewResponseDto> {
         const { timeJst } = body || ({} as PreviewScheduleDto);
         if (!/^([0-1]?\d|2[0-3]):[0-5]\d$/.test(String(timeJst))) {
             throw new BadRequestException("timeJst must be HH:mm (JST)");
@@ -134,14 +146,9 @@ export class SettingsController {
      * Today's summary → script → podcast progress.
      */
     @TypedRoute.Get("jobs/status")
-    async jobsStatus(@SupabaseUser() user: User): Promise<
-        SuccessResponse<{
-            date: string;
-            summary: { state: string; jobId: string | null };
-            script: { state: string; jobId: string | null };
-            podcast: { state: string; jobId: string | null };
-        }>
-    > {
+    async jobsStatus(
+        @SupabaseUser() user: User,
+    ): Promise<SuccessResponse<JobsStatusResponseDto>> {
         const userId = user.id;
         const today = this.formatDateJst(new Date());
         const summaryJobId = `summary:${userId}:${today}`;
@@ -299,9 +306,7 @@ export class SettingsController {
     async runSummaryNow(
         @SupabaseUser() user: User,
         @TypedBody() body?: RunSummaryNowDto,
-    ): Promise<
-        SuccessResponse<{ enqueued: boolean; flowId: string; date: string }>
-    > {
+    ): Promise<SuccessResponse<EnqueueFlowResponseDto>> {
         const dateJst = body?.date ?? this.formatDateJst(new Date());
         const flow = await this.flowOrchestrator.createDailyFlow(
             user.id,
@@ -320,7 +325,7 @@ export class SettingsController {
     @TypedRoute.Post("podcasts/run-now")
     async runPodcastNow(
         @SupabaseUser() user: User,
-    ): Promise<SuccessResponse<{ jobId: string | number | null }>> {
+    ): Promise<SuccessResponse<EnqueueJobResponseDto>> {
         const today = this.formatDateJst(new Date());
         const job = await this.podcastQueue.add(
             "generatePodcastForToday",

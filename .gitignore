@@ -69,3 +69,7 @@ AGENTS.md
 future-change.md
 ./container
 CONTRIBUTING.md
+
+
+patches/work/
+patches/nestia-core-8.0.5-transformer.patch

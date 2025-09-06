@@ -3,9 +3,13 @@ import { Controller, UseGuards } from "@nestjs/common";
 import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
-import { buildResponse } from "@/common/utils/response.util";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 import { SummaryService } from "@/summary/application/summary.service";
 import { CreateSummaryDto } from "@/summary/dto/create-summary.dto";
+import { CreateSummaryResponseDto } from "@/summary/dto/create-summary.response.dto";
 
 @Controller("summary")
 @UseGuards(SupabaseAuthGuard)
@@ -17,7 +21,7 @@ export class SummaryController {
     async createSummary(
         @SupabaseUser() user: User,
         @TypedBody() createSummaryDto: CreateSummaryDto,
-    ) {
+    ): Promise<SuccessResponse<CreateSummaryResponseDto>> {
         const result = await this.summaryService.createSummary(
             user.id,
             createSummaryDto,

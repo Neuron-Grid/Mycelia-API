@@ -8,6 +8,7 @@ import { buildResponse, SuccessResponse } from "@/common/utils/response.util";
 import { parseUInt32 } from "@/common/utils/typed-param";
 import { CheckFavoriteResponseDto } from "@/favorite/application/dto/check-favorite-response.dto";
 import { FavoriteDto } from "@/favorite/application/dto/favorite.dto";
+import type { FeedItemDto } from "@/feed/application/dto/feed-item.dto";
 import { FeedItemMapper } from "@/feed/application/feed-item.mapper";
 import { FavoriteMapper } from "./favorite.mapper";
 import { FavoriteService } from "./favorite.service";
@@ -38,11 +39,7 @@ export class FavoriteController {
     @TypedRoute.Get("")
     async getUserFavorites(
         @UserId() userId: string,
-    ): Promise<
-        SuccessResponse<
-            import("@/feed/application/dto/feed-item.dto").FeedItemDto[]
-        >
-    > {
+    ): Promise<SuccessResponse<FeedItemDto[]>> {
         const favorites = await this.favoriteService.getUserFavorites(userId);
         // favorites: Array<feed_item_favorites & { feed_item: feed_items }>
         type FeedItemRow =

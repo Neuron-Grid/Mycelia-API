@@ -33,7 +33,7 @@ export class SummaryController {
         @TypedParam("userId", (v) => v) targetUserId: string,
         @SupabaseUser() requestingUser: SupabaseUserType,
         @TypedBody() body?: RegenerateSummaryDto,
-    ): Promise<SuccessResponse<{ jobId?: string }>> {
+    ): Promise<SuccessResponse<JobEnqueueResponseDto>> {
         // 戻り値の型を明確化
         this.logger.log(
             `User ${requestingUser.id} requesting summary regeneration for user ${targetUserId}`,
@@ -86,7 +86,7 @@ export class SummaryController {
         @TypedParam("summaryId", parseUInt32) summaryId: number,
         @SupabaseUser() user: SupabaseUserType, // requestingUser の方が意図が明確かも
         @TypedBody() body?: RegenerateScriptDto,
-    ): Promise<SuccessResponse<{ jobId?: string }>> {
+    ): Promise<SuccessResponse<JobEnqueueResponseDto>> {
         // 戻り値の型を明確化
 
         this.logger.log(
@@ -141,3 +141,5 @@ export class SummaryController {
         }
     }
 }
+
+import { JobEnqueueResponseDto } from "@/llm/application/dto/job-enqueue.response.dto";

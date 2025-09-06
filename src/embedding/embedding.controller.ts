@@ -4,6 +4,7 @@ import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
+import { BatchUpdateEnqueuedDto } from "@/embedding/dto/batch-update-enqueued.dto";
 import { SupabaseUser } from "../auth/supabase-user.decorator";
 import type { BatchProgressItemDto } from "./dto/batch-progress-response.dto";
 import { BatchUpdateRequestDto } from "./dto/batch-update-request.dto";
@@ -22,7 +23,7 @@ export class EmbeddingController {
     async triggerBatchUpdate(
         @SupabaseUser() user: User,
         @TypedBody() request: BatchUpdateRequestDto,
-    ): Promise<SuccessResponse<{ userId: string }>> {
+    ): Promise<SuccessResponse<BatchUpdateEnqueuedDto>> {
         await this.embeddingQueueService.addUserEmbeddingBatchJob(
             user.id,
             request.tableTypes,

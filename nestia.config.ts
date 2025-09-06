@@ -5,6 +5,7 @@ const config: INestiaConfig = {
     // PoC段階ではHealth配下のみを対象にしてnestiaのルート検出/生成を確認
     // 段階移行の後に input を広げる
     input: "src/**/*.controller.ts",
+    clone: true,
     swagger: {
         output: "swagger.json",
         openapi: "3.1",

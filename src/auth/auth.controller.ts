@@ -14,6 +14,10 @@ import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import type { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
 import { setAuthCookies } from "src/common/utils/cookie";
+import { AckDto } from "@/auth/dto/ack.dto";
+import { EnrollTotpResponseDto } from "@/auth/dto/enroll-totp.response.dto";
+import { LoginResultDto } from "@/auth/dto/login-result.dto";
+import { RefreshResultDto } from "@/auth/dto/refresh-result.dto";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { AuthService } from "./auth.service";
@@ -64,10 +68,12 @@ export class AuthController {
     // await authController.signUp({ email, password, username })
     // @see AuthService.signUp
     @TypedRoute.Post("signup")
-    async signUp(@TypedBody() signUpDto: SignUpDto) {
+    async signUp(
+        @TypedBody() signUpDto: SignUpDto,
+    ): Promise<SuccessResponse<AckDto>> {
         const { email, password, username } = signUpDto;
         const result = await this.authService.signUp(email, password, username);
-        return buildResponse("Signup successful", result);
+        return buildResponse("Signup successful", { ok: !!result });
     }
 
     // @async
@@ -85,7 +91,7 @@ export class AuthController {
     async signIn(
         @TypedBody() signInDto: SignInDto,
         @Res({ passthrough: true }) res: Response,
-    ) {
+    ): Promise<SuccessResponse<LoginResultDto>> {
         const { email, password } = signInDto;
         const result = await this.authService.signIn(email, password);
         const authRes = result as {
@@ -156,10 +162,10 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async forgotPassword(
         @TypedBody() dto: ForgotPasswordDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { email } = dto;
         const result = await this.authService.forgotPassword(email);
-        return buildResponse("Password reset email sent", result);
+        return buildResponse("Password reset email sent", { ok: !!result });
     }
 
     // @async
@@ -175,13 +181,13 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async resetPassword(
         @TypedBody() dto: ResetPasswordDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { accessToken, newPassword } = dto;
         const result = await this.authService.resetPassword(
             accessToken,
             newPassword,
         );
-        return buildResponse("Password has been reset", result);
+        return buildResponse("Password has been reset", { ok: !!result });
     }
 
     // @async
@@ -197,10 +203,10 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async verifyEmail(
         @TypedBody() dto: VerifyEmailDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { email, token } = dto;
         const result = await this.authService.verifyEmail(email, token);
-        return buildResponse("Email verified successfully", result);
+        return buildResponse("Email verified successfully", { ok: !!result });
     }
 
     // @async
@@ -215,7 +221,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     async signOut(
         @Res({ passthrough: true }) res: Response,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         // 認証が無くてもCookie破棄は必ず実施可能に
         // 可能ならSupabase側セッション失効も試行
         let result: unknown = { signedOut: false };
@@ -246,7 +252,7 @@ export class AuthController {
             maxAge: 0,
         });
 
-        return buildResponse("Logout successful", result);
+        return buildResponse("Logout successful", { ok: !!result });
     }
 
     // リフレッシュ
@@ -257,7 +263,7 @@ export class AuthController {
     async refresh(
         @Req() req: Request,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<SuccessResponse<{ refreshed: boolean }>> {
+    ): Promise<SuccessResponse<RefreshResultDto>> {
         const cookies = (req as unknown as { cookies?: Record<string, string> })
             .cookies;
         const refreshToken =
@@ -332,9 +338,9 @@ export class AuthController {
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
     async deleteAccount(
         @UserId() userId: string,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const result = await this.authService.deleteAccount(userId);
-        return buildResponse("Account deleted", result);
+        return buildResponse("Account deleted", { ok: !!result });
     }
 
     // @async
@@ -352,9 +358,9 @@ export class AuthController {
     async updateEmail(
         @SupabaseUser() user: User,
         @TypedBody() dto: UpdateEmailDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const result = await this.authService.updateEmail(user, dto.newEmail);
-        return buildResponse("Email updated successfully", result);
+        return buildResponse("Email updated successfully", { ok: !!result });
     }
 
     // @async
@@ -372,12 +378,12 @@ export class AuthController {
     async updateUsername(
         @SupabaseUser() user: User,
         @TypedBody() dto: UpdateUsernameDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const result = await this.authService.updateUsername(
             user,
             dto.newUsername,
         );
-        return buildResponse("Username updated successfully", result);
+        return buildResponse("Username updated successfully", { ok: !!result });
     }
 
     // @async
@@ -395,14 +401,14 @@ export class AuthController {
     async updatePassword(
         @SupabaseUser() _user: User,
         @TypedBody() dto: UpdatePasswordDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { oldPassword, newPassword } = dto;
         const result = await this.authService.updatePassword(
             _user,
             oldPassword,
             newPassword,
         );
-        return buildResponse("Password updated successfully", result);
+        return buildResponse("Password updated successfully", { ok: !!result });
     }
 
     // @public
@@ -434,7 +440,7 @@ export class AuthController {
     async verifyTotp(
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { factorId, code } = dto;
         const result = await this.authService.verifyTotp(factorId, code);
 
@@ -446,7 +452,7 @@ export class AuthController {
             setAuthCookies(res, session.access_token, session.refresh_token);
         }
 
-        return buildResponse("TOTP verified successfully", result);
+        return buildResponse("TOTP verified successfully", { ok: !!result });
     }
 
     // 仕様に合わせたTOTP verify新ルート（既存と同実装）
@@ -456,7 +462,7 @@ export class AuthController {
     async verifyTotpNew(
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const { factorId, code } = dto;
         const result = await this.authService.verifyTotp(factorId, code);
         const { session } = result as {
@@ -465,7 +471,7 @@ export class AuthController {
         if (session?.access_token && session?.refresh_token) {
             setAuthCookies(res, session.access_token, session.refresh_token);
         }
-        return buildResponse("TOTP verified successfully", result);
+        return buildResponse("TOTP verified successfully", { ok: !!result });
     }
 
     /* ------------------------------------------------------------------
@@ -477,9 +483,11 @@ export class AuthController {
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async startWebAuthnRegistration(
         @TypedBody() dto: StartWebAuthnRegistrationDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<
+        SuccessResponse<import("@/common/dto/any-json.dto").AnyJsonDto>
+    > {
         const data = await this.webauthn.startRegistration(dto?.displayName);
-        return buildResponse("WebAuthn registration started", data);
+        return buildResponse("WebAuthn registration started", { data });
     }
 
     // 登録完了: attestationResponse を検証
@@ -488,11 +496,15 @@ export class AuthController {
     @Throttle({ default: { limit: 5, ttl: 60 } })
     async finishWebAuthnRegistration(
         @TypedBody() dto: FinishWebAuthnRegistrationDto,
-    ): Promise<SuccessResponse<unknown>> {
-        const data = await this.webauthn.finishRegistration(
+    ): Promise<
+        SuccessResponse<import("@/common/dto/any-json.dto").AnyJsonDto>
+    > {
+        const raw = await this.webauthn.finishRegistration(
             dto.attestationResponse,
         );
-        return buildResponse("WebAuthn registration finished", data);
+        const data: Record<string, unknown> =
+            (raw as Record<string, unknown>) ?? {};
+        return buildResponse("WebAuthn registration finished", { data });
     }
 
     // 認証検証: navigator.credentials.get() 後に呼び出す
@@ -502,8 +514,12 @@ export class AuthController {
     async verifyWebAuthnAssertion(
         @TypedBody() dto: VerifyWebAuthnAssertionDto,
         @Res({ passthrough: true }) res: Response,
-    ): Promise<SuccessResponse<unknown>> {
-        const data = await this.webauthn.verifyAssertion(dto.assertionResponse);
+    ): Promise<
+        SuccessResponse<import("@/common/dto/any-json.dto").AnyJsonDto>
+    > {
+        const raw2 = await this.webauthn.verifyAssertion(dto.assertionResponse);
+        const data: Record<string, unknown> =
+            (raw2 as Record<string, unknown>) ?? {};
         // セッションが含まれていれば Cookie 設定
         const { session } = data as {
             session?: { access_token?: string; refresh_token?: string };
@@ -511,7 +527,7 @@ export class AuthController {
         if (session?.access_token && session?.refresh_token) {
             setAuthCookies(res, session.access_token, session.refresh_token);
         }
-        return buildResponse("WebAuthn assertion verified", data);
+        return buildResponse("WebAuthn assertion verified", { data });
     }
 
     // TOTP enroll（QR/otpauth URI を返す）
@@ -522,7 +538,7 @@ export class AuthController {
     })
     async enrollTotp(
         @TypedBody() dto: EnrollTotpDto,
-    ): Promise<SuccessResponse<{ factorId: string; otpauthUri: string }>> {
+    ): Promise<SuccessResponse<EnrollTotpResponseDto>> {
         const result = await this.authService.enrollTotp(dto?.displayName);
         return buildResponse("TOTP enrollment created", {
             factorId: result.id,
@@ -538,8 +554,8 @@ export class AuthController {
     })
     async disableTotp(
         @TypedBody() dto: DisableTotpDto,
-    ): Promise<SuccessResponse<unknown>> {
+    ): Promise<SuccessResponse<AckDto>> {
         const result = await this.authService.disableTotp(dto.factorId);
-        return buildResponse("TOTP factor disabled", result);
+        return buildResponse("TOTP factor disabled", { ok: !!result });
     }
 }

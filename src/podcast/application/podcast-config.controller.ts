@@ -2,9 +2,15 @@ import { TypedBody, TypedRoute } from "@nestia/core";
 import { Controller, UseGuards } from "@nestjs/common";
 import type { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
-import { buildResponse } from "@/common/utils/response.util";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 import { SupabaseUser } from "../../auth/supabase-user.decorator";
-import type { UpdatePodcastConfigDto } from "./dto/podcast-config.dto";
+import type {
+    PodcastConfigResponseDto,
+    UpdatePodcastConfigDto,
+} from "./dto/podcast-config.dto";
 import { PodcastConfigService } from "./podcast-config.service";
 
 @Controller("podcast/config")
@@ -16,11 +22,7 @@ export class PodcastConfigController {
     @TypedRoute.Get("")
     async getPodcastConfig(
         @SupabaseUser() user: User,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-config.dto").PodcastConfigResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastConfigResponseDto>> {
         const dto = await this.podcastConfigService.getUserPodcastConfig(
             user.id,
         );
@@ -32,11 +34,7 @@ export class PodcastConfigController {
     async updatePodcastConfig(
         @SupabaseUser() user: User,
         @TypedBody() updateDto: UpdatePodcastConfigDto,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-config.dto").PodcastConfigResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastConfigResponseDto>> {
         const dto = await this.podcastConfigService.updatePodcastConfig(
             user.id,
             updateDto,

@@ -10,8 +10,14 @@ import { User as SupabaseUserType } from "@supabase/supabase-js";
 import { Job, Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
-import { buildResponse } from "@/common/utils/response.util";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
+import { FailedJobsResponseDto } from "@/jobs/dto/failed-jobs.response.dto";
 import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
+import { RetryAllResponseDto } from "@/jobs/dto/retry-all.response.dto";
+import { RetryJobResponseDto } from "@/jobs/dto/retry-job.response.dto";
 
 type DataWithOwner = { userId?: string; user_id?: string } & Record<
     string,
@@ -56,7 +62,7 @@ export class JobsAdminController {
     async listFailed(
         @SupabaseUser() user: SupabaseUserType,
         @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
-    ) {
+    ): Promise<SuccessResponse<FailedJobsResponseDto>> {
         const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const jobs = await queue.getFailed(0, 100);
@@ -80,7 +86,7 @@ export class JobsAdminController {
         @SupabaseUser() user: SupabaseUserType,
         @TypedParam("jobId", (v) => v) jobId: string,
         @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
-    ) {
+    ): Promise<SuccessResponse<RetryJobResponseDto>> {
         const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const job = await queue.getJob(jobId);
@@ -100,7 +106,7 @@ export class JobsAdminController {
         @SupabaseUser() user: SupabaseUserType,
         @TypedQuery<{ queue: QueueName }>() q: { queue: QueueName },
         @TypedBody() body?: RetryAllDto,
-    ) {
+    ): Promise<SuccessResponse<RetryAllResponseDto>> {
         const queueName = q?.queue;
         const queue = this.getQueue(queueName);
         const limit = body?.max ?? 100;

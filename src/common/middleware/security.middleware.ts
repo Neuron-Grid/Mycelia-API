@@ -1,7 +1,7 @@
+import crypto from "node:crypto";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import type { ConfigService } from "@nestjs/config";
 import type { NextFunction, Request, Response } from "express";
-import crypto from "node:crypto";
 
 /**
  * Double submit cookie based CSRF protection.

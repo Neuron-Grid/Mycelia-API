@@ -1,0 +1,82 @@
+diff --git a/lib/transformers/MethodTransformer.js b/lib/transformers/MethodTransformer.js
+index af05abae92153b8a8fbac61c0bba2945b7710614..2e3e5bf6a876166fa03bd1e768c8948b17ef9689 100644
+--- a/lib/transformers/MethodTransformer.js
++++ b/lib/transformers/MethodTransformer.js
+@@ -46,12 +46,31 @@ const get_escaped_type = (checker) => (type) => {
+         : type;
+ };
+ const escape_promise = (checker) => (type) => {
+-    const generic = checker.getTypeArguments(type);
+-    if (generic.length !== 1)
+-        throw new Error("Error on ImportAnalyzer.analyze(): invalid promise type.");
+-    return generic[0];
++    try {
++        const generic = checker.getTypeArguments(type);
++        if (!generic || generic.length === 0)
++            return type;
++        return generic[0] || type;
++    }
++    catch (_a) {
++        return type;
++    }
++};
++const get_name = (symbol) => {
++    var _a;
++    const decls = typeof (symbol === null || symbol === void 0 ? void 0 : symbol.getDeclarations) === "function"
++        ? symbol.getDeclarations()
++        : undefined;
++    const base = (symbol === null || symbol === void 0 ? void 0 : symbol.escapedName)
++        ? String(symbol.escapedName)
++        : "";
++    if (!(decls === null || decls === void 0 ? void 0 : decls.length))
++        return base;
++    const parent = (_a = decls[0]) === null || _a === void 0 ? void 0 : _a.parent;
++    if (!parent)
++        return base;
++    return explore_name(parent)(base);
+ };
+-const get_name = (symbol) => explore_name(symbol.getDeclarations()[0].parent)(symbol.escapedName.toString());
+ const explore_name = (decl) => (name) => typescript_1.default.isModuleBlock(decl)
+     ? explore_name(decl.parent.parent)(`${decl.parent.name.getFullText().trim()}.${name}`)
+     : name;
+diff --git a/src/transformers/MethodTransformer.ts b/src/transformers/MethodTransformer.ts
+index 084f1e062e5a3f1190af4271c06c8b26c3e9300a..2a461bb6448b7eaec6d44426948014b4169c3c6e 100644
+--- a/src/transformers/MethodTransformer.ts
++++ b/src/transformers/MethodTransformer.ts
+@@ -78,20 +78,25 @@ const get_escaped_type =
+ const escape_promise =
+   (checker: ts.TypeChecker) =>
+   (type: ts.Type): ts.Type => {
+-    const generic: readonly ts.Type[] = checker.getTypeArguments(
+-      type as ts.TypeReference,
+-    );
+-    if (generic.length !== 1)
+-      throw new Error(
+-        "Error on ImportAnalyzer.analyze(): invalid promise type.",
++    try {
++      const generic: readonly ts.Type[] = checker.getTypeArguments(
++        type as ts.TypeReference,
+       );
+-    return generic[0];
++      if (!generic?.length) return type;
++      return generic[0] ?? type;
++    } catch {
++      return type;
++    }
+   };
+ 
+-const get_name = (symbol: ts.Symbol): string =>
+-  explore_name(symbol.getDeclarations()![0].parent)(
+-    symbol.escapedName.toString(),
+-  );
++const get_name = (symbol: ts.Symbol): string => {
++  const decls: readonly ts.Declaration[] | undefined =
++    (symbol as any).getDeclarations?.();
++  const name = (symbol as any).escapedName?.toString?.() ?? "";
++  if (!decls?.length) return name;
++  const parent: ts.Node = (decls[0] as any)?.parent ?? decls[0];
++  return explore_name(parent)(name);
++};
+ 
+ const explore_name =
+   (decl: ts.Node) =>

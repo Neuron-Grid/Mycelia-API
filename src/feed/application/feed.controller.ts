@@ -143,12 +143,12 @@ export class FeedController {
     async fetchSubscription(
         @UserId() userId: string,
         @TypedParam("id", parseUInt32) subscriptionId: number,
-    ): Promise<SuccessResponse<Record<string, unknown>>> {
+    ): Promise<SuccessResponse<AnyJsonDto>> {
         const result = await this.feedUseCase.fetchFeedItems(
             subscriptionId,
             userId,
         );
-        return buildResponse("Feed fetched successfully", result);
+        return buildResponse("Feed fetched successfully", { data: result });
     }
 
     // @async
@@ -242,3 +242,5 @@ export class FeedController {
         return buildResponse("Subscription deleted", null);
     }
 }
+
+import { AnyJsonDto } from "@/common/dto/any-json.dto";

@@ -1,13 +1,15 @@
-export class SuccessResponse<T> {
+export interface ResponseEnvelope<T> {
     /** Human readable message */
-    message!: string;
+    message: string;
     /** Payload (nullable) */
-    data!: T | null;
+    data: T | null;
 }
+
+export type SuccessResponse<T> = ResponseEnvelope<T>;
 
 export function buildResponse<T>(
     message: string,
     data: T | null = null,
-): SuccessResponse<T> {
-    return { message, data } as SuccessResponse<T>;
+): ResponseEnvelope<T> {
+    return { message, data } as ResponseEnvelope<T>;
 }

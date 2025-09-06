@@ -9,7 +9,10 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
-import { buildResponse } from "@/common/utils/response.util";
+import {
+    buildResponse,
+    type SuccessResponse,
+} from "@/common/utils/response.util";
 import { parseUInt32 } from "@/common/utils/typed-param";
 import { UserId } from "../../auth/user-id.decorator";
 import { DailySummaryRepository } from "../../llm/infrastructure/repositories/daily-summary.repository";
@@ -18,7 +21,8 @@ import { PodcastQueueService } from "../queue/podcast-queue.service";
 import {
     CreatePodcastEpisodeDto,
     GeneratePodcastEpisodeDto,
-    // removed unused imports for Swagger-only DTO references
+    PodcastEpisodeListResponseDto,
+    PodcastEpisodeResponseDto,
     UpdatePodcastEpisodeDto,
 } from "./dto/podcast-episode.dto";
 import { PodcastEpisodeMapper } from "./podcast-episode.mapper";
@@ -41,11 +45,7 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @TypedQuery<{ page?: number; limit?: number }>()
         q: { page?: number; limit?: number },
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-episode.dto").PodcastEpisodeListResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastEpisodeListResponseDto>> {
         // パラメータの検証
         const validPage = Math.max(1, Number(q?.page ?? 1));
         const validLimit = Math.min(Math.max(1, Number(q?.limit ?? 20)), 100); // 最大100件
@@ -80,11 +80,7 @@ export class PodcastEpisodeController {
     async getEpisodeById(
         @UserId() userId: string,
         @TypedParam("id", parseUInt32) episodeId: number,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastEpisodeResponseDto>> {
         this.logger.log(`User ${userId} requesting episode ${episodeId}`);
 
         const episode = await this.podcastEpisodeRepository.findById(
@@ -110,11 +106,7 @@ export class PodcastEpisodeController {
     async createEpisode(
         @UserId() userId: string,
         @TypedBody() createDto: CreatePodcastEpisodeDto,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastEpisodeResponseDto>> {
         this.logger.log(
             `User ${userId} creating episode for summary ${createDto.summaryId}`,
         );
@@ -165,11 +157,7 @@ export class PodcastEpisodeController {
         @UserId() userId: string,
         @TypedParam("id", parseUInt32) episodeId: number,
         @TypedBody() updateDto: UpdatePodcastEpisodeDto,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<
-            import("./dto/podcast-episode.dto").PodcastEpisodeResponseDto
-        >
-    > {
+    ): Promise<SuccessResponse<PodcastEpisodeResponseDto>> {
         this.logger.log(`User ${userId} updating episode ${episodeId}`);
 
         // 所有者チェック
@@ -202,7 +190,7 @@ export class PodcastEpisodeController {
     async deleteEpisode(
         @UserId() userId: string,
         @TypedParam("id", parseUInt32) episodeId: number,
-    ): Promise<import("@/common/utils/response.util").SuccessResponse<null>> {
+    ): Promise<SuccessResponse<null>> {
         this.logger.log(`User ${userId} deleting episode ${episodeId}`);
 
         // 所有者チェック
@@ -228,12 +216,7 @@ export class PodcastEpisodeController {
     async generateEpisode(
         @UserId() userId: string,
         @TypedBody() generateDto: GeneratePodcastEpisodeDto,
-    ): Promise<
-        import("@/common/utils/response.util").SuccessResponse<{
-            jobId?: string;
-            episodeId?: number;
-        }>
-    > {
+    ): Promise<SuccessResponse<{ jobId?: string; episodeId?: number }>> {
         this.logger.log(
             `User ${userId} requesting podcast generation for summary ${generateDto.summaryId}`,
         );

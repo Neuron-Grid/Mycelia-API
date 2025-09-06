@@ -272,112 +272,6 @@
         "x-samchon-controller": "SettingsController"
       }
     },
-    "/typed-poc/ping": {
-      "get": {
-        "tags": [],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "message"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        "x-samchon-accessor": [
-          "typed_poc",
-          "ping"
-        ],
-        "x-samchon-controller": "TypedPocController"
-      }
-    },
-    "/health": {
-      "get": {
-        "tags": [],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "x-samchon-accessor": [
-          "health",
-          "checkHealth"
-        ],
-        "x-samchon-controller": "HealthController"
-      }
-    },
-    "/embeddings/batch-update": {
-      "post": {
-        "description": "Trigger batch embedding update",
-        "tags": [],
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {}
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "x-samchon-accessor": [
-          "embeddings",
-          "batch_update",
-          "triggerBatchUpdate"
-        ],
-        "x-samchon-controller": "EmbeddingController"
-      }
-    },
-    "/embeddings/progress": {
-      "get": {
-        "description": "Get current progress of batch embedding updates",
-        "tags": [],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        },
-        "x-samchon-accessor": [
-          "embeddings",
-          "progress",
-          "getBatchProgress"
-        ],
-        "x-samchon-controller": "EmbeddingController"
-      }
-    },
     "/jobs/failed": {
       "get": {
         "description": "List failed jobs for current user in a queue",
@@ -528,6 +422,60 @@
           "retryAll"
         ],
         "x-samchon-controller": "JobsAdminController"
+      }
+    },
+    "/embeddings/batch-update": {
+      "post": {
+        "description": "Trigger batch embedding update",
+        "tags": [],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {}
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "embeddings",
+          "batch_update",
+          "triggerBatchUpdate"
+        ],
+        "x-samchon-controller": "EmbeddingController"
+      }
+    },
+    "/embeddings/progress": {
+      "get": {
+        "description": "Get current progress of batch embedding updates",
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "embeddings",
+          "progress",
+          "getBatchProgress"
+        ],
+        "x-samchon-controller": "EmbeddingController"
       }
     },
     "/auth/signup": {
@@ -1077,6 +1025,58 @@
           "disableTotp"
         ],
         "x-samchon-controller": "AuthController"
+      }
+    },
+    "/typed-poc/ping": {
+      "get": {
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "typed_poc",
+          "ping"
+        ],
+        "x-samchon-controller": "TypedPocController"
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "health",
+          "checkHealth"
+        ],
+        "x-samchon-controller": "HealthController"
       }
     },
     "/tags": {
@@ -2236,7 +2236,7 @@
     },
     "/favorites": {
       "get": {
-        "description": "Favorites list",
+        "description": "Favorites list (with feed item details)",
         "tags": [],
         "parameters": [],
         "responses": {
