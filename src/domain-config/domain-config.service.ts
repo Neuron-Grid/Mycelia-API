@@ -131,6 +131,8 @@ export class DomainConfigService {
                 .insert({
                     user_id: userId,
                     refresh_every: "30 minutes", // デフォルト30分
+                    summary_enabled: false,
+                    summary_schedule_time: "06:00",
                     podcast_enabled: false,
                     podcast_schedule_time: "07:00",
                     podcast_language: "ja-JP",
@@ -228,19 +230,35 @@ export class DomainConfigService {
     }
 
     // 要約機能の有効/無効のみを更新（無効化時はポッドキャストも無効化）
-    async updateSummaryEnabled(
+    async updateSummarySettings(
         userId: string,
         enabled: boolean,
+        scheduleTime?: string,
     ): Promise<UserSettingsResponseDto> {
+        if (enabled && !scheduleTime) {
+            throw new BadRequestException(
+                "Schedule time is required when enabling summary",
+            );
+        }
+
+        const updateData: Record<string, unknown> = {
+            summary_enabled: enabled,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (scheduleTime !== undefined) {
+            updateData.summary_schedule_time = scheduleTime;
+        }
+
+        if (!enabled) {
+            updateData.podcast_enabled = false;
+        }
+
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .from("user_settings")
-                .update({
-                    summary_enabled: enabled,
-                    podcast_enabled: enabled ? undefined : false,
-                    updated_at: new Date().toISOString(),
-                })
+                .update(updateData)
                 .eq("user_id", userId)
                 .select()
                 .single();

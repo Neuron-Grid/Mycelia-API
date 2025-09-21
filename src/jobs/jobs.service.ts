@@ -3,6 +3,9 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
+const DEFAULT_SUMMARY_TIME = "06:00";
+const DEFAULT_PODCAST_TIME = "07:00";
+
 @Injectable()
 export class JobsService implements OnModuleInit {
     private readonly logger = new Logger(JobsService.name);
@@ -144,26 +147,20 @@ export class JobsService implements OnModuleInit {
             return candidate.toISOString();
         };
 
+        const summaryTime =
+            settings?.summary_schedule_time ?? DEFAULT_SUMMARY_TIME;
+        const podcastTime =
+            settings?.podcast_schedule_time ?? DEFAULT_PODCAST_TIME;
+
         return {
             // summary はベース時刻（ジッターのみ、+0 分）
             next_run_at_summary: settings?.summary_enabled
-                ? toNextIso(
-                      (
-                          await this.settingsRepo.getAllEnabledSummarySchedules()
-                      ).find((s) => s.userId === userId)?.timeJst || "06:00",
-                      0,
-                  )
+                ? toNextIso(summaryTime, 0)
                 : null,
             // podcast は summary の +10 分相当
             next_run_at_podcast:
                 settings?.summary_enabled && settings?.podcast_enabled
-                    ? toNextIso(
-                          (
-                              await this.settingsRepo.getAllEnabledPodcastSchedules()
-                          ).find((s) => s.userId === userId)?.timeJst ||
-                              "07:00",
-                          10,
-                      )
+                    ? toNextIso(podcastTime, 10)
                     : null,
         };
     }

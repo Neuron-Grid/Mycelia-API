@@ -20,6 +20,8 @@ CREATE TRIGGER trg_users_updated
 CREATE TABLE public.user_settings(
     user_id uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
     refresh_every interval NOT NULL DEFAULT INTERVAL '30 minutes',
+    summary_schedule_time text NOT NULL DEFAULT '06:00'
+        CHECK (summary_schedule_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'),
     created_at    timestamptz NOT NULL DEFAULT NOW(),
     updated_at    timestamptz NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_refresh_every_pos CHECK (refresh_every > INTERVAL '0')

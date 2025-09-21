@@ -10,7 +10,10 @@ import {
 import { IntervalDto } from "../../feed/application/dto/subscription-interval.dto";
 import type { Database } from "../../types/schema";
 
-type SettingsRow = Database["public"]["Tables"]["user_settings"]["Row"];
+type SettingsRowBase = Database["public"]["Tables"]["user_settings"]["Row"];
+type SettingsRow = SettingsRowBase & {
+    summary_schedule_time?: string | null;
+};
 
 export class UpdateUserSettingsDto {
     /** Default RSS feed refresh interval */
@@ -23,6 +26,11 @@ export class UpdateUserSettingsDto {
     @IsOptional()
     @IsBoolean()
     podcast_enabled?: boolean;
+
+    /** Enable/disable the summary feature */
+    @IsOptional()
+    @IsBoolean()
+    summary_enabled?: boolean;
 
     /** Podcast generation schedule time (HH:MM) */
     @IsOptional()
@@ -38,6 +46,14 @@ export class UpdateUserSettingsDto {
     @IsIn(["ja-JP", "en-US"])
     podcast_language?: "ja-JP" | "en-US";
 
+    /** Summary generation schedule time (HH:MM) */
+    @IsOptional()
+    @IsString()
+    @Matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
+        message: "Schedule time must be in HH:MM format (24-hour)",
+    })
+    summary_schedule_time?: string;
+
     // バリデーション: 設定値が有効かチェック
     isValid(): boolean {
         // 更新間隔の検証
@@ -48,6 +64,12 @@ export class UpdateUserSettingsDto {
         // ポッドキャスト有効時は言語とスケジュール時刻が必要
         if (this.podcast_enabled === true) {
             if (!this.podcast_language || !this.podcast_schedule_time) {
+                return false;
+            }
+        }
+
+        if (this.summary_enabled === true) {
+            if (!this.summary_schedule_time) {
                 return false;
             }
         }
@@ -84,6 +106,12 @@ export class UpdateUserSettingsDto {
             }
         }
 
+        if (this.summary_enabled === true && !this.summary_schedule_time) {
+            messages.push(
+                "要約機能を有効にする場合はスケジュール時刻が必要です",
+            );
+        }
+
         return messages;
     }
 
@@ -107,6 +135,14 @@ export class UpdateUserSettingsDto {
             data.podcast_language = this.podcast_language;
         }
 
+        if (this.summary_enabled !== undefined) {
+            data.summary_enabled = this.summary_enabled;
+        }
+
+        if (this.summary_schedule_time !== undefined) {
+            data.summary_schedule_time = this.summary_schedule_time;
+        }
+
         return data;
     }
 }
@@ -123,6 +159,12 @@ export class UserSettingsResponseDto {
 
     /** Podcast generation schedule time */
     podcast_schedule_time!: string | null;
+
+    /** Whether the summary feature is enabled */
+    summary_enabled!: boolean;
+
+    /** Summary generation schedule time */
+    summary_schedule_time!: string | null;
 
     /** Podcast language */
     podcast_language!: "ja-JP" | "en-US";
@@ -143,6 +185,8 @@ export class UserSettingsResponseDto {
         );
         dto.podcast_enabled = record.podcast_enabled || false;
         dto.podcast_schedule_time = record.podcast_schedule_time;
+        dto.summary_enabled = record.summary_enabled || false;
+        dto.summary_schedule_time = record.summary_schedule_time ?? null;
         const lang = record.podcast_language;
         dto.podcast_language =
             lang === "ja-JP" || lang === "en-US" ? lang : "ja-JP";
@@ -161,6 +205,12 @@ export class UserSettingsResponseDto {
             );
         } else {
             parts.push("ポッドキャスト: 無効");
+        }
+
+        if (this.summary_enabled) {
+            parts.push(`要約: 有効（${this.summary_schedule_time}）`);
+        } else {
+            parts.push("要約: 無効");
         }
 
         return parts.join(", ");

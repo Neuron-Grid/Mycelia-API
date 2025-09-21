@@ -5,7 +5,6 @@ services:
     build:
       context: ./
       dockerfile: Containerfile
-      network: host
     container_name: mycelia-api
     restart: unless-stopped
     ports:

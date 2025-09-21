@@ -2,6 +2,7 @@ import type { SettingsOverviewDto } from "./settings-overview.dto";
 
 export type SettingsOverviewSource = {
     summary_enabled: boolean;
+    summary_schedule_time: string | null;
     podcast_enabled: boolean;
     podcast_schedule_time: string | null;
     podcast_language: "ja-JP" | "en-US";
@@ -16,6 +17,7 @@ export const SettingsMapper = {
     toDto(src: SettingsOverviewSource): SettingsOverviewDto {
         return {
             summaryEnabled: src.summary_enabled,
+            summaryScheduleTime: src.summary_schedule_time,
             podcastEnabled: src.podcast_enabled,
             podcastScheduleTime: src.podcast_schedule_time,
             podcastLanguage: src.podcast_language,

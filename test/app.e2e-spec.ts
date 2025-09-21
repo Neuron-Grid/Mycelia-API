@@ -50,7 +50,7 @@ import {
 } from "@/llm/application/services/llm.service";
 import { MockLlmService } from "@/llm/infrastructure/clients/mock-llm.service";
 
-describe.skip("LLM mock override (e2e)", () => {
+describe("LLM mock override (e2e)", () => {
     let app: INestApplication;
 
     beforeAll(async () => {

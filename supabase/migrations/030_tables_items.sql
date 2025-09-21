@@ -7,7 +7,7 @@ CREATE TABLE public.feed_items(
     user_id              uuid   NOT NULL,
     title                text   NOT NULL,
     link                 text   NOT NULL,
-    link_hash            text   GENERATED ALWAYS AS (encode(digest(link, 'sha256'), 'hex')) STORED,
+    link_hash            text   NOT NULL,
     description          text,
     published_at         timestamptz,
     title_emb            vector(1536),
@@ -25,6 +25,23 @@ CREATE TRIGGER trg_feed_items_updated
     BEFORE UPDATE ON public.feed_items
     FOR EACH ROW
     EXECUTE PROCEDURE public.update_timestamp();
+
+CREATE OR REPLACE FUNCTION public.trg_feed_items_set_link_hash()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+BEGIN
+    NEW.link_hash := encode(extensions.digest(convert_to(NEW.link, 'UTF8'), 'sha256'::text), 'hex');
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_feed_items_set_link_hash
+    BEFORE INSERT OR UPDATE OF link ON public.feed_items
+    FOR EACH ROW
+    EXECUTE FUNCTION public.trg_feed_items_set_link_hash();
 
 CREATE TABLE public.feed_item_favorites(
     id           bigint GENERATED ALWAYS AS IDENTITY,

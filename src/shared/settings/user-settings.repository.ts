@@ -2,6 +2,13 @@ import { Injectable, Logger } from "@nestjs/common";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import { Tables } from "@/types/schema";
 
+type UserSettingsRow = Tables<"user_settings"> & {
+    summary_schedule_time?: string | null;
+};
+
+const DEFAULT_SUMMARY_TIME = "06:00";
+const DEFAULT_PODCAST_TIME = "07:00";
+
 export type SummarySchedule = {
     userId: string;
     timeJst: string; // "HH:mm"
@@ -26,15 +33,15 @@ export class UserSettingsRepository {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .from("user_settings")
-                .select("user_id, summary_enabled, podcast_schedule_time")
+                .select("*")
                 .eq("summary_enabled", true);
 
             if (error) throw error;
 
-            const rows = (data || []) as Tables<"user_settings">[];
+            const rows = (data ?? []) as unknown as UserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.podcast_schedule_time || "06:00",
+                timeJst: row.summary_schedule_time || DEFAULT_SUMMARY_TIME,
             }));
         } catch (e) {
             this.logger.error(
@@ -49,18 +56,16 @@ export class UserSettingsRepository {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .from("user_settings")
-                .select(
-                    "user_id, podcast_enabled, podcast_schedule_time, podcast_language, summary_enabled",
-                )
+                .select("*")
                 .eq("podcast_enabled", true)
                 .eq("summary_enabled", true);
 
             if (error) throw error;
 
-            const rows = (data || []) as Tables<"user_settings">[];
+            const rows = (data ?? []) as unknown as UserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.podcast_schedule_time || "07:00",
+                timeJst: row.podcast_schedule_time || DEFAULT_PODCAST_TIME,
                 language:
                     (row.podcast_language as "ja-JP" | "en-US") || undefined,
             }));
@@ -78,31 +83,34 @@ export class UserSettingsRepository {
         podcast_enabled: boolean;
         podcast_language?: "ja-JP" | "en-US";
         podcast_schedule_time?: string | null;
+        summary_schedule_time?: string | null;
     } | null> {
         try {
             const { data, error } = await this.supabaseRequestService
                 .getClient()
                 .from("user_settings")
-                .select(
-                    "user_id, summary_enabled, podcast_enabled, podcast_language, podcast_schedule_time",
-                )
+                .select("*")
                 .eq("user_id", userId)
                 .single();
             if (error) throw error;
             if (!data) return null;
-            const lang = data.podcast_language as "ja-JP" | "en-US" | null as
+            const row = data as unknown as UserSettingsRow;
+            const lang = row.podcast_language as "ja-JP" | "en-US" | null as
                 | "ja-JP"
                 | "en-US"
                 | null;
             return {
-                user_id: data.user_id as string,
-                summary_enabled: data.summary_enabled as boolean,
-                podcast_enabled: data.podcast_enabled as boolean,
+                user_id: row.user_id as string,
+                summary_enabled: row.summary_enabled as boolean,
+                podcast_enabled: row.podcast_enabled as boolean,
                 podcast_language: (lang ?? undefined) as
                     | "ja-JP"
                     | "en-US"
                     | undefined,
-                podcast_schedule_time: (data.podcast_schedule_time ?? null) as
+                podcast_schedule_time: (row.podcast_schedule_time ?? null) as
+                    | string
+                    | null,
+                summary_schedule_time: (row.summary_schedule_time ?? null) as
                     | string
                     | null,
             };

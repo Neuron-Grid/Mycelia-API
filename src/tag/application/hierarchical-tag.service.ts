@@ -59,8 +59,8 @@ export class HierarchicalTagService {
             // 循環参照のチェック
             const isCircular = await this.wouldCreateCircularReference(
                 userId,
-                dto.parentTagId,
-                dto.tagName,
+                dto.parentTagId ?? null,
+                null,
             );
             if (isCircular) {
                 throw new BadRequestException(
@@ -196,6 +196,17 @@ export class HierarchicalTagService {
             if (descendants.some((d) => d.id === newParentId)) {
                 throw new BadRequestException(
                     "Cannot move tag to its own descendant",
+                );
+            }
+
+            const wouldCycle = await this.wouldCreateCircularReference(
+                userId,
+                newParentId,
+                tagId,
+            );
+            if (wouldCycle) {
+                throw new BadRequestException(
+                    "Cannot create tag cycle by assigning this parent",
                 );
             }
 
@@ -373,14 +384,43 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: 循環参照チェック
-    private wouldCreateCircularReference(
-        _userId: string,
-        _parentId: number,
-        _tagName: string,
+    private async wouldCreateCircularReference(
+        userId: string,
+        candidateParentId: number | null,
+        movingTagId: number | null,
     ): Promise<boolean> {
-        // 簡略化: 実際は既存タグのIDで循環参照をチェック
-        // 新規作成時は循環参照は発生しない
-        return Promise.resolve(false);
+        if (!candidateParentId || !movingTagId) {
+            return false;
+        }
+
+        if (candidateParentId === movingTagId) {
+            return true;
+        }
+
+        const visited = new Set<number>();
+        let currentId: number | null = candidateParentId;
+
+        while (currentId) {
+            if (visited.has(currentId)) {
+                // 既存のループを検出
+                return true;
+            }
+            visited.add(currentId);
+
+            if (currentId === movingTagId) {
+                return true;
+            }
+
+            const parent = await this.tagRepository.findById(currentId, userId);
+
+            if (!parent) {
+                break;
+            }
+
+            currentId = parent.parent_tag_id ?? null;
+        }
+
+        return false;
     }
 
     // プライベートメソッド: タグの深度を取得

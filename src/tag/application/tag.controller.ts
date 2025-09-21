@@ -332,10 +332,10 @@ export class TagController {
     async getFeedItemsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: boolean }>()
-        query: { includeChildren?: boolean },
+        @TypedQuery<{ includeChildren?: string | boolean }>()
+        query: { includeChildren?: string | boolean },
     ): Promise<SuccessResponse<FeedItemDto[]>> {
-        const includeChildrenBool = query?.includeChildren === true;
+        const includeChildrenBool = this.coerceBoolean(query?.includeChildren);
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
             userId,
             tagId,
@@ -361,14 +361,14 @@ export class TagController {
     async getSubscriptionsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: boolean }>()
-        query: { includeChildren?: boolean },
+        @TypedQuery<{ includeChildren?: string | boolean }>()
+        query: { includeChildren?: string | boolean },
     ): Promise<
         SuccessResponse<
             import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
         >
     > {
-        const includeChildrenBool = query?.includeChildren === true;
+        const includeChildrenBool = this.coerceBoolean(query?.includeChildren);
         const subscriptions =
             await this.hierarchicalTagService.getSubscriptionsByTag(
                 userId,
@@ -431,5 +431,21 @@ export class TagController {
             body.tagIds,
         );
         return buildResponse("Subscription tagged with multiple tags", null);
+    }
+
+    private coerceBoolean(value: unknown): boolean {
+        if (typeof value === "boolean") {
+            return value;
+        }
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            if (normalized === "true" || normalized === "1") {
+                return true;
+            }
+            if (normalized === "false" || normalized === "0") {
+                return false;
+            }
+        }
+        return false;
     }
 }

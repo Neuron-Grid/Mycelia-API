@@ -1,7 +1,8 @@
 FROM --platform=linux/x86_64 node:22-alpine AS builder
 WORKDIR /app
 RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile
 COPY ./ ./
 RUN pnpm build

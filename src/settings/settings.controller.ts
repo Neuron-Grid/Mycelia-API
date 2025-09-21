@@ -77,6 +77,8 @@ export class SettingsController {
 
         const src = {
             summary_enabled: base?.summary_enabled ?? false,
+            summary_schedule_time:
+                (base?.summary_schedule_time as string) ?? null,
             podcast_enabled: base?.podcast_enabled ?? false,
             podcast_schedule_time:
                 (base?.podcast_schedule_time as string) ?? null,
@@ -255,10 +257,22 @@ export class SettingsController {
         if (typeof body?.enabled !== "boolean") {
             throw new BadRequestException("enabled must be boolean");
         }
-        // summary_enabled更新。無効化時はpodcastも無効に。
-        await this.domainConfigService.updateSummaryEnabled(
+
+        const scheduleTime =
+            body.summaryScheduleTime === null
+                ? undefined
+                : (body.summaryScheduleTime ?? undefined);
+
+        if (body.enabled && !scheduleTime) {
+            throw new BadRequestException(
+                "summaryScheduleTime is required when enabling summary",
+            );
+        }
+
+        await this.domainConfigService.updateSummarySettings(
             user.id,
             body.enabled,
+            scheduleTime,
         );
         await this.jobsService.rescheduleUserRepeatableJobs(user.id);
         const updated = await this.userSettingsRepo.getByUserId(user.id);
