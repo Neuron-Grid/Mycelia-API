@@ -31,6 +31,27 @@ export interface TagWithPath {
     level: number;
 }
 
+type TagHierarchyPayload = {
+    id: number;
+    tag_name: string;
+    parent_tag_id: number | null;
+    description?: string | null;
+    color?: string | null;
+    children: TagHierarchyPayload[];
+    path: string[];
+    level: number;
+    feed_count?: number | null;
+};
+
+type TagPathPayload = {
+    id: number;
+    tag_name: string;
+    parent_tag_id: number | null;
+    full_path: string;
+    path_array: string[];
+    level: number;
+};
+
 @Injectable()
 export class HierarchicalTagService {
     private readonly logger = new Logger(HierarchicalTagService.name);
@@ -127,46 +148,42 @@ export class HierarchicalTagService {
     }
 
     // ユーザーの全タグを階層構造で取得
-    async getTagHierarchy(userId: string): Promise<TagHierarchy[]> {
-        const allTags = await this.tagRepository.findByUser(userId);
-        return this.buildHierarchy(allTags);
+    async getTagHierarchy(_userId: string): Promise<TagHierarchy[]> {
+        const hierarchy = await this.tagRepository.getTagHierarchy();
+        return this.normalizeHierarchyList(hierarchy ?? []);
     }
 
     // 特定のタグとその子孫を取得
     async getTagSubtree(
-        userId: string,
+        _userId: string,
         tagId: number,
     ): Promise<TagHierarchy | null> {
-        const rootTag = await this.tagRepository.findById(tagId, userId);
-        if (!rootTag) {
+        const subtree = await this.tagRepository.getTagSubtree(tagId);
+        if (!subtree) {
             return null;
         }
 
-        const allTags = await this.tagRepository.findByUser(userId);
-        const hierarchy = this.buildHierarchy(allTags);
-
-        return this.findTagInHierarchy(hierarchy, tagId);
+        return this.normalizeHierarchyNode(subtree);
     }
 
     // タグのパス（ルートからのパス）を取得
     async getTagPath(
-        userId: string,
+        _userId: string,
         tagId: number,
     ): Promise<TagWithPath | null> {
-        const tag = await this.tagRepository.findById(tagId, userId);
-        if (!tag) {
+        const pathResult = await this.tagRepository.getTagPath(tagId);
+        if (!pathResult) {
             return null;
         }
 
-        const pathArray = await this.buildTagPath(userId, tagId);
-
+        const normalized = pathResult as TagPathPayload;
         return {
-            id: tag.id,
-            tag_name: tag.tag_name,
-            parent_tag_id: tag.parent_tag_id,
-            full_path: pathArray.join(" > "),
-            path_array: pathArray,
-            level: pathArray.length - 1,
+            id: normalized.id,
+            tag_name: normalized.tag_name,
+            parent_tag_id: normalized.parent_tag_id,
+            full_path: normalized.full_path,
+            path_array: normalized.path_array ?? [],
+            level: normalized.level ?? 0,
         };
     }
 
@@ -306,83 +323,6 @@ export class HierarchicalTagService {
         return await this.tagRepository.getSubscriptionsByTags(userId, tagIds);
     }
 
-    // プライベートメソッド: 階層構造を構築
-    private buildHierarchy(tags: TagEntity[]): TagHierarchy[] {
-        const tagMap = new Map<number, TagHierarchy>();
-        const rootTags: TagHierarchy[] = [];
-
-        // 初期化
-        for (const tag of tags) {
-            tagMap.set(tag.id, {
-                id: tag.id,
-                tag_name: tag.tag_name,
-                parent_tag_id: tag.parent_tag_id,
-                children: [],
-                path: [],
-                level: 0,
-            });
-        }
-
-        // 階層構築
-        for (const tag of tags) {
-            const tagHierarchy = tagMap.get(tag.id);
-            if (!tagHierarchy) {
-                continue; // マップに存在しない場合はスキップ
-            }
-
-            if (tag.parent_tag_id === null) {
-                rootTags.push(tagHierarchy);
-                tagHierarchy.path = [tag.tag_name];
-                tagHierarchy.level = 0;
-            } else {
-                const parent = tagMap.get(tag.parent_tag_id);
-                if (parent) {
-                    parent.children.push(tagHierarchy);
-                    tagHierarchy.path = [...parent.path, tag.tag_name];
-                    tagHierarchy.level = parent.level + 1;
-                }
-            }
-        }
-
-        return rootTags;
-    }
-
-    // プライベートメソッド: 階層から特定のタグを検索
-    private findTagInHierarchy(
-        hierarchy: TagHierarchy[],
-        tagId: number,
-    ): TagHierarchy | null {
-        for (const tag of hierarchy) {
-            if (tag.id === tagId) {
-                return tag;
-            }
-            const found = this.findTagInHierarchy(tag.children, tagId);
-            if (found) {
-                return found;
-            }
-        }
-        return null;
-    }
-
-    // プライベートメソッド: タグのパス配列を構築
-    private async buildTagPath(
-        userId: string,
-        tagId: number,
-    ): Promise<string[]> {
-        const path: string[] = [];
-        let currentId = tagId;
-
-        while (currentId) {
-            const tag = await this.tagRepository.findById(currentId, userId);
-            if (!tag) break;
-
-            path.unshift(tag.tag_name);
-            currentId = tag.parent_tag_id || 0;
-        }
-
-        return path;
-    }
-
     // プライベートメソッド: 循環参照チェック
     private async wouldCreateCircularReference(
         userId: string,
@@ -485,5 +425,29 @@ export class HierarchicalTagService {
 
         calculateDepth(tagId, 0);
         return maxDepth;
+    }
+
+    private normalizeHierarchyList(
+        nodes: TagHierarchyPayload[],
+    ): TagHierarchy[] {
+        return nodes.map((node) => this.normalizeHierarchyNode(node));
+    }
+
+    private normalizeHierarchyNode(node: TagHierarchyPayload): TagHierarchy {
+        return {
+            id: node.id,
+            tag_name: node.tag_name,
+            parent_tag_id: node.parent_tag_id,
+            description: node.description ?? undefined,
+            color: node.color ?? undefined,
+            path: node.path ?? [],
+            level: node.level ?? 0,
+            feed_count: node.feed_count ?? undefined,
+            children: Array.isArray(node.children)
+                ? node.children.map((child) =>
+                      this.normalizeHierarchyNode(child),
+                  )
+                : [],
+        };
     }
 }

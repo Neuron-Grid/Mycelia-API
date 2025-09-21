@@ -20,6 +20,27 @@ type SubscriptionTagsTable =
 type SubscriptionTagsInsert = SubscriptionTagsTable["Insert"];
 type SubscriptionTagsRow = SubscriptionTagsTable["Row"];
 
+type TagHierarchyNode = {
+    id: number;
+    tag_name: string;
+    parent_tag_id: number | null;
+    description?: string | null;
+    color?: string | null;
+    children: TagHierarchyNode[];
+    path: string[];
+    level: number;
+    feed_count?: number | null;
+};
+
+type TagPathRow = {
+    id: number;
+    tag_name: string;
+    parent_tag_id: number | null;
+    full_path: string;
+    path_array: string[];
+    level: number;
+};
+
 @Injectable()
 export class TagRepository {
     private readonly logger = new Logger(TagRepository.name);
@@ -430,6 +451,65 @@ export class TagRepository {
             throw error;
         }
         return new TagEntity(data);
+    }
+
+    async getTagHierarchy(): Promise<TagHierarchyNode[]> {
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase.rpc(
+            "get_tag_hierarchy" as never,
+        );
+
+        if (error) {
+            this.logger.error(
+                `getTagHierarchy failed: ${error.message}`,
+                error,
+            );
+            throw error;
+        }
+
+        if (!data || !Array.isArray(data)) {
+            return [];
+        }
+
+        return data as TagHierarchyNode[];
+    }
+
+    async getTagSubtree(tagId: number): Promise<TagHierarchyNode | null> {
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase.rpc(
+            "get_tag_subtree" as never,
+            { p_tag_id: tagId } as never,
+        );
+
+        if (error) {
+            this.logger.error(`getTagSubtree failed: ${error.message}`, error);
+            throw error;
+        }
+
+        if (!data || typeof data !== "object") {
+            return null;
+        }
+
+        return data as TagHierarchyNode;
+    }
+
+    async getTagPath(tagId: number): Promise<TagPathRow | null> {
+        const supabase = this.supabaseService.getClient();
+        const { data, error } = await supabase.rpc(
+            "get_tag_path" as never,
+            { p_tag_id: tagId } as never,
+        );
+
+        if (error) {
+            this.logger.error(`getTagPath failed: ${error.message}`, error);
+            throw error;
+        }
+
+        if (!data || typeof data !== "object") {
+            return null;
+        }
+
+        return data as TagPathRow;
     }
 
     // 購読をタグに関連付け（複数タグ対応）
