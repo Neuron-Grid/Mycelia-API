@@ -13,7 +13,7 @@ export class FeedItemDto {
 
     link!: string;
 
-    linkHash?: string | null;
+    linkHash!: string;
 
     description?: string | null;
 

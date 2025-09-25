@@ -27,6 +27,7 @@ import { UpdatePodcastSettingDto } from "@/settings/dto/update-podcast-setting.d
 import { UpdateSummarySettingDto } from "@/settings/dto/update-summary-setting.dto";
 import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
 import { UserSettingsBasicMapper } from "@/settings/dto/user-settings-basic.mapper";
+import { SUMMARY_SCHEDULE_DEFAULT } from "@/settings/settings.constants";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 
 @Controller()
@@ -78,7 +79,7 @@ export class SettingsController {
         const src = {
             summary_enabled: base?.summary_enabled ?? false,
             summary_schedule_time:
-                (base?.summary_schedule_time as string) ?? null,
+                base?.summary_schedule_time ?? SUMMARY_SCHEDULE_DEFAULT,
             podcast_enabled: base?.podcast_enabled ?? false,
             podcast_schedule_time:
                 (base?.podcast_schedule_time as string) ?? null,
@@ -258,10 +259,7 @@ export class SettingsController {
             throw new BadRequestException("enabled must be boolean");
         }
 
-        const scheduleTime =
-            body.summaryScheduleTime === null
-                ? undefined
-                : (body.summaryScheduleTime ?? undefined);
+        const scheduleTime = body.summaryScheduleTime ?? undefined;
 
         if (body.enabled && !scheduleTime) {
             throw new BadRequestException(

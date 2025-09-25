@@ -1,3 +1,5 @@
+import { normalizeTagPath } from "./tag-path.util";
+
 export class TagEntity {
     id!: number;
     user_id!: string;
@@ -9,10 +11,15 @@ export class TagEntity {
     tag_emb?: string | null;
     description?: string | null;
     color?: string | null;
-    path?: unknown | null;
+    path!: string[];
 
-    constructor(data: Partial<TagEntity> = {}) {
+    constructor(
+        data: Partial<Omit<TagEntity, "path">> & { path?: unknown } = {},
+    ) {
         Object.assign(this, data);
+        this.path = normalizeTagPath(
+            data.path as string | string[] | null | undefined,
+        );
     }
 
     isRootTag(): boolean {

@@ -2,7 +2,7 @@ import type { SettingsOverviewDto } from "./settings-overview.dto";
 
 export type SettingsOverviewSource = {
     summary_enabled: boolean;
-    summary_schedule_time: string | null;
+    summary_schedule_time: string;
     podcast_enabled: boolean;
     podcast_schedule_time: string | null;
     podcast_language: "ja-JP" | "en-US";

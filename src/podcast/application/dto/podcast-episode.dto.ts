@@ -38,10 +38,10 @@ export class PodcastEpisodeResponseDto {
     summaryId: number;
 
     /** Podcast episode title */
-    title: string | null;
+    title: string;
 
     /** Audio file URL */
-    audioUrl: string | null;
+    audioUrl: string;
 
     /** Whether the episode is soft-deleted */
     softDeleted: boolean;

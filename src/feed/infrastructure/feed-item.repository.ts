@@ -1,9 +1,22 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import { SupabaseRequestService } from "@/supabase-request.service";
-import { Database } from "@/types/schema";
+import type { FeedItemsInsertWithoutHash } from "@/types/overrides";
+import { Database, TablesInsert } from "@/types/schema";
 
 type Row = Database["public"]["Tables"]["feed_items"]["Row"];
+
+/**
+ * DBトリガー`trg_feed_items_link_hash`がlink_hashを生成するため、
+ * Insertペイロードからは除外する。
+ * 仕様: canonical_urlがあれば正規化に使用し、無い場合はlinkをtrim→lower→UTF-8→SHA256→hex変換。
+ */
+type FeedItemInsertPayload = Omit<
+    FeedItemsInsertWithoutHash,
+    "published_at"
+> & {
+    published_at: Date | string | null;
+};
 
 @Injectable()
 export class FeedItemRepository {
@@ -53,21 +66,22 @@ export class FeedItemRepository {
     }
 
     // アイテムを追加
-    async insertFeedItem(item: {
-        user_subscription_id: number;
-        user_id: string;
-        title: string;
-        link: string;
-        description: string;
-        published_at: Date | null;
-    }) {
+    async insertFeedItem(item: FeedItemInsertPayload) {
         const supabase = this.supabaseRequestService.getClient();
-        const { error } = await supabase.from("feed_items").insert({
+        const publishedAt =
+            item.published_at === null
+                ? null
+                : item.published_at instanceof Date
+                  ? item.published_at.toISOString()
+                  : item.published_at;
+        const payload = {
             ...item,
-            published_at: item.published_at
-                ? item.published_at.toISOString()
-                : null,
-        });
+            published_at: publishedAt,
+        } satisfies Omit<TablesInsert<"feed_items">, "link_hash">;
+        const { error } = await supabase
+            .from("feed_items")
+            // Supabase型はlink_hash必須だが、トリガーで付与されるため明示的に除外する。
+            .insert(payload as unknown as TablesInsert<"feed_items">);
 
         return error;
     }

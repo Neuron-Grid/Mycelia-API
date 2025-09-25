@@ -1,0 +1,2 @@
+export const SUMMARY_SCHEDULE_DEFAULT = "06:00";
+export const PODCAST_SCHEDULE_DEFAULT = "07:00";

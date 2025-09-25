@@ -7,7 +7,7 @@ export class SettingsOverviewDto {
     summaryEnabled!: boolean;
 
     /** 要約実行時刻 (JST, HH:mm) */
-    summaryScheduleTime!: string | null;
+    summaryScheduleTime!: string;
 
     /** ポッドキャスト機能の有効/無効 */
     podcastEnabled!: boolean;

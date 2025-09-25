@@ -17,7 +17,7 @@ export class UpdateSummarySettingDto {
             value ??
             obj?.summary_schedule_time ??
             obj?.summaryScheduleTime ??
-            null,
+            undefined,
     )
-    summaryScheduleTime?: string | null;
+    summaryScheduleTime?: string;
 }

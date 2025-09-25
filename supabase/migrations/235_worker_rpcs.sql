@@ -46,7 +46,8 @@ CREATE OR REPLACE FUNCTION public.fn_insert_feed_item(
   p_title text,
   p_link text,
   p_description text,
-  p_published_at timestamptz
+  p_published_at timestamptz,
+  p_canonical_url text DEFAULT NULL
 )
 RETURNS TABLE(id bigint, inserted boolean) LANGUAGE plpgsql
 SECURITY DEFINER
@@ -66,9 +67,21 @@ BEGIN
 
   WITH ins AS (
     INSERT INTO public.feed_items (
-      user_subscription_id, user_id, title, link, description, published_at
+      user_subscription_id,
+      user_id,
+      title,
+      link,
+      canonical_url,
+      description,
+      published_at
     ) VALUES (
-      p_subscription_id, p_user_id, COALESCE(p_title, ''), COALESCE(p_link, ''), COALESCE(p_description, ''), p_published_at
+      p_subscription_id,
+      p_user_id,
+      COALESCE(p_title, ''),
+      COALESCE(p_link, ''),
+      NULLIF(BTRIM(p_canonical_url), ''),
+      COALESCE(p_description, ''),
+      p_published_at
     )
     ON CONFLICT (user_subscription_id, link_hash) DO NOTHING
     RETURNING id
@@ -85,14 +98,14 @@ BEGIN
     FROM public.feed_items fi
    WHERE fi.user_subscription_id = p_subscription_id
      AND fi.user_id = p_user_id
-     AND fi.link_hash = encode(digest(p_link, 'sha256'), 'hex');
+     AND fi.link_hash = public.compute_feed_item_hash(p_link, p_canonical_url);
 
   RETURN QUERY SELECT v_id, FALSE;
 END;
 $$;
-ALTER FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz) TO service_role;
+ALTER FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz, text) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz, text) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.fn_insert_feed_item(uuid, bigint, text, text, text, timestamptz, text) TO service_role;
 
 
 -- 3) 取得完了の記録（トリガーで next_fetch_at 自動更新）
@@ -587,4 +600,3 @@ REVOKE ALL ON FUNCTION public.fn_find_due_subscriptions(timestamptz) FROM PUBLIC
 GRANT  EXECUTE ON FUNCTION public.fn_find_due_subscriptions(timestamptz) TO service_role;
 
 COMMIT;
-

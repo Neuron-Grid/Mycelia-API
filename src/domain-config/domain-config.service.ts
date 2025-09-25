@@ -5,8 +5,13 @@ import {
     NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import {
+    PODCAST_SCHEDULE_DEFAULT,
+    SUMMARY_SCHEDULE_DEFAULT,
+} from "@/settings/settings.constants";
 import { SupabaseRequestService } from "../supabase-request.service";
 import {
+    type SettingsRow,
     UpdateUserSettingsDto,
     UserSettingsResponseDto,
 } from "./dto/user-settings.dto";
@@ -69,7 +74,9 @@ export class DomainConfigService {
                 throw error;
             }
 
-            return UserSettingsResponseDto.fromDatabaseRecord(data);
+            return UserSettingsResponseDto.fromDatabaseRecord(
+                data as SettingsRow,
+            );
         } catch (error) {
             this.logger.error(`Failed to get user settings: ${error.message}`);
             throw error;
@@ -111,7 +118,9 @@ export class DomainConfigService {
             if (error) throw error;
 
             this.logger.log(`Updated user settings for user ${userId}`);
-            return UserSettingsResponseDto.fromDatabaseRecord(data);
+            return UserSettingsResponseDto.fromDatabaseRecord(
+                data as SettingsRow,
+            );
         } catch (error) {
             this.logger.error(
                 `Failed to update user settings: ${error.message}`,
@@ -132,9 +141,9 @@ export class DomainConfigService {
                     user_id: userId,
                     refresh_every: "30 minutes", // デフォルト30分
                     summary_enabled: false,
-                    summary_schedule_time: "06:00",
+                    summary_schedule_time: SUMMARY_SCHEDULE_DEFAULT,
                     podcast_enabled: false,
-                    podcast_schedule_time: "07:00",
+                    podcast_schedule_time: PODCAST_SCHEDULE_DEFAULT,
                     podcast_language: "ja-JP",
                 })
                 .select()
@@ -143,7 +152,9 @@ export class DomainConfigService {
             if (error) throw error;
 
             this.logger.log(`Created default user settings for user ${userId}`);
-            return UserSettingsResponseDto.fromDatabaseRecord(data);
+            return UserSettingsResponseDto.fromDatabaseRecord(
+                data as SettingsRow,
+            );
         } catch (error) {
             this.logger.error(
                 `Failed to create default user settings: ${error.message}`,
@@ -197,7 +208,9 @@ export class DomainConfigService {
             this.logger.log(
                 `Updated podcast settings for user ${userId}: enabled=${enabled}`,
             );
-            return UserSettingsResponseDto.fromDatabaseRecord(data);
+            return UserSettingsResponseDto.fromDatabaseRecord(
+                data as SettingsRow,
+            );
         } catch (error) {
             this.logger.error(
                 `Failed to update podcast settings: ${error.message}`,
@@ -268,7 +281,9 @@ export class DomainConfigService {
                 throw new NotFoundException("User settings not found");
             }
 
-            return UserSettingsResponseDto.fromDatabaseRecord(data);
+            return UserSettingsResponseDto.fromDatabaseRecord(
+                data as SettingsRow,
+            );
         } catch (error) {
             this.logger.error(
                 `Failed to update summary setting: ${error.message}`,

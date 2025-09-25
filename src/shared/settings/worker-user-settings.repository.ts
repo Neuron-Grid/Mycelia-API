@@ -1,13 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { PODCAST_SCHEDULE_DEFAULT } from "@/settings/settings.constants";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { Tables } from "@/types/schema";
 
 type WorkerUserSettingsRow = Tables<"user_settings"> & {
-    summary_schedule_time?: string | null;
+    summary_schedule_time: string;
 };
-
-const DEFAULT_SUMMARY_TIME = "06:00";
-const DEFAULT_PODCAST_TIME = "07:00";
 
 export type WorkerSummarySchedule = {
     userId: string;
@@ -32,7 +30,7 @@ export class WorkerUserSettingsRepository {
         podcast_enabled: boolean;
         podcast_language?: "ja-JP" | "en-US";
         podcast_schedule_time?: string | null;
-        summary_schedule_time?: string | null;
+        summary_schedule_time: string;
     } | null> {
         try {
             const sb = this.admin.getClient();
@@ -53,7 +51,7 @@ export class WorkerUserSettingsRepository {
                 podcast_enabled: row.podcast_enabled,
                 podcast_language: lang ?? undefined,
                 podcast_schedule_time: row.podcast_schedule_time ?? null,
-                summary_schedule_time: row.summary_schedule_time ?? null,
+                summary_schedule_time: row.summary_schedule_time,
             };
         } catch (e) {
             this.logger.warn(
@@ -76,7 +74,7 @@ export class WorkerUserSettingsRepository {
             const rows = (data ?? []) as unknown as WorkerUserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.summary_schedule_time || DEFAULT_SUMMARY_TIME,
+                timeJst: row.summary_schedule_time,
             }));
         } catch (e) {
             this.logger.error(
@@ -100,7 +98,7 @@ export class WorkerUserSettingsRepository {
             const rows = (data ?? []) as unknown as WorkerUserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.podcast_schedule_time || DEFAULT_PODCAST_TIME,
+                timeJst: row.podcast_schedule_time || PODCAST_SCHEDULE_DEFAULT,
                 language:
                     (row.podcast_language as "ja-JP" | "en-US") || undefined,
             }));

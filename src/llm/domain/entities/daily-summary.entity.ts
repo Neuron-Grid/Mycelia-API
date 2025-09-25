@@ -2,8 +2,8 @@ export class DailySummaryEntity {
     id!: number;
     user_id!: string;
     summary_date!: string;
-    markdown!: string | null;
-    summary_title!: string | null;
+    markdown!: string;
+    summary_title!: string;
     summary_emb!: string | null;
     script_text!: string | null;
     script_tts_duration_sec!: number | null;
@@ -13,6 +13,9 @@ export class DailySummaryEntity {
 
     constructor(data: Partial<DailySummaryEntity> = {}) {
         Object.assign(this, data);
+
+        this.markdown = data.markdown ?? "";
+        this.summary_title = data.summary_title ?? "";
     }
 
     // ビジネスロジック: 要約が完成しているかチェック
@@ -40,8 +43,11 @@ export class DailySummaryEntity {
 export class DailySummaryItemEntity {
     summary_id!: number;
     feed_item_id!: number;
+    user_id!: string;
+    soft_deleted!: boolean;
 
     constructor(data: Partial<DailySummaryItemEntity> = {}) {
         Object.assign(this, data);
+        this.soft_deleted = data.soft_deleted ?? false;
     }
 }

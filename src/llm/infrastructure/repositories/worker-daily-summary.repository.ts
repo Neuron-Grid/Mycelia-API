@@ -108,7 +108,8 @@ export class WorkerDailySummaryRepository {
                 .from("daily_summary_items")
                 .select("*")
                 .eq("summary_id", summaryId)
-                .eq("user_id", userId);
+                .eq("user_id", userId)
+                .eq("soft_deleted", false);
             if (error) throw error;
             return (data || []).map((d) => new DailySummaryItemEntity(d));
         } catch (e) {

@@ -7,6 +7,7 @@ CREATE TABLE public.feed_items(
     user_id              uuid   NOT NULL,
     title                text   NOT NULL,
     link                 text   NOT NULL,
+    canonical_url        text,
     link_hash            text   NOT NULL,
     description          text,
     published_at         timestamptz,
@@ -26,6 +27,34 @@ CREATE TRIGGER trg_feed_items_updated
     FOR EACH ROW
     EXECUTE PROCEDURE public.update_timestamp();
 
+CREATE OR REPLACE FUNCTION public.compute_feed_item_hash(
+    p_link text,
+    p_canonical_url text DEFAULT NULL
+)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+SECURITY DEFINER
+SET search_path = public, extensions, pg_temp
+AS $$
+DECLARE
+    v_source text;
+BEGIN
+    v_source := COALESCE(NULLIF(BTRIM(p_canonical_url), ''), p_link);
+    IF v_source IS NULL THEN
+        RETURN NULL;
+    END IF;
+    v_source := LOWER(BTRIM(v_source));
+    RETURN encode(
+        extensions.digest(
+            convert_to(v_source, 'UTF8'),
+            'sha256'::text
+        ),
+        'hex'
+    );
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.trg_feed_items_set_link_hash()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -33,7 +62,8 @@ SECURITY DEFINER
 SET search_path = public, extensions, pg_temp
 AS $$
 BEGIN
-    NEW.link_hash := encode(extensions.digest(convert_to(NEW.link, 'UTF8'), 'sha256'::text), 'hex');
+    NEW.canonical_url := NULLIF(BTRIM(NEW.canonical_url), '');
+    NEW.link_hash := public.compute_feed_item_hash(NEW.link, NEW.canonical_url);
     RETURN NEW;
 END;
 $$;

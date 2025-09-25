@@ -1,10 +1,11 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Queue } from "bullmq";
+import {
+    PODCAST_SCHEDULE_DEFAULT,
+    SUMMARY_SCHEDULE_DEFAULT,
+} from "@/settings/settings.constants";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
-
-const DEFAULT_SUMMARY_TIME = "06:00";
-const DEFAULT_PODCAST_TIME = "07:00";
 
 @Injectable()
 export class JobsService implements OnModuleInit {
@@ -147,10 +148,11 @@ export class JobsService implements OnModuleInit {
             return candidate.toISOString();
         };
 
-        const summaryTime =
-            settings?.summary_schedule_time ?? DEFAULT_SUMMARY_TIME;
+        const summaryTime = settings
+            ? settings.summary_schedule_time
+            : SUMMARY_SCHEDULE_DEFAULT;
         const podcastTime =
-            settings?.podcast_schedule_time ?? DEFAULT_PODCAST_TIME;
+            settings?.podcast_schedule_time ?? PODCAST_SCHEDULE_DEFAULT;
 
         return {
             // summary はベース時刻（ジッターのみ、+0 分）

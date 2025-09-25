@@ -16,7 +16,7 @@ export const FeedItemMapper = {
             userId: row.user_id,
             title: row.title,
             link: row.link,
-            linkHash: row.link_hash,
+            linkHash: row.link_hash ?? "",
             description: row.description,
             publishedAt: row.published_at ?? null,
             titleEmb: row.title_emb,

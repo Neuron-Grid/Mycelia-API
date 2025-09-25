@@ -1,13 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { PODCAST_SCHEDULE_DEFAULT } from "@/settings/settings.constants";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import { Tables } from "@/types/schema";
 
 type UserSettingsRow = Tables<"user_settings"> & {
-    summary_schedule_time?: string | null;
+    summary_schedule_time: string;
 };
-
-const DEFAULT_SUMMARY_TIME = "06:00";
-const DEFAULT_PODCAST_TIME = "07:00";
 
 export type SummarySchedule = {
     userId: string;
@@ -41,7 +39,7 @@ export class UserSettingsRepository {
             const rows = (data ?? []) as unknown as UserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.summary_schedule_time || DEFAULT_SUMMARY_TIME,
+                timeJst: row.summary_schedule_time,
             }));
         } catch (e) {
             this.logger.error(
@@ -65,7 +63,7 @@ export class UserSettingsRepository {
             const rows = (data ?? []) as unknown as UserSettingsRow[];
             return rows.map((row) => ({
                 userId: row.user_id,
-                timeJst: row.podcast_schedule_time || DEFAULT_PODCAST_TIME,
+                timeJst: row.podcast_schedule_time || PODCAST_SCHEDULE_DEFAULT,
                 language:
                     (row.podcast_language as "ja-JP" | "en-US") || undefined,
             }));
@@ -83,7 +81,7 @@ export class UserSettingsRepository {
         podcast_enabled: boolean;
         podcast_language?: "ja-JP" | "en-US";
         podcast_schedule_time?: string | null;
-        summary_schedule_time?: string | null;
+        summary_schedule_time: string;
     } | null> {
         try {
             const { data, error } = await this.supabaseRequestService
@@ -110,9 +108,7 @@ export class UserSettingsRepository {
                 podcast_schedule_time: (row.podcast_schedule_time ?? null) as
                     | string
                     | null,
-                summary_schedule_time: (row.summary_schedule_time ?? null) as
-                    | string
-                    | null,
+                summary_schedule_time: row.summary_schedule_time,
             };
         } catch (e) {
             this.logger.warn(

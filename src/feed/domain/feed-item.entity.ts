@@ -4,7 +4,11 @@ export class FeedItemEntity {
     user_id!: string;
     title!: string;
     link!: string;
-    link_hash!: string | null;
+    /**
+     * Supabase trigger再計算済みのリンクハッシュ。
+     * アプリケーション側では生成・更新しないこと。
+     */
+    link_hash!: string;
     description!: string | null;
     published_at!: Date | null;
     title_emb!: string | null;
@@ -79,12 +83,6 @@ export class FeedItemEntity {
         }
 
         return `${this.description.substring(0, maxLength)}...`;
-    }
-
-    // ビジネスロジック: リンクハッシュを生成
-    generateLinkHash(): string {
-        const crypto = require("node:crypto");
-        return crypto.createHash("sha256").update(this.link).digest("hex");
     }
 
     // ビジネスロジック: 最近のアイテムかどうかをチェック（24時間以内）

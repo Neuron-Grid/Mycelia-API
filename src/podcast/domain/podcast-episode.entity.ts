@@ -2,15 +2,18 @@ export class PodcastEpisodeEntity {
     id!: number;
     user_id!: string;
     summary_id!: number;
-    title!: string | null;
+    title!: string;
     title_emb!: string | null;
-    audio_url!: string | null;
+    audio_url!: string;
     soft_deleted!: boolean;
     created_at!: string;
     updated_at!: string;
 
     constructor(data: Partial<PodcastEpisodeEntity> = {}) {
         Object.assign(this, data);
+
+        this.title = data.title ?? "";
+        this.audio_url = data.audio_url ?? "";
     }
 
     // ビジネスロジック: エピソードが完成しているかチェック

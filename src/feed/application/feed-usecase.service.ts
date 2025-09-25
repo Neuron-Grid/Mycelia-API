@@ -42,6 +42,24 @@ export class FeedUseCaseService {
                 item.description ??
                 ""
             ).substring(0, 8192);
+            const origlink = (item as Partial<{ origlink: string }>).origlink;
+            const links = (
+                item as Partial<{
+                    links: Array<{ rel?: string | null; href?: string | null }>;
+                }>
+            ).links;
+            const canonicalFromLinks = links?.find(
+                (entry) => entry?.rel === "canonical" && entry.href,
+            )?.href;
+            const alternateLink = links?.find(
+                (entry) =>
+                    (!entry?.rel || entry.rel === "alternate") && entry.href,
+            )?.href;
+            const canonicalCandidate =
+                origlink ?? canonicalFromLinks ?? alternateLink ?? null;
+            const canonical = canonicalCandidate
+                ? canonicalCandidate.substring(0, 2048)
+                : null;
             const published = item.pubdate ? new Date(item.pubdate) : null;
             try {
                 const res = await this.workerItems.insertFeedItem(
@@ -51,6 +69,7 @@ export class FeedUseCaseService {
                     link.substring(0, 2048),
                     description,
                     published,
+                    canonical,
                 );
                 if (res.inserted) inserted++;
                 else this.logger.verbose(`dup: ${link}`);

@@ -195,6 +195,7 @@ export class DailySummaryRepository {
                 summary_id: summaryId,
                 feed_item_id: feedItemId,
                 user_id: userId,
+                soft_deleted: false,
             }));
 
             const { error } = await this.supabaseRequestService
@@ -232,10 +233,13 @@ export class DailySummaryRepository {
                 .getClient()
                 .from("daily_summary_items")
                 .select("*")
-                .eq("summary_id", summaryId);
+                .eq("summary_id", summaryId)
+                .eq("user_id", userId)
+                .eq("soft_deleted", false);
 
             if (error) throw error;
-            return data.map((item) => new DailySummaryItemEntity(item));
+            const rows = data ?? [];
+            return rows.map((item) => new DailySummaryItemEntity(item));
         } catch (error) {
             this.logger.error(`Failed to get summary items: ${error.message}`);
             return [];
@@ -322,8 +326,9 @@ export class DailySummaryRepository {
     // ソフト削除
     async softDelete(id: number, userId: string): Promise<void> {
         try {
-            const { error } = await this.supabaseRequestService
-                .getClient()
+            const client = this.supabaseRequestService.getClient();
+
+            const { error } = await client
                 .from("daily_summaries")
                 .update({
                     soft_deleted: true,
@@ -333,6 +338,14 @@ export class DailySummaryRepository {
                 .eq("user_id", userId); // ユーザー分離の保証
 
             if (error) throw error;
+
+            const { error: itemError } = await client
+                .from("daily_summary_items")
+                .update({ soft_deleted: true })
+                .eq("summary_id", id)
+                .eq("user_id", userId);
+
+            if (itemError) throw itemError;
         } catch (error) {
             this.logger.error(
                 `Failed to soft delete daily summary: ${error.message}`,

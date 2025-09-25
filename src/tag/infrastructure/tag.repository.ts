@@ -1,13 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import { TagEntity } from "@/tag/domain/tag.entity";
+import { normalizeTagPath } from "@/tag/domain/tag-path.util";
+import type { TagsInsert, TagsRow, TagsUpdate } from "@/types/overrides";
 import { Database } from "@/types/schema";
-
-// tagsテーブル
-type TagsTable = Database["public"]["Tables"]["tags"];
-type TagsRow = TagsTable["Row"];
-type TagsInsert = TagsTable["Insert"];
-type TagsUpdate = TagsTable["Update"];
 
 // feed_item_tagsテーブル
 type FeedItemTagsTable = Database["public"]["Tables"]["feed_item_tags"];
@@ -41,6 +37,41 @@ type TagPathRow = {
     level: number;
 };
 
+type TagHierarchyRaw = Omit<TagHierarchyNode, "path" | "children"> & {
+    path: string | string[] | null;
+    children: TagHierarchyRaw[];
+};
+
+type TagPathRaw = Omit<TagPathRow, "path_array"> & {
+    path_array: string[] | string | null;
+};
+
+type TagsRowRaw = Database["public"]["Tables"]["tags"]["Row"];
+
+const mapTagRow = (row: TagsRowRaw): TagsRow => {
+    const pathValue =
+        typeof row.path === "string"
+            ? row.path
+            : row.path == null
+              ? ""
+              : String(row.path);
+    return {
+        ...row,
+        path: pathValue,
+    } as TagsRow;
+};
+
+const normalizeHierarchyNode = (node: TagHierarchyRaw): TagHierarchyNode => ({
+    ...node,
+    path: normalizeTagPath(node.path),
+    children: (node.children ?? []).map(normalizeHierarchyNode),
+});
+
+const normalizePathRow = (row: TagPathRaw): TagPathRow => ({
+    ...row,
+    path_array: normalizeTagPath(row.path_array),
+});
+
 @Injectable()
 export class TagRepository {
     private readonly logger = new Logger(TagRepository.name);
@@ -64,7 +95,8 @@ export class TagRepository {
             );
             throw error;
         }
-        return data ?? [];
+        const rows = (data ?? []).map((row) => mapTagRow(row as TagsRowRaw));
+        return rows;
     }
 
     // タグを新規作成
@@ -78,12 +110,13 @@ export class TagRepository {
             user_id: userId,
             tag_name: tagName,
             parent_tag_id: parentTagId ?? null,
-            path: null as unknown,
         };
 
         const { data, error } = await supabase
             .from("tags")
-            .insert(insertData)
+            .insert(
+                insertData as unknown as Database["public"]["Tables"]["tags"]["Insert"],
+            )
             .select()
             .single();
 
@@ -91,7 +124,7 @@ export class TagRepository {
             this.logger.error(`createTag failed: ${error.message}`, error);
             throw error;
         }
-        return data;
+        return mapTagRow(data as TagsRowRaw);
     }
 
     // タグを更新
@@ -129,7 +162,7 @@ export class TagRepository {
             .single();
 
         if (error) throw error;
-        return data;
+        return mapTagRow(data as TagsRowRaw);
     }
 
     // タグ削除
@@ -218,7 +251,11 @@ export class TagRepository {
         }
 
         // dataはfeed_item_tagsのRow & { tag: TagsRow }の構造
-        return data ?? [];
+        const rows = (data ?? []).map((row) => ({
+            ...row,
+            tag: mapTagRow(row.tag as TagsRowRaw),
+        }));
+        return rows;
     }
 
     // 購読(UserSubscription)にタグを紐づけ
@@ -289,7 +326,11 @@ export class TagRepository {
             );
             throw error;
         }
-        return data ?? [];
+        const rows = (data ?? []).map((row) => ({
+            ...row,
+            tag: mapTagRow(row.tag as TagsRowRaw),
+        }));
+        return rows;
     }
 
     // HierarchicalTagService用の追加メソッド
@@ -313,7 +354,7 @@ export class TagRepository {
             this.logger.error(`findById failed: ${error.message}`, error);
             throw error;
         }
-        return new TagEntity(data);
+        return new TagEntity(data as TagsRowRaw);
     }
 
     // ユーザーの全タグを取得（HierarchicalTagService用）
@@ -341,12 +382,13 @@ export class TagRepository {
             description: data.description ?? null,
             color: data.color ?? null,
             tag_emb: data.tag_emb ? JSON.stringify(data.tag_emb) : null,
-            path: null as unknown,
         };
 
         const { data: result, error } = await supabase
             .from("tags")
-            .insert(insertData)
+            .insert(
+                insertData as unknown as Database["public"]["Tables"]["tags"]["Insert"],
+            )
             .select()
             .single();
 
@@ -354,7 +396,7 @@ export class TagRepository {
             this.logger.error(`create failed: ${error.message}`, error);
             throw error;
         }
-        return new TagEntity(result);
+        return new TagEntity(result as TagsRowRaw);
     }
 
     // 拡張版タグ更新
@@ -414,7 +456,7 @@ export class TagRepository {
             this.logger.error(`update failed: ${error.message}`, error);
             throw error;
         }
-        return new TagEntity(result);
+        return new TagEntity(result as TagsRowRaw);
     }
 
     // 同一親の下でのタグ名重複チェック
@@ -450,7 +492,7 @@ export class TagRepository {
             );
             throw error;
         }
-        return new TagEntity(data);
+        return new TagEntity(data as TagsRowRaw);
     }
 
     async getTagHierarchy(): Promise<TagHierarchyNode[]> {
@@ -471,7 +513,8 @@ export class TagRepository {
             return [];
         }
 
-        return data as TagHierarchyNode[];
+        const rawList = data as TagHierarchyRaw[];
+        return rawList.map((node) => normalizeHierarchyNode(node));
     }
 
     async getTagSubtree(tagId: number): Promise<TagHierarchyNode | null> {
@@ -490,7 +533,7 @@ export class TagRepository {
             return null;
         }
 
-        return data as TagHierarchyNode;
+        return normalizeHierarchyNode(data as TagHierarchyRaw);
     }
 
     async getTagPath(tagId: number): Promise<TagPathRow | null> {
@@ -509,7 +552,7 @@ export class TagRepository {
             return null;
         }
 
-        return data as TagPathRow;
+        return normalizePathRow(data as TagPathRaw);
     }
 
     // 購読をタグに関連付け（複数タグ対応）

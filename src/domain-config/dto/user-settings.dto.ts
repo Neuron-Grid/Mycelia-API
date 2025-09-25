@@ -11,8 +11,8 @@ import { IntervalDto } from "../../feed/application/dto/subscription-interval.dt
 import type { Database } from "../../types/schema";
 
 type SettingsRowBase = Database["public"]["Tables"]["user_settings"]["Row"];
-type SettingsRow = SettingsRowBase & {
-    summary_schedule_time?: string | null;
+export type SettingsRow = SettingsRowBase & {
+    summary_schedule_time: string;
 };
 
 export class UpdateUserSettingsDto {
@@ -164,7 +164,7 @@ export class UserSettingsResponseDto {
     summary_enabled!: boolean;
 
     /** Summary generation schedule time */
-    summary_schedule_time!: string | null;
+    summary_schedule_time!: string;
 
     /** Podcast language */
     podcast_language!: "ja-JP" | "en-US";
@@ -186,7 +186,7 @@ export class UserSettingsResponseDto {
         dto.podcast_enabled = record.podcast_enabled || false;
         dto.podcast_schedule_time = record.podcast_schedule_time;
         dto.summary_enabled = record.summary_enabled || false;
-        dto.summary_schedule_time = record.summary_schedule_time ?? null;
+        dto.summary_schedule_time = record.summary_schedule_time;
         const lang = record.podcast_language;
         dto.podcast_language =
             lang === "ja-JP" || lang === "en-US" ? lang : "ja-JP";
