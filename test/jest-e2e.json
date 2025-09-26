@@ -6,7 +6,7 @@
   "testEnvironment": "node",
 
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "test/tsconfig.e2e.json" }]
   },
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/src/$1",

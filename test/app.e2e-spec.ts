@@ -39,9 +39,27 @@ jest.mock("@/podcast/core/podcast-core.module", () => ({ PodcastCoreModule: clas
 jest.mock("@/podcast/podcast-tts.service", () => ({ PodcastTtsService: class {} }));
 jest.mock("uuid", () => ({ v4: () => "00000000-0000-0000-0000-000000000000" }), { virtual: true });
 jest.mock("@/embedding/queue/embedding-queue.module", () => ({ EmbeddingQueueModule: class {} }));
+jest.mock("@/embedding/queue/embedding-queue.service", () => ({ EmbeddingQueueService: class {} }));
 jest.mock("@/feed/queue/feed-queue.module", () => ({ FeedQueueModule: class {} }));
 jest.mock("@/maintenance/maintenance-queue.module", () => ({ MaintenanceQueueModule: class {} }));
 jest.mock("@/llm/llm.module", () => ({ LlmModule: class {} }));
+jest.mock("@/shared/redis/redis.module", () => ({ RedisModule: class {} }));
+jest.mock("@/shared/redis/redis.service", () => ({ RedisService: class {} }));
+jest.mock("@/shared/lock/distributed-lock.module", () => ({ DistributedLockModule: class {} }));
+jest.mock("@/shared/lock/distributed-lock.service", () => ({
+    DistributedLockService: class {
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: mock
+        async acquire() {
+            return "mock-lock";
+        }
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: mock
+        async release() {
+            return true;
+        }
+    },
+}));
+jest.mock("@/tag/tag.module", () => ({ TagModule: class {} }));
+jest.mock("@/tag/application/tag.service", () => ({ TagService: class {} }));
 
 import { AppModule } from "@/app.module";
 import {
@@ -50,7 +68,15 @@ import {
 } from "@/llm/application/services/llm.service";
 import { MockLlmService } from "@/llm/infrastructure/clients/mock-llm.service";
 
-describe("LLM mock override (e2e)", () => {
+const runAppE2E = process.env.RUN_APP_E2E === "true";
+const describeOrSkip = runAppE2E ? describe : describe.skip;
+if (!runAppE2E) {
+    console.warn(
+        "AppModule E2E: RUN_APP_E2E=true が指定されていないためスキップ",
+    );
+}
+
+describeOrSkip("LLM mock override (e2e)", () => {
     let app: INestApplication;
 
     beforeAll(async () => {
