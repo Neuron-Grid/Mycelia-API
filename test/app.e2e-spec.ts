@@ -3,6 +3,7 @@
  * LLMのモックはテスト側で`overrideProvider`により差し替える。
  */
 
+import { jest } from "@jest/globals";
 import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 
@@ -14,17 +15,18 @@ jest.mock("@nestjs/bullmq", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: stub only
         process() {}
     }
+
+    const createDynamicModule = () => ({
+        module: BullMqStubModule,
+        providers: [],
+        exports: [],
+    });
+
     return {
-        BullModule: class {
-            static registerQueueAsync() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
-            static registerQueue() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
-            static forRootAsync() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
+        BullModule: {
+            registerQueueAsync: () => createDynamicModule(),
+            registerQueue: () => createDynamicModule(),
+            forRootAsync: () => createDynamicModule(),
         },
         InjectQueue: () => () => undefined,
         Processor: () => (cls: unknown) => cls,
@@ -34,26 +36,44 @@ jest.mock("@nestjs/bullmq", () => {
 
 // Podcast/TTS系はNode ESM依存がありE2Eでは未使用のためスタブ
 jest.mock("@/podcast/podcast.module", () => ({ PodcastModule: class {} }));
-jest.mock("@/podcast/queue/podcast-queue.module", () => ({ PodcastQueueModule: class {} }));
-jest.mock("@/podcast/core/podcast-core.module", () => ({ PodcastCoreModule: class {} }));
-jest.mock("@/podcast/podcast-tts.service", () => ({ PodcastTtsService: class {} }));
-jest.mock("uuid", () => ({ v4: () => "00000000-0000-0000-0000-000000000000" }), { virtual: true });
-jest.mock("@/embedding/queue/embedding-queue.module", () => ({ EmbeddingQueueModule: class {} }));
-jest.mock("@/embedding/queue/embedding-queue.service", () => ({ EmbeddingQueueService: class {} }));
-jest.mock("@/feed/queue/feed-queue.module", () => ({ FeedQueueModule: class {} }));
-jest.mock("@/maintenance/maintenance-queue.module", () => ({ MaintenanceQueueModule: class {} }));
+jest.mock("@/podcast/queue/podcast-queue.module", () => ({
+    PodcastQueueModule: class {},
+}));
+jest.mock("@/podcast/core/podcast-core.module", () => ({
+    PodcastCoreModule: class {},
+}));
+jest.mock("@/podcast/podcast-tts.service", () => ({
+    PodcastTtsService: class {},
+}));
+jest.mock(
+    "uuid",
+    () => ({ v4: () => "00000000-0000-0000-0000-000000000000" }),
+    { virtual: true },
+);
+jest.mock("@/embedding/queue/embedding-queue.module", () => ({
+    EmbeddingQueueModule: class {},
+}));
+jest.mock("@/embedding/queue/embedding-queue.service", () => ({
+    EmbeddingQueueService: class {},
+}));
+jest.mock("@/feed/queue/feed-queue.module", () => ({
+    FeedQueueModule: class {},
+}));
+jest.mock("@/maintenance/maintenance-queue.module", () => ({
+    MaintenanceQueueModule: class {},
+}));
 jest.mock("@/llm/llm.module", () => ({ LlmModule: class {} }));
 jest.mock("@/shared/redis/redis.module", () => ({ RedisModule: class {} }));
 jest.mock("@/shared/redis/redis.service", () => ({ RedisService: class {} }));
-jest.mock("@/shared/lock/distributed-lock.module", () => ({ DistributedLockModule: class {} }));
+jest.mock("@/shared/lock/distributed-lock.module", () => ({
+    DistributedLockModule: class {},
+}));
 jest.mock("@/shared/lock/distributed-lock.service", () => ({
     DistributedLockService: class {
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: mock
-        async acquire() {
+        acquire() {
             return "mock-lock";
         }
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: mock
-        async release() {
+        release() {
             return true;
         }
     },
@@ -95,7 +115,7 @@ describeOrSkip("LLM mock override (e2e)", () => {
         await app?.close();
     });
 
-    it("LLM_SERVICEがモックに差し替わっている", async () => {
+    it("LLM_SERVICEがモックに差し替わっている", () => {
         const svc = app.get<LlmService>(LLM_SERVICE);
         expect(svc).toBeInstanceOf(MockLlmService);
     });

@@ -1,8 +1,9 @@
-import { INestApplication } from "@nestjs/common";
-import { Test, TestingModule } from "@nestjs/testing";
-import { ConfigService } from "@nestjs/config";
-import nock from "nock";
 import { gzipSync } from "node:zlib";
+import { jest } from "@jest/globals";
+import { INestApplication } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Test, TestingModule } from "@nestjs/testing";
+import nock from "nock";
 
 // BullMQスタブ（既存E2Eと同様）
 jest.mock("@nestjs/bullmq", () => {
@@ -11,17 +12,18 @@ jest.mock("@nestjs/bullmq", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: stub
         process() {}
     }
+
+    const createDynamicModule = () => ({
+        module: BullMqStubModule,
+        providers: [],
+        exports: [],
+    });
+
     return {
-        BullModule: class {
-            static registerQueueAsync() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
-            static registerQueue() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
-            static forRootAsync() {
-                return { module: BullMqStubModule, providers: [], exports: [] };
-            }
+        BullModule: {
+            registerQueueAsync: () => createDynamicModule(),
+            registerQueue: () => createDynamicModule(),
+            forRootAsync: () => createDynamicModule(),
         },
         InjectQueue: () => () => undefined,
         Processor: () => (cls: unknown) => cls,
@@ -31,18 +33,37 @@ jest.mock("@nestjs/bullmq", () => {
 
 // Podcast/TTS系はNode ESM依存がありE2Eでは未使用のためスタブ
 jest.mock("@/podcast/podcast.module", () => ({ PodcastModule: class {} }));
-jest.mock("@/podcast/queue/podcast-queue.module", () => ({ PodcastQueueModule: class {} }));
-jest.mock("@/podcast/core/podcast-core.module", () => ({ PodcastCoreModule: class {} }));
-jest.mock("@/podcast/podcast-tts.service", () => ({ PodcastTtsService: class {} }));
-jest.mock("uuid", () => ({ v4: () => "00000000-0000-0000-0000-000000000000" }), { virtual: true });
-jest.mock("@/embedding/queue/embedding-queue.module", () => ({ EmbeddingQueueModule: class {} }));
-jest.mock("@/feed/queue/feed-queue.module", () => ({ FeedQueueModule: class {} }));
-jest.mock("@/maintenance/maintenance-queue.module", () => ({ MaintenanceQueueModule: class {} }));
+jest.mock("@/podcast/queue/podcast-queue.module", () => ({
+    PodcastQueueModule: class {},
+}));
+jest.mock("@/podcast/core/podcast-core.module", () => ({
+    PodcastCoreModule: class {},
+}));
+jest.mock("@/podcast/podcast-tts.service", () => ({
+    PodcastTtsService: class {},
+}));
+jest.mock(
+    "uuid",
+    () => ({ v4: () => "00000000-0000-0000-0000-000000000000" }),
+    { virtual: true },
+);
+jest.mock("@/embedding/queue/embedding-queue.module", () => ({
+    EmbeddingQueueModule: class {},
+}));
+jest.mock("@/feed/queue/feed-queue.module", () => ({
+    FeedQueueModule: class {},
+}));
+jest.mock("@/maintenance/maintenance-queue.module", () => ({
+    MaintenanceQueueModule: class {},
+}));
 jest.mock("@/llm/llm.module", () => ({ LlmModule: class {} }));
 
 // DNSユーティリティをモック
 jest.mock("@/common/net/ip-range.util", () => ({
-    resolveAndFilterUnicast: jest.fn(async () => ({ safeIps: ["93.184.216.34"], allIps: ["93.184.216.34"] })),
+    resolveAndFilterUnicast: jest.fn(async () => ({
+        safeIps: ["93.184.216.34"],
+        allIps: ["93.184.216.34"],
+    })),
     parseExtraDenyCidrsFromEnv: jest.fn(() => []),
 }));
 
@@ -89,9 +110,10 @@ describe("FeedFetchService (e2e)", () => {
         const feed = app.get(FeedFetchService);
         const xml = `<?xml version="1.0"?><rss><channel><title>E2E</title><item><title>X</title></item></channel></rss>`;
         const gz = gzipSync(Buffer.from(xml));
-        nock("https://example.com")
-            .get("/rss.gz")
-            .reply(200, gz, { "Content-Type": "application/rss+xml", "Content-Encoding": "gzip" });
+        nock("https://example.com").get("/rss.gz").reply(200, gz, {
+            "Content-Type": "application/rss+xml",
+            "Content-Encoding": "gzip",
+        });
 
         const res = await feed.parseFeed("https://example.com/rss.gz");
         expect(res.meta.title).toContain("E2E");
