@@ -10,6 +10,17 @@ CREATE TABLE public.embedding_config(
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- RLS を有効化し、他テーブルと同様に強制する
+ALTER TABLE public.embedding_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.embedding_config FORCE ROW LEVEL SECURITY;
+
+-- サービスロール／内部処理のみ許可
+CREATE POLICY embedding_config_service_manage
+    ON public.embedding_config
+    FOR ALL
+    USING (auth.role() = 'service_role' OR auth.jwt() IS NULL)
+    WITH CHECK (auth.role() = 'service_role' OR auth.jwt() IS NULL);
+
 -- 初期レコード
 -- 存在しなければ作成
 INSERT INTO public.embedding_config (id, model_name, dimensions)

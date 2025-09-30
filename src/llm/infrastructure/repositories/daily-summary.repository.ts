@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { resolveFeedItemPublishedAt } from "@/common/utils/feed-item-time.util";
 import { SupabaseRequestService } from "../../../supabase-request.service";
 import { TablesInsert, TablesUpdate } from "../../../types/schema";
 import {
@@ -256,7 +257,7 @@ export class DailySummaryRepository {
             title: string;
             description: string | null;
             link: string;
-            published_at: string | null;
+            published_at: string;
             user_subscriptions: {
                 feed_title: string | null;
             };
@@ -265,6 +266,7 @@ export class DailySummaryRepository {
         try {
             const cutoffTime = new Date();
             cutoffTime.setHours(cutoffTime.getHours() - hoursBack);
+            const cutoffIso = cutoffTime.toISOString();
 
             const { data, error } = await this.supabaseRequestService
                 .getClient()
@@ -275,15 +277,25 @@ export class DailySummaryRepository {
                     link,
                     description,
                     published_at,
+                    created_at,
                     user_subscriptions!inner(feed_title)
                 `)
                 .eq("user_id", userId)
                 .eq("soft_deleted", false)
-                .gte("published_at", cutoffTime.toISOString())
-                .order("published_at", { ascending: false });
+                .or(
+                    `published_at.gte.${cutoffIso},and(published_at.is.null,created_at.gte.${cutoffIso})`,
+                )
+                .order("published_at", { ascending: false, nullsFirst: false })
+                .order("created_at", { ascending: false });
 
             if (error) throw error;
-            return data || [];
+            return (data || []).map((item) => ({
+                ...item,
+                published_at: resolveFeedItemPublishedAt(
+                    item.published_at,
+                    item.created_at,
+                ),
+            }));
         } catch (error) {
             this.logger.error(
                 `Failed to get recent feed items: ${error.message}`,

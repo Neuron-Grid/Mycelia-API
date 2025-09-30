@@ -1364,7 +1364,7 @@ export type Database = {
                     p_canonical_url?: string;
                     p_description: string;
                     p_link: string;
-                    p_published_at: string;
+                    p_published_at?: string;
                     p_subscription_id: number;
                     p_title: string;
                     p_user_id: string;
