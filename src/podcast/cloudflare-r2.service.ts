@@ -369,18 +369,26 @@ export class CloudflareR2Service {
     } {
         try {
             const urlObj = new URL(url);
-            const key = urlObj.pathname.substring(1) || null;
+            const pathnameSegments = urlObj.pathname
+                .split("/")
+                .filter((segment) => segment.length > 0);
             let bucket: string | null = null;
 
             if (this.publicDomain && urlObj.hostname === this.publicDomain) {
                 bucket = this.bucketName;
-            } else if (
-                urlObj.hostname.endsWith(".r2.cloudflarestorage.com") &&
-                urlObj.hostname.includes(".")
-            ) {
-                const [bucketCandidate] = urlObj.hostname.split(".");
-                bucket = bucketCandidate || null;
+            } else if (urlObj.hostname.endsWith(".r2.cloudflarestorage.com")) {
+                const hostSegments = urlObj.hostname.split(".");
+                if (hostSegments.length >= 5) {
+                    // <bucket>.<account>.r2.cloudflarestorage.com の仮想ホスト形式
+                    bucket = hostSegments[0] || null;
+                } else if (pathnameSegments.length > 0) {
+                    // <account>.r2.cloudflarestorage.com/<bucket>/... のパススタイル形式
+                    bucket = pathnameSegments.shift() ?? null;
+                }
             }
+
+            const key =
+                pathnameSegments.length > 0 ? pathnameSegments.join("/") : null;
 
             return { bucket, key };
         } catch {
