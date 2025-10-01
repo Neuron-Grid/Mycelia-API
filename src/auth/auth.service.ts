@@ -76,6 +76,16 @@ export class AuthService {
     // @async
     // @public
     // @since 1.0.0
+    // @param {string} userId - ユーザーID
+    // @returns {Promise<unknown>} - アカウント復元結果
+    // @throws {Error} - 復元失敗時
+    async restoreAccount(userId: string) {
+        return await this.authRepo.restoreAccount(userId);
+    }
+
+    // @async
+    // @public
+    // @since 1.0.0
     // @param {User} user - ユーザー
     // @param {string} newEmail - 新しいメールアドレス
     // @returns {Promise<unknown>} - メールアドレス更新結果

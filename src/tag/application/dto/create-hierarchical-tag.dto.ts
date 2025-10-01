@@ -1,5 +1,6 @@
 import { Transform, Type } from "class-transformer";
 import { IsInt, IsOptional, IsString, Length, Min } from "class-validator";
+import { IsHexColorStrict } from "@/common/validators/hex-color.decorator";
 
 export class CreateHierarchicalTagDto {
     /** Tag name */
@@ -25,5 +26,6 @@ export class CreateHierarchicalTagDto {
     /** Tag color (Hex format #RRGGBB) */
     @IsOptional()
     @IsString()
+    @IsHexColorStrict()
     color?: string;
 }

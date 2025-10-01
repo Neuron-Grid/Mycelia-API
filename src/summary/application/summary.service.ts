@@ -32,17 +32,27 @@ export class SummaryService {
             try {
                 this.logger.log(`Fetching content from fileRef: ${fileRef}`);
 
-                // fileRefがURLの場合はキーを抽出、そうでなければそのままキーとして使用
-                const objectKey = fileRef.startsWith("http")
-                    ? this.cloudflareR2Service.extractKeyFromUrl(fileRef)
-                    : fileRef;
+                // fileRefがURLの場合はバケット/キーを抽出、それ以外は手動指定
+                const location = fileRef.startsWith("http")
+                    ? this.cloudflareR2Service.extractObjectLocationFromUrl(
+                          fileRef,
+                      )
+                    : { bucket: null, key: fileRef };
+                const objectKey = location.key;
+                const objectBucket = location.bucket ?? undefined;
 
                 if (!objectKey) {
                     throw new Error(`Invalid fileRef format: ${fileRef}`);
                 }
 
                 // 所有チェック: 指定キーが当該ユーザーの領域配下であることを強制
-                if (!this.cloudflareR2Service.isUserFile(objectKey, userId)) {
+                if (
+                    !this.cloudflareR2Service.isUserFile(
+                        objectKey,
+                        userId,
+                        objectBucket,
+                    )
+                ) {
                     this.logger.warn(
                         `Access denied to fileRef for user ${userId}: ${objectKey}`,
                     );
@@ -52,8 +62,12 @@ export class SummaryService {
                 }
 
                 // セキュリティチェック: ユーザーが自分のファイルにのみアクセス可能かチェック
-                const fileContent =
-                    await this.cloudflareR2Service.getObject(objectKey);
+                const fileContent = objectBucket
+                    ? await this.cloudflareR2Service.getObject(
+                          objectKey,
+                          objectBucket,
+                      )
+                    : await this.cloudflareR2Service.getObject(objectKey);
 
                 // ファイルサイズ制限（1MB以下に制限）
                 const maxSize = 1024 * 1024; // 1MB

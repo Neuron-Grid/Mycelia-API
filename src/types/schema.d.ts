@@ -1260,6 +1260,7 @@ export type Database = {
             users: {
                 Row: {
                     created_at: string;
+                    deleted_at: string | null;
                     email: string;
                     id: string;
                     updated_at: string;
@@ -1267,6 +1268,7 @@ export type Database = {
                 };
                 Insert: {
                     created_at?: string;
+                    deleted_at?: string | null;
                     email: string;
                     id: string;
                     updated_at?: string;
@@ -1274,6 +1276,7 @@ export type Database = {
                 };
                 Update: {
                     created_at?: string;
+                    deleted_at?: string | null;
                     email?: string;
                     id?: string;
                     updated_at?: string;

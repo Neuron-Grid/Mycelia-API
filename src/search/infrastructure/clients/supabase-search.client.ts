@@ -146,7 +146,7 @@ export class SupabaseSearchClient {
                 .getClient()
                 .from("feed_items")
                 .update({
-                    title_emb: JSON.stringify(embedding),
+                    title_emb: embedding,
                 } as Record<string, unknown>)
                 .eq("id", feedItemId)
                 .eq("user_id", userId);
@@ -171,7 +171,7 @@ export class SupabaseSearchClient {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from("daily_summaries")
-                .update({ summary_emb: JSON.stringify(embedding) })
+                .update({ summary_emb: embedding } as Record<string, unknown>)
                 .eq("id", summaryId)
                 .eq("user_id", userId);
 
@@ -195,7 +195,7 @@ export class SupabaseSearchClient {
             const { error } = await this.supabaseRequestService
                 .getClient()
                 .from("podcast_episodes")
-                .update({ title_emb: JSON.stringify(embedding) })
+                .update({ title_emb: embedding } as Record<string, unknown>)
                 .eq("id", episodeId)
                 .eq("user_id", userId);
 

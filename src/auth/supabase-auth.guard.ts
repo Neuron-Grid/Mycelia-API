@@ -137,21 +137,38 @@ export class SupabaseAuthGuard implements CanActivate {
         }
 
         // 追加チェック: アカウントがソフト削除されていないか（RLS無視のadminで確認）
-        try {
-            const { data: settings } = await this.admin
-                .getClient()
+        const adminClient = this.admin.getClient();
+        const [settingsRes, userRes] = await Promise.all([
+            adminClient
                 .from("user_settings")
                 .select("soft_deleted")
                 .eq("user_id", data.user.id)
-                .single();
-            if (
-                settings &&
-                (settings as { soft_deleted?: boolean }).soft_deleted
-            )
-                throw new UnauthorizedException("Account is deleted");
-        } catch (_e) {
-            // 行が見つからない場合やadmin経由の読み取り問題はスルー（トークン有効であれば継続）
-            // ただし soft_deleted=true のときのみ拒否
+                .maybeSingle(),
+            adminClient
+                .from("users")
+                .select("deleted_at")
+                .eq("id", data.user.id)
+                .maybeSingle(),
+        ]);
+
+        if (userRes.error) {
+            throw new UnauthorizedException("Account is deleted");
+        }
+
+        const userRow = userRes.data as { deleted_at?: string | null } | null;
+        if (!userRow || userRow.deleted_at) {
+            throw new UnauthorizedException("Account is deleted");
+        }
+
+        if (settingsRes.error) {
+            throw new UnauthorizedException("Account is deleted");
+        }
+
+        const settingsRow = settingsRes.data as {
+            soft_deleted?: boolean;
+        } | null;
+        if (settingsRow?.soft_deleted) {
+            throw new UnauthorizedException("Account is deleted");
         }
 
         // JWT クレームをデコードして添付（amr/acr/aal を下位ガードで使用）

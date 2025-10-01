@@ -381,7 +381,7 @@ export class TagRepository {
             parent_tag_id: data.parent_tag_id ?? null,
             description: data.description ?? null,
             color: data.color ?? null,
-            tag_emb: data.tag_emb ? JSON.stringify(data.tag_emb) : null,
+            tag_emb: (data.tag_emb ?? null) as unknown as TagsInsert["tag_emb"],
         };
 
         const { data: result, error } = await supabase
@@ -423,9 +423,8 @@ export class TagRepository {
         }
         if (data.color !== undefined) updateData.color = data.color;
         if (data.tag_emb !== undefined) {
-            updateData.tag_emb = data.tag_emb
-                ? JSON.stringify(data.tag_emb)
-                : null;
+            updateData.tag_emb = (data.tag_emb ??
+                null) as unknown as TagsUpdate["tag_emb"];
         }
 
         // parent_tag_idの所有者確認

@@ -7,6 +7,7 @@ CREATE TABLE public.users(
     username  text NOT NULL UNIQUE,
     created_at timestamptz NOT NULL DEFAULT NOW(),
     updated_at timestamptz NOT NULL DEFAULT NOW(),
+    deleted_at timestamptz,
     CONSTRAINT chk_email_len     CHECK (char_length(email) <= 100),
     CONSTRAINT chk_email_format  CHECK (email ~* '^[^@]+@[^@]+$'),
     CONSTRAINT chk_username_len  CHECK (char_length(username) <= 100)

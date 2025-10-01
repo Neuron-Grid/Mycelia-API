@@ -122,15 +122,16 @@ DROP POLICY IF EXISTS policy_users_update ON public.users;
 DROP POLICY IF EXISTS policy_users_delete ON public.users;
 
 CREATE POLICY policy_users_select ON public.users
-    FOR SELECT USING (id = auth.uid());
+    FOR SELECT USING (id = auth.uid() AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_insert ON public.users
-    FOR INSERT WITH CHECK (id = auth.uid());
+    FOR INSERT WITH CHECK (id = auth.uid() AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_update ON public.users
-    FOR UPDATE USING (id = auth.uid()) WITH CHECK (id = auth.uid());
+    FOR UPDATE USING (id = auth.uid() AND deleted_at IS NULL)
+    WITH CHECK (id = auth.uid() AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_delete ON public.users
-    FOR DELETE USING (id = auth.uid());
+    FOR DELETE USING (id = auth.uid() AND deleted_at IS NULL);
 
 COMMIT;

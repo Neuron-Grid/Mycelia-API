@@ -60,7 +60,7 @@ export class GeminiFlashClient implements LlmService {
     ) {
         this.apiUrl =
             this.configService.get<string>("GEMINI_API_URL") ||
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-latest:generateContent";
+            "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
         this.apiKey = this.configService.get<string>("GEMINI_API_KEY") || "";
 
         if (!this.apiKey) {

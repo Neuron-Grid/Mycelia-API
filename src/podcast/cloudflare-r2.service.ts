@@ -26,6 +26,8 @@ export class CloudflareR2Service {
     private readonly s3Client: S3Client;
     private readonly bucketName: string;
     private readonly publicDomain: string;
+    private readonly allowedBuckets: string[];
+    private readonly allowedPrefixTemplates: string[];
 
     constructor(private readonly configService: ConfigService) {
         // Cloudflare R2の接続情報
@@ -42,6 +44,22 @@ export class CloudflareR2Service {
             this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") || "";
         this.publicDomain =
             this.configService.get<string>("CLOUDFLARE_PUBLIC_DOMAIN") || "";
+
+        const configuredBuckets = this.parseList(
+            this.configService.get<string>("CLOUDFLARE_ALLOWED_BUCKETS"),
+        );
+        this.allowedBuckets =
+            configuredBuckets.length > 0
+                ? configuredBuckets
+                : [this.bucketName];
+
+        const configuredPrefixes = this.parseList(
+            this.configService.get<string>("CLOUDFLARE_ALLOWED_PREFIXES"),
+        );
+        this.allowedPrefixTemplates =
+            configuredPrefixes.length > 0
+                ? configuredPrefixes
+                : ["podcasts/{userId}/", "summaries/{userId}/"];
 
         if (
             !accountId ||
@@ -60,6 +78,14 @@ export class CloudflareR2Service {
                 secretAccessKey,
             },
         });
+    }
+
+    private parseList(raw?: string | null): string[] {
+        if (!raw) return [];
+        return raw
+            .split(/[,\s]+/)
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0);
     }
 
     // ポッドキャスト音声ファイルをR2にアップロード（メタデータ付き）
@@ -180,8 +206,8 @@ export class CloudflareR2Service {
     }
 
     // 既定バケットからオブジェクトを削除（アプリ内部向け）
-    async deleteObject(key: string): Promise<void> {
-        await this.deleteFile(this.bucketName, key);
+    async deleteObject(key: string, bucket = this.bucketName): Promise<void> {
+        await this.deleteFile(bucket, key);
     }
 
     // ユーザーのポッドキャストファイルを一括削除
@@ -288,10 +314,10 @@ export class CloudflareR2Service {
     }
 
     // オブジェクトを取得
-    async getObject(key: string): Promise<string> {
+    async getObject(key: string, bucket = this.bucketName): Promise<string> {
         try {
             const command = new GetObjectCommand({
-                Bucket: this.bucketName,
+                Bucket: bucket,
                 Key: key,
             });
 
@@ -334,26 +360,58 @@ export class CloudflareR2Service {
 
     // URLからキーを抽出
     extractKeyFromUrl(url: string): string | null {
+        return this.extractObjectLocationFromUrl(url).key;
+    }
+
+    extractObjectLocationFromUrl(url: string): {
+        bucket: string | null;
+        key: string | null;
+    } {
         try {
             const urlObj = new URL(url);
-            return urlObj.pathname.substring(1); // 先頭の / を除去
+            const key = urlObj.pathname.substring(1) || null;
+            let bucket: string | null = null;
+
+            if (this.publicDomain && urlObj.hostname === this.publicDomain) {
+                bucket = this.bucketName;
+            } else if (
+                urlObj.hostname.endsWith(".r2.cloudflarestorage.com") &&
+                urlObj.hostname.includes(".")
+            ) {
+                const [bucketCandidate] = urlObj.hostname.split(".");
+                bucket = bucketCandidate || null;
+            }
+
+            return { bucket, key };
         } catch {
-            return null;
+            return { bucket: null, key: null };
         }
     }
 
     // ユーザー分離の確認（指定したキーが指定ユーザーのものかチェック）
-    isUserFile(key: string, userId: string): boolean {
-        return key.startsWith(`podcasts/${userId}/`);
+    isUserFile(key: string, userId: string, bucket?: string): boolean {
+        const effectiveBucket = bucket ?? this.bucketName;
+        if (!this.allowedBuckets.includes(effectiveBucket)) {
+            return false;
+        }
+
+        const normalizedKey = key.startsWith("/") ? key.slice(1) : key;
+        return this.allowedPrefixTemplates.some((template) => {
+            const normalizedPrefix = template
+                .replaceAll("{userId}", userId)
+                .replace(/^\//, "");
+            return normalizedKey.startsWith(normalizedPrefix);
+        });
     }
 
     // URL指定でユーザー所有を検証して削除
     async deleteByUrl(url: string, userId: string): Promise<void> {
-        const key = this.extractKeyFromUrl(url);
+        const { bucket, key } = this.extractObjectLocationFromUrl(url);
         if (!key) throw new Error("Invalid podcast object URL");
-        if (!this.isUserFile(key, userId))
+        const resolvedBucket = bucket ?? this.bucketName;
+        if (!this.isUserFile(key, userId, resolvedBucket))
             throw new Error("Access denied to podcast object");
-        await this.deleteObject(key);
+        await this.deleteObject(key, resolvedBucket);
     }
 
     // ユーザー配下（podcasts/{userId}/）にオブジェクトが残っていないか確認

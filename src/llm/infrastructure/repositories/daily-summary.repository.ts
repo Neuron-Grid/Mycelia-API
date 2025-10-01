@@ -60,9 +60,8 @@ export class DailySummaryRepository {
                 summary_date: summaryDate,
                 markdown: data.markdown ?? "",
                 summary_title: data.summary_title ?? "",
-                summary_emb: data.summary_emb
-                    ? JSON.stringify(data.summary_emb)
-                    : null,
+                summary_emb: (data.summary_emb ??
+                    null) as unknown as TablesInsert<"daily_summaries">["summary_emb"],
                 soft_deleted: false,
             };
 
@@ -98,9 +97,10 @@ export class DailySummaryRepository {
         try {
             const updateData: TablesUpdate<"daily_summaries"> = {
                 ...data,
-                summary_emb: data.summary_emb
-                    ? JSON.stringify(data.summary_emb)
-                    : undefined,
+                summary_emb:
+                    data.summary_emb !== undefined
+                        ? (data.summary_emb as unknown as TablesUpdate<"daily_summaries">["summary_emb"])
+                        : undefined,
                 updated_at: new Date().toISOString(),
             };
 

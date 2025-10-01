@@ -346,14 +346,24 @@ export class PodcastQueueProcessor extends WorkerHost {
             for (const episode of oldEpisodes) {
                 if (episode.audio_url) {
                     // R2からファイルを削除
-                    const key = this.cloudflareR2Service.extractKeyFromUrl(
-                        episode.audio_url,
-                    );
+                    const location =
+                        this.cloudflareR2Service.extractObjectLocationFromUrl(
+                            episode.audio_url,
+                        );
+                    const key = location.key;
+                    const bucket = location.bucket ?? undefined;
                     if (
                         key &&
-                        this.cloudflareR2Service.isUserFile(key, userId)
+                        this.cloudflareR2Service.isUserFile(key, userId, bucket)
                     ) {
-                        await this.cloudflareR2Service.deleteObject(key);
+                        if (bucket) {
+                            await this.cloudflareR2Service.deleteObject(
+                                key,
+                                bucket,
+                            );
+                        } else {
+                            await this.cloudflareR2Service.deleteObject(key);
+                        }
                     }
                 }
 

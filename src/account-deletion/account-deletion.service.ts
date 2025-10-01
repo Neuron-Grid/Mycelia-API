@@ -21,14 +21,35 @@ export class AccountDeletionService {
         ).toISOString();
         const { data, error } = await sb
             .from("user_settings")
-            .select("user_id, updated_at, soft_deleted")
+            .select("user_id, updated_at, soft_deleted, users(deleted_at)")
             .eq("soft_deleted", true)
             .lte("updated_at", sevenDaysAgoIso);
         if (error) {
             this.logger.error(`listDeletionCandidates: ${error.message}`);
             return [];
         }
-        return (data || []).map((r) => (r as { user_id: string }).user_id);
+        const threshold = new Date(sevenDaysAgoIso);
+        const thresholdMs = threshold.getTime();
+        return (data || [])
+            .map(
+                (row) =>
+                    row as {
+                        user_id: string;
+                        users?: { deleted_at?: string | null } | null;
+                    },
+            )
+            .filter((row) => {
+                const deletedAt = row.users?.deleted_at;
+                if (!deletedAt) {
+                    return false;
+                }
+                const deletedDate = new Date(deletedAt);
+                if (Number.isNaN(deletedDate.getTime())) {
+                    return false;
+                }
+                return deletedDate.getTime() <= thresholdMs;
+            })
+            .map((row) => row.user_id);
     }
 
     // 単一ユーザーの物理削除（冪等）。検証まで含む。
@@ -49,15 +70,31 @@ export class AccountDeletionService {
             const sevenDaysAgoIso = new Date(
                 Date.now() - 7 * 24 * 60 * 60 * 1000,
             ).toISOString();
-            const { data: settings, error: sErr } = await sb
-                .from("user_settings")
-                .select("soft_deleted, updated_at")
-                .eq("user_id", userId)
-                .maybeSingle();
+            const thresholdMs = new Date(sevenDaysAgoIso).getTime();
+            const [
+                { data: settings, error: sErr },
+                { data: userRow, error: uErr },
+            ] = await Promise.all([
+                sb
+                    .from("user_settings")
+                    .select("soft_deleted, updated_at")
+                    .eq("user_id", userId)
+                    .maybeSingle(),
+                sb
+                    .from("users")
+                    .select("deleted_at")
+                    .eq("id", userId)
+                    .maybeSingle(),
+            ]);
             if (sErr) {
                 // 既に削除済み（users CASCADE）で user_settings も消えている場合は成功扱い
                 this.logger.warn(
                     `user_settings not found for ${userId}: ${sErr.message}`,
+                );
+            }
+            if (uErr) {
+                this.logger.warn(
+                    `users not found for ${userId}: ${uErr.message}`,
                 );
             }
             if (settings) {
@@ -71,9 +108,22 @@ export class AccountDeletionService {
                 ).toISOString();
                 const isEligible =
                     Boolean(s.soft_deleted) && updatedIso <= sevenDaysAgoIso;
-                if (!isEligible) {
+                const deletedAtIso =
+                    (userRow as { deleted_at?: string | null } | null)
+                        ?.deleted_at ?? undefined;
+                const deletedAtEligible = (() => {
+                    if (!deletedAtIso) {
+                        return false;
+                    }
+                    const deletedDate = new Date(deletedAtIso);
+                    if (Number.isNaN(deletedDate.getTime())) {
+                        return false;
+                    }
+                    return deletedDate.getTime() <= thresholdMs;
+                })();
+                if (!isEligible || !deletedAtEligible) {
                     this.logger.log(
-                        `Skip deletion (not eligible) for ${userId}: soft_deleted=${String(s.soft_deleted)} updated_at=${s.updated_at}`,
+                        `Skip deletion (not eligible) for ${userId}: soft_deleted=${String(s.soft_deleted)} updated_at=${s.updated_at} deleted_at=${deletedAtIso}`,
                     );
                     return {
                         r2Deleted: false,

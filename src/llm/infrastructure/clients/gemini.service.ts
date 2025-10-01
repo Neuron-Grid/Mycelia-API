@@ -17,7 +17,7 @@ export class GeminiService {
     ) {
         this.apiUrl =
             this.config.get<string>("GEMINI_API_URL") ||
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent";
+            "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
         this.apiKey = this.config.get<string>("GEMINI_API_KEY");
     }
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import type { TablesInsert, TablesUpdate } from "@/types/schema";
 import { SupabaseRequestService } from "../../supabase-request.service";
 import { PodcastEpisodeEntity } from "../domain/podcast-episode.entity";
 
@@ -52,18 +53,19 @@ export class PodcastEpisodeRepository {
         },
     ): Promise<PodcastEpisodeEntity> {
         try {
+            const insertData: TablesInsert<"podcast_episodes"> = {
+                user_id: userId,
+                summary_id: summaryId,
+                title: data.title || "Untitled Episode",
+                title_emb: (data.title_emb ??
+                    null) as unknown as TablesInsert<"podcast_episodes">["title_emb"],
+                audio_url: data.audio_url || "",
+            };
+
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from("podcast_episodes")
-                .insert({
-                    user_id: userId,
-                    summary_id: summaryId,
-                    title: data.title || "Untitled Episode",
-                    title_emb: data.title_emb
-                        ? JSON.stringify(data.title_emb)
-                        : null,
-                    audio_url: data.audio_url || "",
-                })
+                .insert(insertData)
                 .select()
                 .single();
 
@@ -88,17 +90,20 @@ export class PodcastEpisodeRepository {
         },
     ): Promise<PodcastEpisodeEntity> {
         try {
+            const updateData: TablesUpdate<"podcast_episodes"> = {
+                title: data.title,
+                title_emb:
+                    data.title_emb !== undefined
+                        ? (data.title_emb as unknown as TablesUpdate<"podcast_episodes">["title_emb"])
+                        : undefined,
+                audio_url: data.audio_url,
+                updated_at: new Date().toISOString(),
+            };
+
             const { data: result, error } = await this.supabaseRequestService
                 .getClient()
                 .from("podcast_episodes")
-                .update({
-                    title: data.title,
-                    title_emb: data.title_emb
-                        ? JSON.stringify(data.title_emb)
-                        : undefined,
-                    audio_url: data.audio_url,
-                    updated_at: new Date().toISOString(),
-                })
+                .update(updateData)
                 .eq("id", id)
                 .eq("user_id", userId) // ユーザー分離の保証
                 .eq("soft_deleted", false)
