@@ -53,4 +53,43 @@ describe("CloudflareR2Service.extractObjectLocationFromUrl", () => {
         expect(bucket).toBe("primary-bucket");
         expect(key).toBe("podcasts/user-1/episode-3.ogg");
     });
+
+    it("should retain empty segments in keys", () => {
+        const service = createService();
+        const { bucket, key } = service.extractObjectLocationFromUrl(
+            "https://media.example.com/folder//file.ogg",
+        );
+
+        expect(bucket).toBe("primary-bucket");
+        expect(key).toBe("folder//file.ogg");
+    });
+
+    it("should keep trailing slash for directory-style keys", () => {
+        const service = createService();
+        const { key } = service.extractObjectLocationFromUrl(
+            "https://media.example.com/folder/",
+        );
+
+        expect(key).toBe("folder/");
+    });
+
+    it("should parse path-style URLs with bucket segment", () => {
+        const service = createService();
+        const { bucket, key } = service.extractObjectLocationFromUrl(
+            "https://test-account.r2.cloudflarestorage.com/bucket/folder//file.ogg",
+        );
+
+        expect(bucket).toBe("bucket");
+        expect(key).toBe("folder//file.ogg");
+    });
+
+    it("should return empty key when bucket path has no object", () => {
+        const service = createService();
+        const { bucket, key } = service.extractObjectLocationFromUrl(
+            "https://test-account.r2.cloudflarestorage.com/bucket/",
+        );
+
+        expect(bucket).toBe("bucket");
+        expect(key).toBe("");
+    });
 });

@@ -1,0 +1,12 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`/api/v1/health guards returns sanitized payload without BullMQ data 1`] = `
+{
+  "data": {
+    "db": "OK",
+    "redis": "OK",
+    "status": "OK",
+  },
+  "message": "Health checked",
+}
+`;

@@ -4,27 +4,23 @@
 // @since 1.0.0
 // @see ./health.controller
 
-import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { EmbeddingQueueModule } from "@/embedding/queue/embedding-queue.module";
-import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
-import { LlmModule } from "@/llm/llm.module";
-import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
+import { AdminRoleGuard } from "@/auth/admin-role.guard";
+import { RequiresMfaGuard } from "@/auth/requires-mfa.guard";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { RedisModule } from "@/shared/redis/redis.module";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { HealthController } from "./health.controller";
 
 @Module({
-    imports: [
-        SupabaseRequestModule,
-        FeedQueueModule,
-        RedisModule,
-        LlmModule,
-        PodcastQueueModule,
-        EmbeddingQueueModule,
-        // BullModule is re-exported from the modules above to enable queue injection
-        BullModule,
-    ],
+    imports: [SupabaseRequestModule, RedisModule],
     controllers: [HealthController],
+    providers: [
+        SupabaseAdminService,
+        SupabaseAuthGuard,
+        RequiresMfaGuard,
+        AdminRoleGuard,
+    ],
 })
 export class HealthModule {}

@@ -1,5 +1,5 @@
 import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable, Logger } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { BatchProgress, TableType } from "../types/embedding-batch.types";
@@ -25,11 +25,30 @@ export class EmbeddingQueueService {
             "podcast_episodes",
             "tags",
         ];
+        const uniqueTables = [...new Set(tables)];
+
+        const counts = await this.embeddingQueue.getJobCounts();
+        const waiting = counts.waiting ?? 0;
+        const active = counts.active ?? 0;
+        if (waiting + active > 3) {
+            throw new HttpException(
+                "Embedding queue is currently busy. Please retry later.",
+                HttpStatus.TOO_MANY_REQUESTS,
+            );
+        }
 
         this.logger.log(`Starting batch embedding update for user ${userId}`);
 
-        for (const tableType of tables) {
+        for (const tableType of uniqueTables) {
             try {
+                const jobId = `batch:${userId}:${tableType}`;
+                const existingJob = await this.embeddingQueue.getJob(jobId);
+                if (existingJob) {
+                    this.logger.log(
+                        `Skip batch job for ${tableType}: existing job ${jobId}`,
+                    );
+                    continue;
+                }
                 const missingCount =
                     await this.batchDataService.getMissingEmbeddingsCount(
                         userId,
@@ -46,6 +65,7 @@ export class EmbeddingQueueService {
                             totalEstimate: missingCount,
                         } as VectorUpdateJobDto,
                         {
+                            jobId,
                             priority: 5,
                             removeOnComplete: 5,
                             removeOnFail: 10,

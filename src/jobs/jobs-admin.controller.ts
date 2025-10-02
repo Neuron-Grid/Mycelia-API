@@ -109,7 +109,8 @@ export class JobsAdminController {
     ): Promise<SuccessResponse<RetryAllResponseDto>> {
         const queueName = q?.queue;
         const queue = this.getQueue(queueName);
-        const limit = body?.max ?? 100;
+        const requested = body?.max ?? 100;
+        const limit = Math.min(Math.max(requested, 1), 200);
         const jobs: Job<DataWithOwner>[] = await queue.getFailed(0, limit);
         let retried = 0;
         for (const job of jobs) {

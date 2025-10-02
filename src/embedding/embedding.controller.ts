@@ -1,5 +1,6 @@
 import { TypedBody, TypedRoute } from "@nestia/core";
 import { Controller, HttpCode, HttpStatus, UseGuards } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { User } from "@supabase/supabase-js";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import type { SuccessResponse } from "@/common/utils/response.util";
@@ -20,6 +21,7 @@ export class EmbeddingController {
     /** Trigger batch embedding update */
     @TypedRoute.Post("batch-update")
     @HttpCode(HttpStatus.ACCEPTED)
+    @Throttle({ default: { limit: 1, ttl: 1000 } })
     async triggerBatchUpdate(
         @SupabaseUser() user: User,
         @TypedBody() request: BatchUpdateRequestDto,

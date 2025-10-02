@@ -1,23 +1,20 @@
 // @file システムヘルスチェックAPIのコントローラ
 
 import { TypedRoute } from "@nestia/core";
-import { InjectQueue } from "@nestjs/bullmq";
-import { Controller } from "@nestjs/common";
-// @see https://docs.bullmq.io/
-import { Job, Queue } from "bullmq";
+import { Controller, UseGuards } from "@nestjs/common";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import type Redis from "ioredis";
+import { AdminRoleGuard } from "@/auth/admin-role.guard";
+import { RequiresMfaGuard } from "@/auth/requires-mfa.guard";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { RedisService } from "@/shared/redis/redis.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import type { HealthCheckResponseDto } from "./dto/health-check-response.dto";
-import { JobCountsDto } from "./dto/health-check-response.dto";
-
-// BullMQ の戻り値用
-// Swagger DTOとは別物
-// @typedef {Awaited<ReturnType<Queue['getJobCounts']>>} RawJobCounts - BullMQジョブカウント型
-type RawJobCounts = Awaited<ReturnType<Queue["getJobCounts"]>>;
 
 @Controller("health")
+@UseGuards(SupabaseAuthGuard, RequiresMfaGuard, AdminRoleGuard, ThrottlerGuard)
 // @public
 // @since 1.0.0
 export class HealthController {
@@ -34,12 +31,6 @@ export class HealthController {
     // @public
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
-        @InjectQueue("feedQueue") private readonly feedQueue: Queue,
-        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
-        @InjectQueue("summary-generate")
-        private readonly summaryQueue: Queue,
-        @InjectQueue("script-generate") private readonly scriptQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
         private readonly redisService: RedisService,
     ) {}
 
@@ -56,28 +47,9 @@ export class HealthController {
     async checkHealth(): Promise<SuccessResponse<HealthCheckResponseDto>> {
         await this.checkDatabaseWithTimeout();
         await this.checkRedisWithTimeout();
-        const queues = [
-            ["feedQueue", this.feedQueue],
-            ["embeddingQueue", this.embeddingQueue],
-            ["summary-generate", this.summaryQueue],
-            ["script-generate", this.scriptQueue],
-            ["podcastQueue", this.podcastQueue],
-        ] as const;
-
-        const results = await Promise.all(
-            queues.map(([name, q]) => this.checkQueueStatsWithTimeout(name, q)),
-        );
-        const bullStatus = results.every((r) => r.status === "OK")
-            ? "OK"
-            : "DEGRADED";
-        const jobCounts = Object.fromEntries(
-            results.map((r) => [r.name, r.counts]),
-        ) as unknown as JobCountsDto;
-
         return buildResponse("Health checked", {
             status: "OK",
             db: "OK",
-            bullQueue: { status: bullStatus, jobCounts },
             redis: "OK",
         });
     }
@@ -117,71 +89,87 @@ export class HealthController {
     private async checkRedisWithTimeout(): Promise<void> {
         await this.withTimeout(
             (async () => {
-                const redisClient = this.redisService.createMainClient();
-                const pingResult = await redisClient.ping();
-                if (pingResult !== "PONG") {
-                    throw new Error(`Unexpected PING result: ${pingResult}`);
+                const redisClient = this.redisService.getHealthClient();
+                if (redisClient.status === "end") {
+                    throw new Error(
+                        "Redis health client has been closed unexpectedly",
+                    );
+                }
+
+                if (this.shouldAwaitReady(redisClient.status)) {
+                    await this.waitForReady(redisClient);
+                }
+
+                if (redisClient.status !== "ready") {
+                    throw new Error(
+                        `Redis health client not ready (status: ${redisClient.status})`,
+                    );
+                }
+
+                const pong = await redisClient.ping();
+                if (pong !== "PONG") {
+                    throw new Error(
+                        `Unexpected Redis ping response: ${pong ?? "<empty>"}`,
+                    );
                 }
             })(),
             this.TIMEOUT_MS,
         );
     }
 
+    // @private
+    // @since 1.0.0
+    private shouldAwaitReady(status: Redis["status"]): boolean {
+        return [
+            "wait",
+            "connecting",
+            "connect",
+            "reconnecting",
+            "close",
+        ].includes(status);
+    }
+
     // @async
     // @private
     // @since 1.0.0
-    // @returns {Promise<{ bullStatus: string, jobCounts: JobCountsDto }>} - BullMQチェック結果
-    // @throws {Error} - BullMQチェック失敗時
-    // @example
-    // await healthController['checkBullQueueWithTimeout']()
-    // @see Queue.getJobCounts
-    private async checkQueueStatsWithTimeout(
-        name: string,
-        queue: Queue,
-    ): Promise<{
-        name: string;
-        status: string;
-        counts: RawJobCounts & {
-            failureRate?: number;
-            oldestWaitingMs?: number | null;
-        };
-    }> {
-        let counts: RawJobCounts & {
-            failureRate?: number;
-            oldestWaitingMs?: number | null;
-        } = {
-            waiting: 0,
-            active: 0,
-            completed: 0,
-            failed: 0,
-            delayed: 0,
-            paused: 0,
-        } as RawJobCounts;
+    private async waitForReady(client: Redis): Promise<void> {
+        if (client.status === "ready") {
+            return;
+        }
+        if (client.status === "end") {
+            throw new Error("Redis connection ended before becoming ready");
+        }
 
-        await this.withTimeout(
-            (async () => {
-                await queue.waitUntilReady();
-                const c: RawJobCounts = await queue.getJobCounts();
-                counts = { ...counts, ...c };
-                const denom = (c.completed || 0) + (c.failed || 0);
-                counts.failureRate = denom > 0 ? (c.failed || 0) / denom : 0;
+        await new Promise<void>((resolve, reject) => {
+            const handleReady = () => {
+                cleanup();
+                resolve();
+            };
+            const handleError = (error: Error) => {
+                cleanup();
+                reject(error);
+            };
+            const handleEnd = () => {
+                cleanup();
+                reject(
+                    new Error("Redis connection ended before becoming ready"),
+                );
+            };
 
-                // 待機中の最古ジョブの滞留時間を概算
-                const waitingJobs: Job[] = await queue.getWaiting(0, 0);
-                if (waitingJobs.length > 0) {
-                    const created = waitingJobs[0].timestamp || Date.now();
-                    counts.oldestWaitingMs = Date.now() - created;
-                } else {
-                    counts.oldestWaitingMs = null;
-                }
-            })(),
-            this.TIMEOUT_MS,
-        );
+            const cleanup = () => {
+                client.removeListener("ready", handleReady);
+                client.removeListener("error", handleError);
+                client.removeListener("end", handleEnd);
+            };
 
-        // 失敗しきい値で通知（ログ代替）: 20%超でDEGRADED扱い
-        const status =
-            counts.failureRate && counts.failureRate > 0.2 ? "DEGRADED" : "OK";
-        return { name, status, counts };
+            client.once("ready", handleReady);
+            client.once("error", handleError);
+            client.once("end", handleEnd);
+
+            if (client.status === "ready") {
+                handleReady();
+            }
+        });
     }
 
     // @async
