@@ -44,10 +44,27 @@ export class EmbeddingQueueService {
                 const jobId = `batch:${userId}:${tableType}`;
                 const existingJob = await this.embeddingQueue.getJob(jobId);
                 if (existingJob) {
+                    const state = await existingJob.getState();
+                    const inProgressStates = [
+                        "waiting",
+                        "waiting-children",
+                        "delayed",
+                        "active",
+                        "paused",
+                    ];
+                    const isInProgress = inProgressStates.includes(state);
+
+                    if (isInProgress) {
+                        this.logger.log(
+                            `Skip batch job for ${tableType}: existing job ${jobId} still ${state}`,
+                        );
+                        continue;
+                    }
+
                     this.logger.log(
-                        `Skip batch job for ${tableType}: existing job ${jobId}`,
+                        `Removing stale job for ${tableType}: existing job ${jobId} is ${state}`,
                     );
-                    continue;
+                    await this.embeddingQueue.remove(jobId);
                 }
                 const missingCount =
                     await this.batchDataService.getMissingEmbeddingsCount(

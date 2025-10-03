@@ -17,6 +17,7 @@ declare module "bullmq" {
         discard(): Promise<void>;
         retry(): Promise<void>;
         getState(): Promise<string>;
+        remove(options?: { removeChildren?: boolean }): Promise<void>;
     }
 
     export type Processor<
@@ -44,6 +45,10 @@ declare module "bullmq" {
         getDelayed(start?: number, end?: number): Promise<Job<T, R, N>[]>;
         getJob(id: string | number): Promise<Job<T, R, N> | null>;
         getJobCounts(): Promise<Record<string, number>>;
+        remove(
+            jobId: string | number,
+            options?: { removeChildren?: boolean },
+        ): Promise<number>;
         waitUntilReady(): Promise<void>;
     }
 
