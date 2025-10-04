@@ -6,6 +6,8 @@ import {
 } from "@nestjs/common";
 import type { PaginatedResult } from "@/common/interfaces/paginated-result.interface";
 import { SubscriptionRepository } from "@/feed/infrastructure/subscription.repository";
+import { FeedQueueService } from "@/feed/queue/feed-queue.service";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import type { Database } from "@/types/schema";
 import type {
     IntervalDto,
@@ -19,7 +21,11 @@ type Row = Database["public"]["Tables"]["user_subscriptions"]["Row"];
 export class SubscriptionService {
     private readonly logger = new Logger(SubscriptionService.name);
 
-    constructor(private readonly repo: SubscriptionRepository) {}
+    constructor(
+        private readonly repo: SubscriptionRepository,
+        private readonly feedQueueService: FeedQueueService,
+        private readonly userSettingsRepository: UserSettingsRepository,
+    ) {}
 
     // ページネーション付き一覧
     async getSubscriptionsPaginated(
@@ -116,19 +122,26 @@ export class SubscriptionService {
             );
         }
 
+        const interval = intervalDto.interval;
+        const intervalLabel = interval.toHumanReadable();
         this.logger.log(
-            `Updating subscription ${subId} interval for user ${userId}: ${intervalDto.interval.toHumanReadable()}`,
+            `Updating subscription ${subId} interval for user ${userId}: ${intervalLabel}`,
         );
 
-        // 間隔更新メソッドをリポジトリに追加する必要があります
-        // return await this.repo.updateSubscriptionInterval(subId, userId, intervalDto.interval.toPostgresInterval())
+        const intervalMinutes = interval.getTotalMinutes();
+        const nextFetchAt = this.calculateNextFetchAt(sub, intervalMinutes);
+        const intervalForPostgres = interval.toPostgresInterval();
 
-        // 暫定的にタイトル更新として実装
-        return await this.repo.updateSubscriptionTitle(
-            subId,
+        await this.userSettingsRepository.upsertRefreshInterval(
             userId,
-            sub.feed_title || "",
+            intervalForPostgres,
         );
+
+        this.logger.debug(
+            `Persisted refresh interval ${intervalForPostgres} for user ${userId}`,
+        );
+
+        return await this.repo.updateNextFetchAt(subId, userId, nextFetchAt);
     }
 
     // フィードの手動更新
@@ -144,15 +157,39 @@ export class SubscriptionService {
             );
         }
 
-        // next_fetch_atを現在時刻に設定して即座に更新対象にする
-        // リポジトリにメソッド追加が必要
+        const { jobId } = await this.feedQueueService.addFeedJob(
+            subId,
+            userId,
+            sub.feed_url,
+            sub.feed_title ?? "Unknown Feed",
+        );
 
-        return { message: "Subscription marked for immediate update" };
+        const updated = await this.repo.updateNextFetchAt(
+            subId,
+            userId,
+            new Date(),
+        );
+
+        return {
+            message: "Subscription refresh enqueued",
+            jobId,
+            nextFetchAt: updated.next_fetch_at,
+        };
     }
 
     // ユーザー固有の期限到達サブスクリプション取得
     async findUserDueSubscriptions(userId: string, cutoff: Date) {
         return await this.repo.findDueSubscriptionsByUser(userId, cutoff);
+    }
+
+    private calculateNextFetchAt(sub: Row, intervalMinutes: number): Date {
+        const intervalMs = intervalMinutes * 60_000;
+        const reference = sub.last_fetched_at
+            ? new Date(sub.last_fetched_at)
+            : new Date();
+        const candidate = new Date(reference.getTime() + intervalMs);
+        const now = Date.now();
+        return new Date(Math.max(candidate.getTime(), now));
     }
 
     // プライベートメソッド: URL検証

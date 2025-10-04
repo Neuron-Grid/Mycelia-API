@@ -3,20 +3,12 @@ import { ConfigService } from "@nestjs/config";
 import { createClient } from "@supabase/supabase-js";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
-import type { Database } from "@/types/schema";
 import { AuthRepositoryPort } from "../domain/auth.repository";
 
-const SOFT_DELETE_TABLES = [
-    "user_subscriptions",
-    "feed_items",
-    "feed_item_favorites",
-    "tags",
-    "user_subscription_tags",
-    "feed_item_tags",
-    "daily_summaries",
-    "daily_summary_items",
-    "podcast_episodes",
-] as const satisfies ReadonlyArray<keyof Database["public"]["Tables"]>;
+type RpcInvoker = (
+    fn: string,
+    args?: Record<string, unknown>,
+) => Promise<{ data: unknown; error: unknown }>;
 
 @Injectable()
 export class SupabaseAuthRepository implements AuthRepositoryPort {
@@ -61,50 +53,39 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
     }
 
     // アカウント削除（アプリ側ソフトデリート対応）
-    // SQLは変更せず、既存のsoft_deleted列を持つ全テーブルで
-    // user_id に紐づくデータをsoft_deleted=trueへ更新する。
-    // 併せて user_settings を無効化し、セッションをサインアウトする。
+    // SECURITY DEFINERなRPCを呼び出し、関連テーブルのsoft_deletedと
+    // users.deleted_atを単一トランザクションで更新する。
+    // RPC内で失敗すれば例外が発生し、呼び出し元でロールバックされる。
     async deleteAccount(userId: string) {
         const admin = this.supabaseReq.getAdminClient();
-        const nowIso = new Date().toISOString();
+        const invokeRpc = this.createAdminRpcInvoker();
         try {
-            // 1) user_settings: 機能無効化 + soft_deleted
-            await admin
-                .from("user_settings")
-                .update({
-                    summary_enabled: false,
-                    podcast_enabled: false,
-                    soft_deleted: true,
-                    updated_at: nowIso,
-                } as Record<string, unknown>)
-                .eq("user_id", userId);
-
-            // 2) users.deleted_at を更新
-            const { error: usersErr } = await admin
-                .from("users")
-                .update({ deleted_at: nowIso } as Record<string, unknown>)
-                .eq("id", userId);
-            if (usersErr) {
-                throw usersErr;
+            // 1) Supabase RPCを介してソフトデリート（単一トランザクション）
+            const { data, error } = await invokeRpc(
+                "soft_delete_user_account",
+                { p_user_id: userId },
+            );
+            if (error) {
+                const message =
+                    (error as { message?: string })?.message ??
+                    JSON.stringify(error);
+                throw new Error(
+                    `soft_delete_user_account RPC failed: ${message}`,
+                );
             }
 
-            // 3) ユーザーデータ表 一括soft_delete
-            for (const t of SOFT_DELETE_TABLES) {
-                try {
-                    await admin
-                        .from(t)
-                        .update({
-                            soft_deleted: true,
-                            updated_at: nowIso,
-                        } as Record<string, unknown>)
-                        .eq("user_id", userId);
-                } catch (_e) {
-                    // best-effort: 個別失敗はログのみ（adminクライアント側ログに委ねる）
-                    // throwせず続行
-                }
+            type SoftDeleteResult = {
+                soft_deleted?: boolean;
+                deleted_at?: string | null;
+            } | null;
+            const result = data as SoftDeleteResult;
+            if (!result?.soft_deleted) {
+                throw new Error(
+                    "soft_delete_user_account RPC returned unexpected payload",
+                );
             }
 
-            // 4) BAN（ban_duration）。JWTは依然有効のため、ガード/BullMQ側で無効化を継続。
+            // 2) BAN（ban_duration）。JWTは依然有効のため、ガード/BullMQ側で無効化を継続。
             const BAN_DURATION = "87600h"; // 10年相当
             try {
                 await admin.auth.admin.updateUserById(userId, {
@@ -124,7 +105,11 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
                 // noop
             }
 
-            return { softDeleted: true, deletedAt: nowIso };
+            const deletedAt =
+                typeof result.deleted_at === "string"
+                    ? result.deleted_at
+                    : new Date().toISOString();
+            return { softDeleted: true, deletedAt };
         } catch (err: unknown) {
             if (err instanceof Error) {
                 throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
@@ -135,48 +120,31 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
 
     async restoreAccount(userId: string) {
         const admin = this.supabaseReq.getAdminClient();
-        const nowIso = new Date().toISOString();
+        const invokeRpc = this.createAdminRpcInvoker();
 
         try {
-            // 1) users.deleted_at をクリア
-            const { error: usersErr } = await admin
-                .from("users")
-                .update({ deleted_at: null } as Record<string, unknown>)
-                .eq("id", userId);
-            if (usersErr) {
-                throw usersErr;
+            // 1) SECURITY DEFINERなRPCでアカウントを復元
+            const { data, error } = await invokeRpc("restore_user_account", {
+                p_user_id: userId,
+            });
+            if (error) {
+                const message =
+                    (error as { message?: string })?.message ??
+                    JSON.stringify(error);
+                throw new Error(`restore_user_account RPC failed: ${message}`);
             }
 
-            // 2) user_settings を再有効化（ソフト削除解除）
-            const { error: settingsErr } = await admin
-                .from("user_settings")
-                .update({
-                    summary_enabled: false,
-                    podcast_enabled: false,
-                    soft_deleted: false,
-                    updated_at: nowIso,
-                } as Record<string, unknown>)
-                .eq("user_id", userId);
-            if (settingsErr) {
-                throw settingsErr;
+            type RestoreResult = {
+                restored?: boolean;
+            } | null;
+            const result = data as RestoreResult;
+            if (!result?.restored) {
+                throw new Error(
+                    "restore_user_account RPC returned unexpected payload",
+                );
             }
 
-            // 3) ユーザーデータ表の soft_deleted を解除
-            for (const t of SOFT_DELETE_TABLES) {
-                try {
-                    await admin
-                        .from(t)
-                        .update({
-                            soft_deleted: false,
-                            updated_at: nowIso,
-                        } as Record<string, unknown>)
-                        .eq("user_id", userId);
-                } catch (_e) {
-                    // best-effort: 個別失敗は次の復元操作で再トライ可能
-                }
-            }
-
-            // 4) BANを解除
+            // 2) BANを解除
             try {
                 await admin.auth.admin.updateUserById(userId, {
                     ban_duration: "none" as unknown as string,
@@ -184,7 +152,6 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
             } catch {
                 // noop: BAN解除失敗は致命的でない
             }
-
             return { restored: true };
         } catch (err: unknown) {
             if (err instanceof Error) {
@@ -192,6 +159,11 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
             }
             throw new HttpException("Unknown error", HttpStatus.BAD_REQUEST);
         }
+    }
+
+    private createAdminRpcInvoker(): RpcInvoker {
+        const admin = this.supabaseReq.getAdminClient();
+        return admin.rpc.bind(admin) as unknown as RpcInvoker;
     }
 
     // プロフィール更新

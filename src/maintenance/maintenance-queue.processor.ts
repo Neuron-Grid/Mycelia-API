@@ -1,13 +1,24 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
+import type { WorkerPodcastSchedule } from "@/shared/settings/worker-user-settings.repository";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
 import { MaintenanceService } from "./maintenance.service";
+
+type ScheduleTickData = {
+    summaryOffset?: number;
+    podcastOffset?: number;
+    processSummary?: boolean;
+    processPodcast?: boolean;
+    tickId?: string;
+};
 
 @Processor("maintenanceQueue")
 @Injectable()
 export class MaintenanceQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(MaintenanceQueueProcessor.name);
+    private static readonly SUMMARY_PAGE_SIZE = 500;
+    private static readonly PODCAST_PAGE_SIZE = 500;
 
     constructor(
         private readonly maintenance: MaintenanceService,
@@ -45,7 +56,9 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                 return { success: true };
             }
             case "scheduleTick": {
-                await this.handleScheduleTick();
+                await this.handleScheduleTick(
+                    job as Job<ScheduleTickData, unknown, string>,
+                );
                 return { success: true };
             }
             default:
@@ -90,54 +103,142 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         return { hour, minute };
     }
 
-    private async handleScheduleTick(): Promise<void> {
+    private async handleScheduleTick(
+        job: Job<ScheduleTickData, unknown, string>,
+    ): Promise<void> {
+        const {
+            summaryOffset = 0,
+            podcastOffset = 0,
+            processSummary = true,
+            processPodcast = true,
+            tickId,
+        } = job.data ?? {};
+
         const now = this.nowJst();
         const h = now.getHours();
         const m = now.getMinutes();
         const dateStr = this.formatDateJst(now);
+        const effectiveTickId =
+            tickId ?? job.id ?? `tick-${job.timestamp ?? Date.now()}`;
+        const isPrimaryTick =
+            processSummary &&
+            processPodcast &&
+            summaryOffset === 0 &&
+            podcastOffset === 0;
 
         // 1) ユーザー毎のサマリ実行判定（summary: ベース時刻そのまま）
-        const summaries =
-            await this.userSettingsRepo.getAllEnabledSummarySchedules();
-        for (const { userId, timeJst } of summaries) {
-            const base = this.parseTimeWithStableJitter(timeJst, userId);
-            // summary は +0 分（ジッターのみ）
-            const { hour, minute } = this.addOffset(base.hour, base.minute, 0);
-            if (hour === h && minute === m) {
-                await this.summaryQueue.add(
-                    "generateUserSummary",
-                    { userId },
+        if (processSummary) {
+            const summaries =
+                await this.userSettingsRepo.getAllEnabledSummarySchedules({
+                    offset: summaryOffset,
+                    limit: MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE,
+                });
+
+            for (const { userId, timeJst } of summaries) {
+                const base = this.parseTimeWithStableJitter(timeJst, userId);
+                // summary は +0 分（ジッターのみ）
+                const { hour, minute } = this.addOffset(
+                    base.hour,
+                    base.minute,
+                    0,
+                );
+                if (hour === h && minute === m) {
+                    await this.summaryQueue.add(
+                        "generateUserSummary",
+                        { userId },
+                        {
+                            jobId: `summary:${userId}:${dateStr}`,
+                            removeOnComplete: true,
+                            removeOnFail: 5,
+                        },
+                    );
+                }
+            }
+
+            if (
+                summaries.length === MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE
+            ) {
+                await this.maintenanceQueue.add(
+                    "scheduleTick",
                     {
-                        // 日次も jobs.status と同一の命名に統一
-                        jobId: `summary:${userId}:${dateStr}`,
+                        summaryOffset:
+                            summaryOffset +
+                            MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE,
+                        podcastOffset,
+                        processSummary: true,
+                        processPodcast: false,
+                        tickId: effectiveTickId,
+                    },
+                    {
+                        jobId: `${effectiveTickId}:summary:${
+                            summaryOffset +
+                            MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE
+                        }`,
+                        delay: 250,
                         removeOnComplete: true,
-                        removeOnFail: 5,
+                        removeOnFail: 2,
                     },
                 );
             }
         }
 
         // 2) ユーザー毎のポッドキャスト実行判定（podcast: summary の +10 分）
-        const podcasts =
-            await this.userSettingsRepo.getAllEnabledPodcastSchedules();
-        for (const { userId, timeJst } of podcasts) {
-            const base = this.parseTimeWithStableJitter(timeJst, userId);
-            const { hour, minute } = this.addOffset(base.hour, base.minute, 10);
-            if (hour === h && minute === m) {
-                await this.podcastQueue.add(
-                    "generatePodcastForToday",
-                    { userId },
+        let podcasts: WorkerPodcastSchedule[] = [];
+        if (processPodcast) {
+            podcasts =
+                await this.userSettingsRepo.getAllEnabledPodcastSchedules({
+                    offset: podcastOffset,
+                    limit: MaintenanceQueueProcessor.PODCAST_PAGE_SIZE,
+                });
+            for (const { userId, timeJst } of podcasts) {
+                const base = this.parseTimeWithStableJitter(timeJst, userId);
+                const { hour, minute } = this.addOffset(
+                    base.hour,
+                    base.minute,
+                    10,
+                );
+                if (hour === h && minute === m) {
+                    await this.podcastQueue.add(
+                        "generatePodcastForToday",
+                        { userId },
+                        {
+                            jobId: `podcast-daily:${userId}:${dateStr}`,
+                            removeOnComplete: true,
+                            removeOnFail: 5,
+                        },
+                    );
+                }
+            }
+
+            if (
+                podcasts.length === MaintenanceQueueProcessor.PODCAST_PAGE_SIZE
+            ) {
+                await this.maintenanceQueue.add(
+                    "scheduleTick",
                     {
-                        jobId: `podcast-daily:${userId}:${dateStr}`,
+                        summaryOffset: 0,
+                        podcastOffset:
+                            podcastOffset +
+                            MaintenanceQueueProcessor.PODCAST_PAGE_SIZE,
+                        processSummary: false,
+                        processPodcast: true,
+                        tickId: effectiveTickId,
+                    },
+                    {
+                        jobId: `${effectiveTickId}:podcast:${
+                            podcastOffset +
+                            MaintenanceQueueProcessor.PODCAST_PAGE_SIZE
+                        }`,
+                        delay: 250,
                         removeOnComplete: true,
-                        removeOnFail: 5,
+                        removeOnFail: 2,
                     },
                 );
             }
         }
 
         // 3) 04:00 に旧ポッドキャストをクリーンアップ
-        if (h === 4 && m === 0) {
+        if (h === 4 && m === 0 && processPodcast) {
             const daysOld = 30;
             for (const { userId } of podcasts) {
                 await this.podcastQueue.add(
@@ -153,7 +254,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
 
         // 4) 毎週日曜 03:00 にベクトルインデックス再構築
-        if (now.getDay() === 0 && h === 3 && m === 0) {
+        if (isPrimaryTick && now.getDay() === 0 && h === 3 && m === 0) {
             await this.maintenanceQueue.add(
                 "weeklyReindex",
                 {},
@@ -166,7 +267,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
 
         // 5) 毎週月曜 03:00 にアカウント一括物理削除アグリゲータを投入
-        if (now.getDay() === 1 && h === 3 && m === 0) {
+        if (isPrimaryTick && now.getDay() === 1 && h === 3 && m === 0) {
             await this.accountDeletionQueue.add(
                 "aggregateDeletion",
                 {},

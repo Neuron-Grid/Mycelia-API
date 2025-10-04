@@ -1616,7 +1616,7 @@ export type Database = {
             };
             l2_normalize: {
                 Args: { "": string } | { "": unknown } | { "": unknown };
-                Returns: unknown;
+                Returns: string;
             };
             lca: {
                 Args: { "": unknown[] };
@@ -1702,6 +1702,12 @@ export type Database = {
                 Args: { p_index_name: string };
                 Returns: string;
             };
+            restore_user_account: {
+                Args: { p_user_id: string };
+                Returns: {
+                    restored: boolean;
+                }[];
+            };
             search_feed_items_by_vector: {
                 Args: {
                     match_count: number;
@@ -1759,6 +1765,13 @@ export type Database = {
                     parent_tag_id: number;
                     similarity: number;
                     tag_name: string;
+                }[];
+            };
+            soft_delete_user_account: {
+                Args: { p_user_id: string };
+                Returns: {
+                    deleted_at: string;
+                    soft_deleted: boolean;
                 }[];
             };
             sparsevec_out: {

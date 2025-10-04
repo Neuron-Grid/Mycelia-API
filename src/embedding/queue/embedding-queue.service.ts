@@ -7,6 +7,16 @@ import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
 
 @Injectable()
 export class EmbeddingQueueService {
+    private static readonly IN_PROGRESS_STATES = new Set([
+        "waiting",
+        "waiting-children",
+        "delayed",
+        "active",
+        "paused",
+    ]);
+
+    private static readonly MAX_BATCH_JOBS_PER_USER = 4;
+
     private readonly logger = new Logger(EmbeddingQueueService.name);
 
     constructor(
@@ -27,45 +37,58 @@ export class EmbeddingQueueService {
         ];
         const uniqueTables = [...new Set(tables)];
 
-        const counts = await this.embeddingQueue.getJobCounts();
-        const waiting = counts.waiting ?? 0;
-        const active = counts.active ?? 0;
-        if (waiting + active > 3) {
+        const concurrencyLimit = Math.min(
+            uniqueTables.length,
+            EmbeddingQueueService.MAX_BATCH_JOBS_PER_USER,
+        );
+
+        const inspectionResults = await Promise.all(
+            uniqueTables.map(async (tableType) => {
+                const jobId = this.buildBatchJobId(userId, tableType);
+                const job = await this.embeddingQueue.getJob(jobId);
+                const state = job ? await job.getState() : null;
+                return { tableType, jobId, job, state } as const;
+            }),
+        );
+
+        let activeUserBatchJobs = inspectionResults.filter(({ state }) =>
+            this.isJobInProgress(state),
+        ).length;
+
+        if (activeUserBatchJobs >= concurrencyLimit) {
             throw new HttpException(
-                "Embedding queue is currently busy. Please retry later.",
+                `Embedding batch jobs already running for user ${userId} (limit ${concurrencyLimit}). Please retry later`,
                 HttpStatus.TOO_MANY_REQUESTS,
             );
         }
 
-        this.logger.log(`Starting batch embedding update for user ${userId}`);
+        this.logger.log(
+            `Starting batch embedding update for user ${userId} (slots available: ${concurrencyLimit - activeUserBatchJobs})`,
+        );
 
-        for (const tableType of uniqueTables) {
+        for (const { tableType, job, jobId, state } of inspectionResults) {
             try {
-                const jobId = `batch:${userId}:${tableType}`;
-                const existingJob = await this.embeddingQueue.getJob(jobId);
-                if (existingJob) {
-                    const state = await existingJob.getState();
-                    const inProgressStates = [
-                        "waiting",
-                        "waiting-children",
-                        "delayed",
-                        "active",
-                        "paused",
-                    ];
-                    const isInProgress = inProgressStates.includes(state);
+                if (this.isJobInProgress(state)) {
+                    this.logger.debug(
+                        `Skip batch job for ${tableType}: existing job ${jobId} still ${state}`,
+                    );
+                    continue;
+                }
 
-                    if (isInProgress) {
-                        this.logger.log(
-                            `Skip batch job for ${tableType}: existing job ${jobId} still ${state}`,
-                        );
-                        continue;
-                    }
-
+                if (job) {
                     this.logger.log(
                         `Removing stale job for ${tableType}: existing job ${jobId} is ${state}`,
                     );
-                    await this.embeddingQueue.remove(jobId);
+                    await job.remove();
                 }
+
+                if (activeUserBatchJobs >= concurrencyLimit) {
+                    throw new HttpException(
+                        `Embedding batch limit reached for user ${userId}. Capacity ${concurrencyLimit}, running ${activeUserBatchJobs}`,
+                        HttpStatus.TOO_MANY_REQUESTS,
+                    );
+                }
+
                 const missingCount =
                     await this.batchDataService.getMissingEmbeddingsCount(
                         userId,
@@ -73,7 +96,7 @@ export class EmbeddingQueueService {
                     );
 
                 if (missingCount > 0) {
-                    await this.embeddingQueue.add(
+                    const newJob = await this.embeddingQueue.add(
                         "batch-process",
                         {
                             userId,
@@ -90,8 +113,9 @@ export class EmbeddingQueueService {
                     );
 
                     this.logger.log(
-                        `Added batch job for ${tableType}: ${missingCount} items to process`,
+                        `Added batch job ${newJob.id} for ${tableType}: ${missingCount} items to process`,
                     );
+                    activeUserBatchJobs++;
                 } else {
                     this.logger.log(`No missing embeddings for ${tableType}`);
                 }
@@ -186,5 +210,15 @@ export class EmbeddingQueueService {
             );
             throw error;
         }
+    }
+
+    private buildBatchJobId(userId: string, tableType: TableType): string {
+        return `batch:${userId}:${tableType}`;
+    }
+
+    private isJobInProgress(state: string | null): boolean {
+        return (
+            state != null && EmbeddingQueueService.IN_PROGRESS_STATES.has(state)
+        );
     }
 }

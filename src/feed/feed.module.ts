@@ -3,6 +3,7 @@ import { FavoriteRepository } from "@/favorite/infrastructure/favorite.repositor
 import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
 import { LlmModule } from "@/llm/llm.module";
 import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
+import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { TagRepository } from "@/tag/infrastructure/tag.repository";
@@ -40,6 +41,7 @@ import { SubscriptionRepository } from "./infrastructure/subscription.repository
         SubscriptionService,
         FeedItemRepository,
         SubscriptionRepository,
+        UserSettingsRepository,
         FavoriteRepository,
         TagRepository,
         SupabaseAdminService,

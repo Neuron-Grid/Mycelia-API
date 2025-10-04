@@ -8,7 +8,10 @@ import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
-import { PodcastTtsService } from "../podcast-tts.service";
+import {
+    PodcastTtsService,
+    SpeechSynthesisOptions,
+} from "../podcast-tts.service";
 import { GeneratePodcastForTodayJobDto } from "./dto/generate-today-job.dto";
 import {
     AudioEnhancementJobDto,
@@ -227,9 +230,9 @@ export class PodcastQueueProcessor extends WorkerHost {
             );
 
             // 音声の長さを推定（概算）
-            const estimatedDurationSec = Math.ceil(
-                summary.script_text.length / 10,
-            ); // 1秒あたり約10文字
+            const estimatedDurationSec = this.estimateDurationFromScript(
+                summary.script_text,
+            );
 
             // Cloudflare R2にアップロード
             const podcastMetadata: PodcastMetadata = {
@@ -293,14 +296,22 @@ export class PodcastQueueProcessor extends WorkerHost {
 
     // 音声品質向上処理（オプション）
     async processAudioEnhancement(job: Job<AudioEnhancementJobDto>) {
-        // DTO バリデーション – 破損データを早期検出
         await validateDto(AudioEnhancementJobDto, job.data);
         const { episodeId, userId } = job.data;
         this.logger.log(
             `Processing audio enhancement for episode ${episodeId}`,
         );
 
+        let lockId: string | null = null;
         try {
+            lockId = await this.lock.acquire(`podcast:${userId}`, 5 * 60_000);
+            if (!lockId) {
+                this.logger.warn(
+                    `Skipped audio enhancement because another job is running for user ${userId}`,
+                );
+                return { success: true, skipped: true } as const;
+            }
+
             const episode = await this.podcastEpisodeRepository.findById(
                 episodeId,
                 userId,
@@ -309,21 +320,100 @@ export class PodcastQueueProcessor extends WorkerHost {
                 throw new Error("Episode or audio not found");
             }
 
-            // TODO: 音声品質向上処理の実装
-            // - ノイズ除去
-            // - 音量正規化
-            // - 音声圧縮最適化
+            const summary = await this.dailySummaryRepository.findById(
+                episode.summary_id,
+                userId,
+            );
+            if (!summary) {
+                throw new Error(
+                    `Summary not found for user ${userId}, summary ID: ${episode.summary_id}`,
+                );
+            }
+            if (!summary.hasScript()) {
+                throw new Error(
+                    `Summary ${summary.id} does not contain a script for regeneration`,
+                );
+            }
+
+            const settings = await this.settingsRepo.getByUserId(userId);
+            const language: "ja-JP" | "en-US" =
+                settings?.podcast_language === "en-US" ? "en-US" : "ja-JP";
+
+            const scriptText = summary.script_text ?? "";
+            if (!scriptText) {
+                throw new Error(
+                    `Summary ${summary.id} does not contain script text`,
+                );
+            }
+
+            const synthesisOptions = this.buildEnhancementOptions(language);
+            const enhancedAudio = await this.podcastTtsService.generateSpeech(
+                scriptText,
+                language,
+                synthesisOptions,
+            );
+
+            const estimatedDurationSec =
+                this.estimateDurationFromScript(scriptText);
+
+            const podcastMetadata: PodcastMetadata = {
+                userId,
+                summaryId: summary.id,
+                episodeId: episode.id,
+                title:
+                    episode.title ||
+                    summary.summary_title ||
+                    "Untitled Episode",
+                duration: estimatedDurationSec,
+                language,
+                generatedAt: new Date().toISOString(),
+            };
+
+            const previousAudioUrl = episode.audio_url;
+            const enhancedAudioUrl =
+                await this.cloudflareR2Service.uploadPodcastAudio(
+                    userId,
+                    enhancedAudio,
+                    podcastMetadata,
+                );
+
+            const updatedEpisode =
+                await this.podcastEpisodeRepository.updateAudioUrl(
+                    episode.id,
+                    userId,
+                    enhancedAudioUrl,
+                    estimatedDurationSec,
+                );
+
+            await this.dailySummaryRepository.update(summary.id, userId, {
+                script_tts_duration_sec: estimatedDurationSec,
+            });
+
+            await this.removePreviousAudio(previousAudioUrl, userId);
 
             this.logger.log(
                 `Audio enhancement completed for episode ${episodeId}`,
             );
-            return { success: true, episodeId };
+            return {
+                success: true,
+                episodeId: updatedEpisode.id,
+                audioUrl: updatedEpisode.audio_url,
+                duration: estimatedDurationSec,
+            } as const;
         } catch (error) {
             this.logger.error(
                 `Failed to enhance audio: ${error.message}`,
                 error.stack,
             );
             throw error;
+        } finally {
+            if (lockId) {
+                try {
+                    await this.lock.release(`podcast:${userId}`, lockId);
+                } catch {
+                    // lock release failure is non-fatal
+                }
+            }
         }
     }
 
@@ -384,6 +474,56 @@ export class PodcastQueueProcessor extends WorkerHost {
                 error.stack,
             );
             throw error;
+        }
+    }
+
+    private estimateDurationFromScript(script: string): number {
+        const averageCharsPerSecond = 10;
+        const estimate = Math.ceil(script.length / averageCharsPerSecond);
+        return Math.max(1, estimate);
+    }
+
+    private buildEnhancementOptions(
+        language: "ja-JP" | "en-US",
+    ): SpeechSynthesisOptions {
+        const base: SpeechSynthesisOptions = {
+            sampleRateHertz: 48_000,
+            effectsProfileIds: ["large-home-entertainment-class-device"],
+        };
+
+        if (language === "ja-JP") {
+            return { ...base, speakingRate: 0.95, pitch: -1.0 };
+        }
+
+        return { ...base, speakingRate: 1.0, pitch: -0.5 };
+    }
+
+    private async removePreviousAudio(
+        previousAudioUrl: string | null,
+        userId: string,
+    ): Promise<void> {
+        if (!previousAudioUrl) return;
+        const location =
+            this.cloudflareR2Service.extractObjectLocationFromUrl(
+                previousAudioUrl,
+            );
+        const key = location.key ?? undefined;
+        const bucket = location.bucket ?? undefined;
+        if (!key) return;
+        if (!this.cloudflareR2Service.isUserFile(key, userId, bucket)) return;
+
+        try {
+            if (bucket) {
+                await this.cloudflareR2Service.deleteObject(key, bucket);
+            } else {
+                await this.cloudflareR2Service.deleteObject(key);
+            }
+        } catch (error) {
+            this.logger.warn(
+                `Failed to delete previous audio for user ${userId}: ${
+                    (error as Error).message
+                }`,
+            );
         }
     }
 

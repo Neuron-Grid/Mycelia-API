@@ -1,6 +1,6 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable } from "@nestjs/common";
-import { Queue } from "bullmq";
+import { Job, Queue } from "bullmq";
 import { validateDto } from "@/common/utils/validation";
 import { FeedFetchJobDto } from "./dto/feed-fetch-job.dto";
 
@@ -16,7 +16,7 @@ export class FeedQueueService {
         userId: string,
         feedUrl = "",
         feedTitle = "Unknown Feed",
-    ) {
+    ): Promise<{ jobId: string }> {
         // DTO に詰めてバリデーション
         const dto = await validateDto(FeedFetchJobDto, {
             subscriptionId,
@@ -25,7 +25,7 @@ export class FeedQueueService {
             feedTitle,
         });
 
-        await this.feedQueue.add("default", dto, {
+        const job: Job = await this.feedQueue.add("default", dto, {
             removeOnComplete: true,
             // 失敗ジョブは一定数保持（デバッグ用）
             removeOnFail: 20,
@@ -33,5 +33,8 @@ export class FeedQueueService {
             backoff: { type: "fixed", delay: 60_000 },
             jobId: `feed-${dto.subscriptionId}`,
         });
+
+        const jobId = typeof job.id === "string" ? job.id : String(job.id);
+        return { jobId };
     }
 }

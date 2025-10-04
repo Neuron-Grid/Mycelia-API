@@ -1,15 +1,67 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
 
 @Injectable()
 export class PodcastUploadService {
     private readonly logger = new Logger(PodcastUploadService.name);
+    private readonly bucketName: string;
+    private readonly allowedBuckets: string[];
+    private readonly allowedPrefixTemplates: string[];
 
     constructor(
         private readonly supabaseRequestService: SupabaseRequestService,
         private readonly cloudflareR2Service: CloudflareR2Service,
-    ) {}
+        private readonly configService: ConfigService,
+    ) {
+        const configuredBucket =
+            this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") ?? "";
+        if (!configuredBucket) {
+            throw new Error("CLOUDFLARE_BUCKET_NAME is not configured");
+        }
+        this.bucketName = configuredBucket;
+
+        const configuredBuckets = this.parseList(
+            this.configService.get<string>("CLOUDFLARE_ALLOWED_BUCKETS"),
+        );
+        this.allowedBuckets =
+            configuredBuckets.length > 0
+                ? configuredBuckets
+                : [this.bucketName];
+
+        const configuredPrefixes = this.parseList(
+            this.configService.get<string>("CLOUDFLARE_ALLOWED_PREFIXES"),
+        );
+        this.allowedPrefixTemplates =
+            configuredPrefixes.length > 0
+                ? configuredPrefixes
+                : ["podcasts/{userId}/"];
+    }
+
+    private parseList(raw?: string | null): string[] {
+        if (!raw) return [];
+        return raw
+            .split(/[\s,]+/)
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0);
+    }
+
+    private isBucketAllowed(bucket: string): boolean {
+        return this.allowedBuckets.includes(bucket);
+    }
+
+    private getUserPrefix(userId: string): string {
+        const template =
+            this.allowedPrefixTemplates.find((tpl) =>
+                tpl.includes("{userId}"),
+            ) ??
+            this.allowedPrefixTemplates[0] ??
+            "podcasts/{userId}/";
+        const replaced = template.replaceAll("{userId}", userId);
+        const normalized = replaced.replace(/^\/+/, "");
+        return normalized.endsWith("/") ? normalized : `${normalized}/`;
+    }
 
     // ポッドキャスト音声ファイルをCloudflare R2にアップロード
     // @param fileBuffer 音声ファイルのBuffer
@@ -24,6 +76,11 @@ export class PodcastUploadService {
         title?: string,
     ): Promise<{ publicUrl: string }> {
         const bucket = this.getPodcastBucketName();
+        if (!this.isBucketAllowed(bucket)) {
+            throw new Error(
+                `Bucket '${bucket}' is not listed in CLOUDFLARE_ALLOWED_BUCKETS`,
+            );
+        }
         const key = this.buildPodcastObjectKey(userId, filename);
         const contentType = "audio/ogg"; // Opus形式のContent-Type
 
@@ -48,6 +105,11 @@ export class PodcastUploadService {
         userId: string,
     ): Promise<{ publicUrl: string }> {
         const bucket = this.getPodcastBucketName();
+        if (!this.isBucketAllowed(bucket)) {
+            throw new Error(
+                `Bucket '${bucket}' is not listed in CLOUDFLARE_ALLOWED_BUCKETS`,
+            );
+        }
         const path = this.buildPodcastObjectKey(userId, filename);
         const contentType = "audio/mpeg";
 
@@ -63,14 +125,14 @@ export class PodcastUploadService {
 
     //  ポッドキャスト用バケット名を返す
     private getPodcastBucketName(): string {
-        return "podcasts";
+        return this.bucketName;
     }
 
     //  オブジェクトキー（パス）を生成
     //  @param userId ユーザーID
     //  @param filename ファイル名
     private buildPodcastObjectKey(userId: string, filename: string): string {
-        return `${userId}/${filename}`;
+        return `${this.getUserPrefix(userId)}${filename}`;
     }
 
     //  メタデータを生成

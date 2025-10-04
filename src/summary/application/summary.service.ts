@@ -62,7 +62,7 @@ export class SummaryService {
                 }
 
                 // セキュリティチェック: ユーザーが自分のファイルにのみアクセス可能かチェック
-                const fileContent = objectBucket
+                const fileContentBuffer = objectBucket
                     ? await this.cloudflareR2Service.getObject(
                           objectKey,
                           objectBucket,
@@ -71,17 +71,17 @@ export class SummaryService {
 
                 // ファイルサイズ制限（1MB以下に制限）
                 const maxSize = 1024 * 1024; // 1MB
-                if (fileContent.length > maxSize) {
+                if (fileContentBuffer.byteLength > maxSize) {
                     this.logger.warn(
-                        `File too large for processing: ${fileContent.length} bytes, max: ${maxSize} bytes`,
+                        `File too large for processing: ${fileContentBuffer.byteLength} bytes, max: ${maxSize} bytes`,
                     );
                     throw new Error("File too large for processing (max 1MB)");
                 }
 
-                contentToSummarize = fileContent;
+                contentToSummarize = fileContentBuffer.toString("utf8");
                 sourceName = objectKey;
                 this.logger.log(
-                    `Successfully retrieved ${fileContent.length} characters from ${objectKey}`,
+                    `Successfully retrieved ${fileContentBuffer.byteLength} bytes from ${objectKey}`,
                 );
             } catch (error) {
                 this.logger.warn(

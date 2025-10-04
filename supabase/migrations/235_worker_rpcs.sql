@@ -9,6 +9,143 @@
 
 BEGIN;
 
+-- 0) アカウントのソフトデリート/復元
+CREATE OR REPLACE FUNCTION public.soft_delete_user_account(
+  p_user_id uuid
+)
+RETURNS TABLE(
+  soft_deleted boolean,
+  deleted_at timestamptz
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_now timestamptz := NOW();
+  v_existing_deleted timestamptz;
+  v_table text;
+  v_tables text[] := ARRAY[
+    'user_subscriptions',
+    'feed_items',
+    'feed_item_favorites',
+    'tags',
+    'user_subscription_tags',
+    'feed_item_tags',
+    'daily_summaries',
+    'daily_summary_items',
+    'podcast_episodes'
+  ];
+BEGIN
+  SELECT u.deleted_at
+    INTO v_existing_deleted
+    FROM public.users AS u
+   WHERE u.id = p_user_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING errcode = 'P0001', message = 'User not found.';
+  END IF;
+
+  IF v_existing_deleted IS NOT NULL THEN
+    RETURN QUERY SELECT TRUE, v_existing_deleted;
+    RETURN;
+  END IF;
+
+  UPDATE public.users
+     SET deleted_at = v_now
+   WHERE id = p_user_id;
+
+  INSERT INTO public.user_settings(user_id, soft_deleted)
+  VALUES (p_user_id, TRUE)
+  ON CONFLICT (user_id)
+  DO UPDATE
+    SET soft_deleted = TRUE;
+
+  FOREACH v_table IN ARRAY v_tables LOOP
+    EXECUTE format(
+      'UPDATE public.%I
+          SET soft_deleted = TRUE
+        WHERE user_id = $1
+          AND COALESCE(soft_deleted, FALSE) = FALSE;',
+      v_table
+    )
+    USING p_user_id;
+  END LOOP;
+
+  RETURN QUERY SELECT TRUE, COALESCE(
+    (SELECT deleted_at FROM public.users WHERE id = p_user_id),
+    v_now
+  );
+END;
+$$;
+ALTER FUNCTION public.soft_delete_user_account(uuid) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.soft_delete_user_account(uuid) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.soft_delete_user_account(uuid) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.restore_user_account(
+  p_user_id uuid
+)
+RETURNS TABLE(restored boolean)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_existing_deleted timestamptz;
+  v_table text;
+  v_tables text[] := ARRAY[
+    'user_subscriptions',
+    'feed_items',
+    'feed_item_favorites',
+    'tags',
+    'user_subscription_tags',
+    'feed_item_tags',
+    'daily_summaries',
+    'daily_summary_items',
+    'podcast_episodes'
+  ];
+BEGIN
+  SELECT u.deleted_at
+    INTO v_existing_deleted
+    FROM public.users AS u
+   WHERE u.id = p_user_id
+   FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING errcode = 'P0001', message = 'User not found.';
+  END IF;
+
+  IF v_existing_deleted IS NOT NULL THEN
+    UPDATE public.users
+       SET deleted_at = NULL
+     WHERE id = p_user_id;
+  END IF;
+
+  INSERT INTO public.user_settings(user_id, soft_deleted)
+  VALUES (p_user_id, FALSE)
+  ON CONFLICT (user_id)
+  DO UPDATE
+    SET soft_deleted = FALSE;
+
+  FOREACH v_table IN ARRAY v_tables LOOP
+    EXECUTE format(
+      'UPDATE public.%I
+          SET soft_deleted = FALSE
+        WHERE user_id = $1
+          AND COALESCE(soft_deleted, FALSE) = TRUE;',
+      v_table
+    )
+    USING p_user_id;
+  END LOOP;
+
+  RETURN QUERY SELECT TRUE;
+END;
+$$;
+ALTER FUNCTION public.restore_user_account(uuid) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.restore_user_account(uuid) FROM PUBLIC, anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.restore_user_account(uuid) TO service_role;
+
 -- 1) 購読情報の取得（ユーザー所有確認付き）
 CREATE OR REPLACE FUNCTION public.fn_get_subscription_for_user(
   p_user_id uuid,

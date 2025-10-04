@@ -18,6 +18,11 @@ export type WorkerPodcastSchedule = {
     language?: "ja-JP" | "en-US";
 };
 
+type PaginationOptions = {
+    offset?: number;
+    limit?: number;
+};
+
 @Injectable()
 export class WorkerUserSettingsRepository {
     private readonly logger = new Logger(WorkerUserSettingsRepository.name);
@@ -61,13 +66,30 @@ export class WorkerUserSettingsRepository {
         }
     }
 
-    async getAllEnabledSummarySchedules(): Promise<WorkerSummarySchedule[]> {
+    async getAllEnabledSummarySchedules(
+        options: PaginationOptions = {},
+    ): Promise<WorkerSummarySchedule[]> {
+        const { offset, limit } = options;
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
+            let query = sb
                 .from("user_settings")
-                .select("*")
-                .eq("summary_enabled", true);
+                .select("user_id, summary_schedule_time")
+                .eq("summary_enabled", true)
+                .eq("soft_deleted", false)
+                .order("user_id", { ascending: true });
+
+            if (
+                typeof offset === "number" &&
+                typeof limit === "number" &&
+                limit > 0
+            ) {
+                query = query.range(offset, offset + limit - 1);
+            } else if (typeof limit === "number" && limit > 0) {
+                query = query.limit(limit);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 
@@ -84,14 +106,31 @@ export class WorkerUserSettingsRepository {
         }
     }
 
-    async getAllEnabledPodcastSchedules(): Promise<WorkerPodcastSchedule[]> {
+    async getAllEnabledPodcastSchedules(
+        options: PaginationOptions = {},
+    ): Promise<WorkerPodcastSchedule[]> {
+        const { offset, limit } = options;
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
+            let query = sb
                 .from("user_settings")
-                .select("*")
+                .select("user_id, podcast_schedule_time, podcast_language")
                 .eq("podcast_enabled", true)
-                .eq("summary_enabled", true);
+                .eq("summary_enabled", true)
+                .eq("soft_deleted", false)
+                .order("user_id", { ascending: true });
+
+            if (
+                typeof offset === "number" &&
+                typeof limit === "number" &&
+                limit > 0
+            ) {
+                query = query.range(offset, offset + limit - 1);
+            } else if (typeof limit === "number" && limit > 0) {
+                query = query.limit(limit);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
 

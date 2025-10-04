@@ -1,3 +1,6 @@
+import { Readable } from "node:stream";
+import type { ReadableStream } from "node:stream/web";
+import type { GetObjectCommandOutput } from "@aws-sdk/client-s3";
 import {
     DeleteObjectCommand,
     DeleteObjectsCommand,
@@ -314,7 +317,7 @@ export class CloudflareR2Service {
     }
 
     // オブジェクトを取得
-    async getObject(key: string, bucket = this.bucketName): Promise<string> {
+    async getObject(key: string, bucket = this.bucketName): Promise<Buffer> {
         try {
             const command = new GetObjectCommand({
                 Bucket: bucket,
@@ -326,36 +329,100 @@ export class CloudflareR2Service {
             if (!response.Body) {
                 throw new Error(`Object not found: ${key}`);
             }
-
-            // ストリームをテキストに変換
-            const chunks: Uint8Array[] = [];
-            const reader = response.Body.transformToWebStream().getReader();
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-            }
-
-            // バイトを文字列に変換
-            const totalLength = chunks.reduce(
-                (sum, chunk) => sum + chunk.length,
-                0,
-            );
-            const combined = new Uint8Array(totalLength);
-            let offset = 0;
-            for (const chunk of chunks) {
-                combined.set(chunk, offset);
-                offset += chunk.length;
-            }
-
-            const content = new TextDecoder("utf-8").decode(combined);
+            const content = await this.collectBodyToBuffer(response);
             this.logger.log(`Successfully retrieved object: ${key}`);
             return content;
         } catch (error) {
             this.logger.error(`Failed to get object: ${key}`, error.stack);
             throw new Error(`Failed to get object: ${error.message}`);
         }
+    }
+
+    private async collectBodyToBuffer(
+        response: GetObjectCommandOutput,
+    ): Promise<Buffer> {
+        const body = response.Body;
+        if (!body) {
+            throw new Error("Empty body received from Cloudflare R2");
+        }
+
+        if (this.isNodeReadable(body)) {
+            return await this.streamToBuffer(body);
+        }
+
+        if (body instanceof Uint8Array) {
+            return Buffer.from(body);
+        }
+
+        if (typeof body === "string") {
+            return Buffer.from(body);
+        }
+
+        const maybeArrayBuffer = body as {
+            arrayBuffer?: () => Promise<ArrayBuffer>;
+        };
+        if (typeof maybeArrayBuffer.arrayBuffer === "function") {
+            const arr = await maybeArrayBuffer.arrayBuffer();
+            return Buffer.from(arr);
+        }
+
+        const maybeTransformToByteArray = body as {
+            transformToByteArray?: () => Promise<Uint8Array>;
+        };
+        if (
+            typeof maybeTransformToByteArray.transformToByteArray === "function"
+        ) {
+            const arr = await maybeTransformToByteArray.transformToByteArray();
+            return Buffer.from(arr);
+        }
+
+        const maybeTransformToWebStream = body as {
+            transformToWebStream?: () => ReadableStream<Uint8Array>;
+        };
+        if (
+            typeof maybeTransformToWebStream.transformToWebStream === "function"
+        ) {
+            const webStream = maybeTransformToWebStream.transformToWebStream();
+            if (typeof Readable.fromWeb === "function") {
+                const readable = Readable.fromWeb(webStream);
+                return await this.streamToBuffer(readable);
+            }
+
+            const reader = webStream.getReader();
+            const chunks: Uint8Array[] = [];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (value) chunks.push(value);
+            }
+            return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+        }
+
+        throw new Error("Unsupported body type returned by Cloudflare R2");
+    }
+
+    private isNodeReadable(stream: unknown): stream is Readable {
+        return (
+            Boolean(stream) && typeof (stream as Readable).pipe === "function"
+        );
+    }
+
+    private async streamToBuffer(stream: Readable): Promise<Buffer> {
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+            if (typeof chunk === "string") {
+                chunks.push(Buffer.from(chunk));
+            } else if (Buffer.isBuffer(chunk)) {
+                chunks.push(chunk);
+            } else if (chunk instanceof Uint8Array) {
+                chunks.push(Buffer.from(chunk));
+            } else {
+                throw new Error(
+                    "Unsupported chunk type from Cloudflare R2 stream",
+                );
+            }
+        }
+        return Buffer.concat(chunks);
     }
 
     // URLからキーを抽出

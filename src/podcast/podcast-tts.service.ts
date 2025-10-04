@@ -5,6 +5,13 @@ import { Injectable, Logger } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { CloudflareR2Service } from "./cloudflare-r2.service";
 
+export interface SpeechSynthesisOptions {
+    speakingRate?: number;
+    pitch?: number;
+    sampleRateHertz?: number;
+    effectsProfileIds?: string[];
+}
+
 @Injectable()
 export class PodcastTtsService {
     private readonly logger = new Logger(PodcastTtsService.name);
@@ -14,14 +21,22 @@ export class PodcastTtsService {
         this.client = new TextToSpeechClient();
     }
 
+    private readonly defaultSpeakingRate = 1.0;
+    private readonly defaultPitch = 0;
+
     // 音声を合成し、Cloudflare R2にアップロードして署名付きURLを返す
     async synthesizeAndUploadToR2(
         text: string,
         language: "ja-JP" | "en-US",
         bucket: string,
         keyPrefix = "",
+        options?: SpeechSynthesisOptions,
     ): Promise<string> {
-        const audioBuffer = await this.synthesizeNewsVoice(text, language);
+        const audioBuffer = await this.synthesizeNewsVoice(
+            text,
+            language,
+            options,
+        );
         const key = `${keyPrefix}${uuidv4()}.opus`;
         const { publicUrl } = await this.r2.uploadFile(
             bucket,
@@ -42,6 +57,7 @@ export class PodcastTtsService {
     async synthesizeNewsVoice(
         text: string,
         language: "ja-JP" | "en-US" = "ja-JP",
+        options?: SpeechSynthesisOptions,
     ): Promise<Buffer> {
         // ニュースキャスター向けのvoice選択
         const voice: protos.google.cloud.texttospeech.v1.IVoiceSelectionParams =
@@ -52,15 +68,30 @@ export class PodcastTtsService {
                 ssmlGender: "FEMALE",
             };
 
+        const speakingRate = options?.speakingRate ?? this.defaultSpeakingRate;
+        const pitch = options?.pitch ?? this.defaultPitch;
+        const audioConfig: protos.google.cloud.texttospeech.v1.IAudioConfig = {
+            audioEncoding: "OGG_OPUS",
+            speakingRate,
+            pitch,
+        };
+
+        if (options?.sampleRateHertz) {
+            audioConfig.sampleRateHertz = options.sampleRateHertz;
+        }
+
+        if (
+            options?.effectsProfileIds &&
+            options.effectsProfileIds.length > 0
+        ) {
+            audioConfig.effectsProfileId = options.effectsProfileIds;
+        }
+
         const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest =
             {
                 input: { text },
                 voice,
-                audioConfig: {
-                    audioEncoding: "OGG_OPUS",
-                    speakingRate: 1.0,
-                    pitch: 0,
-                },
+                audioConfig,
             };
 
         const [response] = await this.client.synthesizeSpeech(request);
@@ -77,8 +108,13 @@ export class PodcastTtsService {
         text: string,
         language: "ja-JP" | "en-US" = "ja-JP",
         outDir = "./tmp",
+        options?: SpeechSynthesisOptions,
     ): Promise<string> {
-        const audioBuffer = await this.synthesizeNewsVoice(text, language);
+        const audioBuffer = await this.synthesizeNewsVoice(
+            text,
+            language,
+            options,
+        );
         await fs.mkdir(outDir, { recursive: true });
         const filePath = path.join(outDir, `${uuidv4()}.opus`);
         await fs.writeFile(filePath, audioBuffer);
@@ -90,7 +126,8 @@ export class PodcastTtsService {
     async generateSpeech(
         text: string,
         language: "ja-JP" | "en-US" = "ja-JP",
+        options?: SpeechSynthesisOptions,
     ): Promise<Buffer> {
-        return await this.synthesizeNewsVoice(text, language);
+        return await this.synthesizeNewsVoice(text, language, options);
     }
 }

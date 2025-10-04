@@ -196,4 +196,36 @@ export class SubscriptionRepository {
             throw error;
         }
     }
+
+    async updateNextFetchAt(
+        subId: number,
+        userId: string,
+        nextFetchAt: Date,
+    ): Promise<Row> {
+        const sb = this.sbReq.getClient();
+        const timestamp = new Date().toISOString();
+        const { data, error } = await sb
+            .from("user_subscriptions")
+            .update({
+                next_fetch_at: nextFetchAt.toISOString(),
+                updated_at: timestamp,
+            } satisfies Update)
+            .eq("id", subId)
+            .eq("user_id", userId)
+            .select()
+            .single();
+
+        if (error) {
+            this.logger.error(`updateNextFetchAt: ${error.message}`, error);
+            throw error;
+        }
+
+        if (!data) {
+            throw new Error(
+                `Failed to update next_fetch_at (id=${subId}, user=${userId})`,
+            );
+        }
+
+        return data;
+    }
 }

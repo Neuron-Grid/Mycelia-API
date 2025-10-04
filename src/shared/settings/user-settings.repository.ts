@@ -1,7 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { PODCAST_SCHEDULE_DEFAULT } from "@/settings/settings.constants";
+import {
+    PODCAST_SCHEDULE_DEFAULT,
+    SUMMARY_SCHEDULE_DEFAULT,
+} from "@/settings/settings.constants";
 import { SupabaseRequestService } from "@/supabase-request.service";
-import { Tables } from "@/types/schema";
+import { Tables, TablesInsert } from "@/types/schema";
 
 type UserSettingsRow = Tables<"user_settings"> & {
     summary_schedule_time: string;
@@ -118,5 +121,91 @@ export class UserSettingsRepository {
             );
             return null;
         }
+    }
+
+    async upsertRefreshInterval(
+        userId: string,
+        refreshInterval: string,
+    ): Promise<void> {
+        const client = this.supabaseRequestService.getClient();
+        const nowIso = new Date().toISOString();
+
+        const { data: existing, error: selectError } = await client
+            .from("user_settings")
+            .select("user_id, refresh_every")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+        if (selectError && selectError.code !== "PGRST116") {
+            this.logger.error(
+                `Failed to read user settings before update: ${selectError.message}`,
+                selectError.stack,
+            );
+            throw selectError;
+        }
+
+        const currentInterval = existing
+            ? this.coerceInterval(existing.refresh_every)
+            : null;
+
+        if (existing) {
+            if (currentInterval === refreshInterval) {
+                this.logger.debug(
+                    `Skip refresh interval update for user ${userId}: unchanged (${refreshInterval})`,
+                );
+                return;
+            }
+            const { error } = await client
+                .from("user_settings")
+                .update({
+                    refresh_every: this.castInterval(refreshInterval),
+                    updated_at: nowIso,
+                })
+                .eq("user_id", userId);
+
+            if (error) {
+                this.logger.error(
+                    `Failed to update refresh interval for user ${userId}: ${error.message}`,
+                    error.stack,
+                );
+                throw error;
+            }
+            return;
+        }
+
+        const insertPayload: TablesInsert<"user_settings"> = {
+            user_id: userId,
+            refresh_every: this.castInterval(refreshInterval),
+            summary_enabled: false,
+            summary_schedule_time: SUMMARY_SCHEDULE_DEFAULT,
+            podcast_enabled: false,
+            podcast_schedule_time: PODCAST_SCHEDULE_DEFAULT,
+            podcast_language: "ja-JP",
+            updated_at: nowIso,
+        };
+
+        const { error: insertError } = await client
+            .from("user_settings")
+            .insert(insertPayload);
+
+        if (insertError) {
+            this.logger.error(
+                `Failed to insert user settings for ${userId}: ${insertError.message}`,
+                insertError.stack,
+            );
+            throw insertError;
+        }
+    }
+
+    private castInterval(
+        value: string,
+    ): TablesInsert<"user_settings">["refresh_every"] {
+        return value as unknown as TablesInsert<"user_settings">["refresh_every"];
+    }
+
+    private coerceInterval(raw: unknown): string | null {
+        if (raw === null || raw === undefined) return null;
+        if (typeof raw === "string") return raw;
+        return String(raw);
     }
 }
