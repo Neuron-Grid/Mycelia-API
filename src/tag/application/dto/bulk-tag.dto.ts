@@ -1,3 +1,4 @@
+import { Transform } from "class-transformer";
 import { ArrayNotEmpty, IsArray, IsInt, Min } from "class-validator";
 
 export class BulkTagDto {
@@ -6,5 +7,6 @@ export class BulkTagDto {
     @ArrayNotEmpty()
     @IsInt({ each: true })
     @Min(1, { each: true })
+    @Transform(({ obj, value }) => value ?? obj.tag_ids)
     tagIds!: number[];
 }

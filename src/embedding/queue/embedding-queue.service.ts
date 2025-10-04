@@ -18,6 +18,10 @@ export class EmbeddingQueueService {
     private static readonly MAX_BATCH_JOBS_PER_USER = 4;
 
     private readonly logger = new Logger(EmbeddingQueueService.name);
+    private readonly progressCache = new Map<
+        string,
+        Map<TableType, BatchProgress>
+    >();
 
     constructor(
         @InjectQueue("embeddingQueue")
@@ -115,9 +119,15 @@ export class EmbeddingQueueService {
                     this.logger.log(
                         `Added batch job ${newJob.id} for ${tableType}: ${missingCount} items to process`,
                     );
+                    this.initializeBatchProgress(
+                        userId,
+                        tableType,
+                        missingCount,
+                    );
                     activeUserBatchJobs++;
                 } else {
                     this.logger.log(`No missing embeddings for ${tableType}`);
+                    this.markBatchCompleted(userId, tableType);
                 }
             } catch (error) {
                 this.logger.error(
@@ -157,40 +167,15 @@ export class EmbeddingQueueService {
         }
     }
 
-    async getBatchProgress(userId: string): Promise<BatchProgress[]> {
-        try {
-            const jobs = await this.embeddingQueue.getJobs([
-                "active",
-                "waiting",
-                "completed",
-            ]);
-
-            return jobs
-                .filter((job) => job.data.userId === userId)
-                .map((job) => {
-                    const progress =
-                        typeof job.progress === "number" ? job.progress : 0;
-                    const total =
-                        typeof job.data.totalEstimate === "number"
-                            ? job.data.totalEstimate
-                            : 0;
-                    return {
-                        userId: job.data.userId,
-                        tableType: job.data.tableType,
-                        status: job.finishedOn
-                            ? "completed"
-                            : job.processedOn
-                              ? "running"
-                              : "waiting",
-                        progress,
-                        totalRecords: total,
-                        processedRecords: Math.floor((progress / 100) * total),
-                    } as BatchProgress;
-                });
-        } catch (error) {
-            this.logger.error(`Failed to get batch progress: ${error.message}`);
-            throw error;
+    getBatchProgress(userId: string): BatchProgress[] {
+        const userProgress = this.progressCache.get(userId);
+        if (!userProgress) {
+            return [];
         }
+
+        return Array.from(userProgress.values()).sort((a, b) =>
+            a.tableType.localeCompare(b.tableType),
+        );
     }
 
     async addGlobalEmbeddingUpdateJob(): Promise<void> {
@@ -220,5 +205,128 @@ export class EmbeddingQueueService {
         return (
             state != null && EmbeddingQueueService.IN_PROGRESS_STATES.has(state)
         );
+    }
+
+    public initializeBatchProgress(
+        userId: string,
+        tableType: TableType,
+        totalRecords: number,
+    ): void {
+        const progress: BatchProgress = {
+            userId,
+            tableType,
+            status: "waiting",
+            progress: totalRecords > 0 ? 0 : 100,
+            totalRecords,
+            processedRecords: 0,
+        };
+        this.setProgress(userId, tableType, progress);
+    }
+
+    public markBatchRunning(
+        userId: string,
+        tableType: TableType,
+        totalRecords?: number,
+    ): void {
+        const current = this.getProgress(userId, tableType);
+        const updated: BatchProgress = {
+            userId,
+            tableType,
+            status: "running",
+            totalRecords: totalRecords ?? current?.totalRecords,
+            processedRecords: current?.processedRecords ?? 0,
+            progress: current?.progress ?? 0,
+        };
+        this.setProgress(userId, tableType, updated);
+    }
+
+    public markBatchWaiting(userId: string, tableType: TableType): void {
+        const current = this.getProgress(userId, tableType);
+        if (!current) return;
+        this.setProgress(userId, tableType, {
+            ...current,
+            status: "waiting",
+        });
+    }
+
+    public incrementBatchProgress(
+        userId: string,
+        tableType: TableType,
+        processedDelta: number,
+        totalRecords?: number,
+        hasMore?: boolean,
+    ): void {
+        const current = this.getProgress(userId, tableType);
+        const total = totalRecords ?? current?.totalRecords ?? 0;
+        const processed = Math.max(
+            0,
+            (current?.processedRecords ?? 0) + Math.max(processedDelta, 0),
+        );
+        const progress =
+            total > 0
+                ? Math.min(100, Math.round((processed / total) * 100))
+                : 100;
+
+        this.setProgress(userId, tableType, {
+            userId,
+            tableType,
+            status: hasMore ? "running" : "completed",
+            totalRecords: total,
+            processedRecords: processed,
+            progress: hasMore ? Math.min(progress, 99) : progress,
+        });
+    }
+
+    public markBatchCompleted(userId: string, tableType: TableType): void {
+        const current = this.getProgress(userId, tableType);
+        this.setProgress(userId, tableType, {
+            userId,
+            tableType,
+            status: "completed",
+            totalRecords:
+                current?.totalRecords ?? current?.processedRecords ?? 0,
+            processedRecords:
+                current?.totalRecords ?? current?.processedRecords ?? 0,
+            progress: 100,
+        });
+    }
+
+    public markBatchFailed(userId: string, tableType: TableType): void {
+        const current = this.getProgress(userId, tableType);
+        this.setProgress(userId, tableType, {
+            userId,
+            tableType,
+            status: "failed",
+            totalRecords: current?.totalRecords ?? current?.processedRecords,
+            processedRecords: current?.processedRecords,
+            progress: current?.progress ?? 0,
+        });
+    }
+
+    public getProgressSnapshot(
+        userId: string,
+        tableType: TableType,
+    ): BatchProgress | undefined {
+        return this.getProgress(userId, tableType);
+    }
+
+    private getProgress(
+        userId: string,
+        tableType: TableType,
+    ): BatchProgress | undefined {
+        return this.progressCache.get(userId)?.get(tableType);
+    }
+
+    private setProgress(
+        userId: string,
+        tableType: TableType,
+        progress: BatchProgress,
+    ): void {
+        let userProgress = this.progressCache.get(userId);
+        if (!userProgress) {
+            userProgress = new Map<TableType, BatchProgress>();
+            this.progressCache.set(userId, userProgress);
+        }
+        userProgress.set(tableType, progress);
     }
 }

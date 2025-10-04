@@ -7,7 +7,6 @@ export abstract class AuthRepositoryPort {
     abstract signIn(email: string, password: string): Promise<unknown>;
     abstract signOut(): Promise<void>;
     abstract deleteAccount(userId: string): Promise<unknown>;
-    abstract restoreAccount(userId: string): Promise<unknown>;
     abstract updateEmail(userId: string, newEmail: string): Promise<unknown>;
     abstract updateUsername(
         userId: string,

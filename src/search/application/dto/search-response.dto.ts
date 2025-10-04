@@ -16,7 +16,7 @@ export class SearchResultDto {
     similarity: number;
 
     /** Content type */
-    type: "feed_item" | "summary" | "podcast";
+    type: "feedItem" | "summary" | "podcast";
 
     /** Additional metadata */
     metadata?: Record<string, string | number | boolean | null>;

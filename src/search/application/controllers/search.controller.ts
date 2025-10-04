@@ -4,6 +4,7 @@ import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
+import type { SearchResultEntity } from "@/search/domain/entities/search-result.entity";
 import { SearchResultDto } from "../dto/search-response.dto";
 import { SearchService } from "../services/search.service";
 
@@ -33,28 +34,14 @@ export class SearchController {
             query: query.q,
             limit: query.limit,
             threshold: query.threshold,
-            includeTypes: query.types
-                ? (query.types
-                      .split(",")
-                      .map((t) => t.trim())
-                      .filter((t) =>
-                          ["feed_item", "summary", "podcast"].includes(t),
-                      ) as ("feed_item" | "summary" | "podcast")[])
-                : undefined,
+            includeTypes: this.parseIncludeTypes(query.types),
         };
 
         const results = await this.searchService.searchAll(userId, searchData);
 
         return buildResponse(
             "Search completed successfully",
-            results.map((result) => ({
-                id: result.id,
-                title: result.title,
-                content: result.content,
-                similarity: result.similarity,
-                type: result.type,
-                metadata: result.metadata,
-            })),
+            this.toDtoList(results),
         );
     }
 
@@ -78,14 +65,7 @@ export class SearchController {
 
         return buildResponse(
             "Feed item search completed successfully",
-            results.map((result) => ({
-                id: result.id,
-                title: result.title,
-                content: result.content,
-                similarity: result.similarity,
-                type: result.type,
-                metadata: result.metadata,
-            })),
+            this.toDtoList(results),
         );
     }
 
@@ -109,14 +89,7 @@ export class SearchController {
 
         return buildResponse(
             "Summary search completed successfully",
-            results.map((result) => ({
-                id: result.id,
-                title: result.title,
-                content: result.content,
-                similarity: result.similarity,
-                type: result.type,
-                metadata: result.metadata,
-            })),
+            this.toDtoList(results),
         );
     }
 
@@ -140,14 +113,68 @@ export class SearchController {
 
         return buildResponse(
             "Podcast search completed successfully",
-            results.map((result) => ({
-                id: result.id,
-                title: result.title,
-                content: result.content,
-                similarity: result.similarity,
-                type: result.type,
-                metadata: result.metadata,
-            })),
+            this.toDtoList(results),
         );
+    }
+
+    private toDtoList(results: SearchResultEntity[]): SearchResultDto[] {
+        return results.map((result) => this.toDto(result));
+    }
+
+    private toDto(result: SearchResultEntity): SearchResultDto {
+        return {
+            id: result.id,
+            title: result.title,
+            content: result.content,
+            similarity: result.similarity,
+            type: result.type === "feed_item" ? "feedItem" : result.type,
+            metadata: this.normalizeMetadata(result.metadata),
+        };
+    }
+
+    private normalizeMetadata(
+        metadata: Record<string, string | number | boolean | null> | undefined,
+    ): Record<string, string | number | boolean | null> | undefined {
+        if (!metadata) return undefined;
+
+        const normalized: Record<string, string | number | boolean | null> = {};
+        for (const [key, value] of Object.entries(metadata)) {
+            const camelKey = key.replace(/_([a-z])/g, (_, char: string) =>
+                char.toUpperCase(),
+            );
+            normalized[camelKey] = value;
+        }
+        return normalized;
+    }
+
+    private parseIncludeTypes(
+        raw?: string,
+    ): ("feed_item" | "summary" | "podcast")[] | undefined {
+        if (!raw) return undefined;
+        const mapped = raw
+            .split(",")
+            .map((value) => this.normalizeRequestedType(value.trim()))
+            .filter(
+                (value): value is "feed_item" | "summary" | "podcast" =>
+                    value !== null,
+            );
+        return mapped.length > 0 ? mapped : undefined;
+    }
+
+    private normalizeRequestedType(
+        value: string,
+    ): "feed_item" | "summary" | "podcast" | null {
+        if (!value) return null;
+        const lowered = value.toLowerCase();
+        if (lowered === "feed_item" || lowered === "feeditem") {
+            return "feed_item";
+        }
+        if (lowered === "summary") {
+            return "summary";
+        }
+        if (lowered === "podcast") {
+            return "podcast";
+        }
+        return null;
     }
 }

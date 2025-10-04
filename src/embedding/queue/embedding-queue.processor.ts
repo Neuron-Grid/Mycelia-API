@@ -44,6 +44,12 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 `Processing embedding job for user ${userId}, table ${tableType}`,
             );
 
+            this.embeddingQueueService.markBatchRunning(
+                userId,
+                tableType,
+                job.data.totalEstimate,
+            );
+
             const batchData = await this.batchDataService.getBatchData(
                 userId,
                 tableType,
@@ -54,6 +60,10 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             if (batchData.length === 0) {
                 this.logger.log(
                     `No more data to process for user ${userId}, table ${tableType}`,
+                );
+                this.embeddingQueueService.markBatchCompleted(
+                    userId,
+                    tableType,
                 );
                 return { processedCount: 0, hasMore: false };
             }
@@ -86,10 +96,25 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                     lastId,
                     job,
                 );
+                this.embeddingQueueService.markBatchWaiting(userId, tableType);
             }
 
-            const progress = hasMore ? 50 : 100;
-            await job.updateProgress(progress);
+            this.embeddingQueueService.incrementBatchProgress(
+                userId,
+                tableType,
+                batchData.length,
+                job.data.totalEstimate,
+                hasMore,
+            );
+
+            const progressEntry =
+                this.embeddingQueueService.getProgressSnapshot(
+                    userId,
+                    tableType,
+                )?.progress;
+            if (typeof progressEntry === "number") {
+                await job.updateProgress(progressEntry);
+            }
 
             this.logger.log(
                 `Processed ${batchData.length} items for user ${userId}, table ${tableType}`,
@@ -110,6 +135,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                     /* noop */
                 }
             }
+            this.embeddingQueueService.markBatchFailed(userId, tableType);
             this.logger.error(
                 `Batch processing failed for user ${userId}: ${(error as Error).message}`,
             );
@@ -149,7 +175,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         tableType: TableType,
         batchSize: number,
         lastId: number,
-        _currentJob: Job<VectorUpdateJobDto>,
+        currentJob: Job<VectorUpdateJobDto>,
     ): Promise<void> {
         await this.embeddingQueue.add(
             "batch-process",
@@ -158,6 +184,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 tableType,
                 batchSize,
                 lastProcessedId: lastId,
+                totalEstimate: currentJob.data.totalEstimate,
             } as VectorUpdateJobDto,
             {
                 delay: 2000,

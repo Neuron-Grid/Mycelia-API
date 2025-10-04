@@ -118,49 +118,6 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
     }
 
-    async restoreAccount(userId: string) {
-        const admin = this.supabaseReq.getAdminClient();
-        const invokeRpc = this.createAdminRpcInvoker();
-
-        try {
-            // 1) SECURITY DEFINERなRPCでアカウントを復元
-            const { data, error } = await invokeRpc("restore_user_account", {
-                p_user_id: userId,
-            });
-            if (error) {
-                const message =
-                    (error as { message?: string })?.message ??
-                    JSON.stringify(error);
-                throw new Error(`restore_user_account RPC failed: ${message}`);
-            }
-
-            type RestoreResult = {
-                restored?: boolean;
-            } | null;
-            const result = data as RestoreResult;
-            if (!result?.restored) {
-                throw new Error(
-                    "restore_user_account RPC returned unexpected payload",
-                );
-            }
-
-            // 2) BANを解除
-            try {
-                await admin.auth.admin.updateUserById(userId, {
-                    ban_duration: "none" as unknown as string,
-                } as unknown as { ban_duration: string });
-            } catch {
-                // noop: BAN解除失敗は致命的でない
-            }
-            return { restored: true };
-        } catch (err: unknown) {
-            if (err instanceof Error) {
-                throw new HttpException(err.message, HttpStatus.BAD_REQUEST);
-            }
-            throw new HttpException("Unknown error", HttpStatus.BAD_REQUEST);
-        }
-    }
-
     private createAdminRpcInvoker(): RpcInvoker {
         const admin = this.supabaseReq.getAdminClient();
         return admin.rpc.bind(admin) as unknown as RpcInvoker;
