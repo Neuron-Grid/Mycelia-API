@@ -1,5 +1,4 @@
-import { getQueueToken } from "@nestjs/bull-shared";
-import { Processor, WorkerHost } from "@nestjs/bullmq";
+import { getQueueToken, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { Job, Queue } from "bullmq";
 import { AccountDeletionService } from "@/account-deletion/account-deletion.service";

@@ -1,13 +1,12 @@
-FROM --platform=linux/x86_64 node:22-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
-RUN npm install -g pnpm
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches ./patches
+RUN corepack enable && npm i -g pnpm
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY ./ ./
-RUN pnpm build
+RUN pnpm build && pnpm prune --prod
 
-FROM --platform=linux/x86_64 node:22-alpine AS production
+FROM node:22-alpine AS production
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=builder /app/dist         ./dist
