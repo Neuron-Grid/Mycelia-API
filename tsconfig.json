@@ -3,9 +3,7 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "target": "ES2023",
-    "lib": [
-      "ES2023"
-    ],
+    "lib": ["ES2023"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "exactOptionalPropertyTypes": false,
@@ -14,8 +12,8 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "strict": true,
     "strictPropertyInitialization": false,
     "useUnknownInCatchVariables": false,
@@ -31,36 +29,13 @@
     "rootDir": "src",
     "outDir": "./dist",
     "baseUrl": "./",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "types": [
-      "node"
-    ],
+    "paths": { "@/*": ["src/*"] },
+    "types": ["node"],
     "plugins": [
-      {
-        "transform": "typia/lib/transform",
-        "resolvePathAliases": true,
-        "tsConfig": "./tsconfig.json"
-      },
-      {
-        "transform": "@nestia/core/lib/transform"
-      },
-      {
-        "transform": "@nestia/sdk/lib/transform"
-      },
+      { "transform": "typia/lib/transform", "resolvePathAliases": true, "tsConfig": "./tsconfig.json" },
+      { "transform": "@nestia/core/lib/transform", "runtime": true }
     ]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.spec.ts",
-    "**/*.e2e-spec.ts"
-  ]
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
 }

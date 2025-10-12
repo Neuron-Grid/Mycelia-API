@@ -332,8 +332,8 @@ export class TagController {
     async getFeedItemsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: string | boolean }>()
-        query: { includeChildren?: string | boolean },
+        @TypedQuery<{ includeChildren?: boolean }>()
+        query: { includeChildren?: boolean },
     ): Promise<SuccessResponse<FeedItemDto[]>> {
         const includeChildrenBool = this.coerceBoolean(query?.includeChildren);
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
@@ -361,8 +361,8 @@ export class TagController {
     async getSubscriptionsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: string | boolean }>()
-        query: { includeChildren?: string | boolean },
+        @TypedQuery<{ includeChildren?: boolean }>()
+        query: { includeChildren?: boolean },
     ): Promise<
         SuccessResponse<
             import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
