@@ -18,7 +18,7 @@ describe("EmbeddingQueueService", () => {
 
     beforeEach(() => {
         queueMock = {
-            add: jest.fn().mockResolvedValue(undefined),
+            add: jest.fn().mockResolvedValue({ id: "new-job-id" }),
             getJob: jest.fn().mockResolvedValue(null),
             getJobCounts: jest
                 .fn()
@@ -34,7 +34,11 @@ describe("EmbeddingQueueService", () => {
     });
 
     it("throws when queue saturation exceeds threshold", async () => {
-        queueMock.getJobCounts.mockResolvedValue({ waiting: 2, active: 2 });
+        queueMock.getJob.mockResolvedValue({
+            id: "batch:user-1:tags",
+            getState: jest.fn().mockResolvedValue("active"),
+            remove: jest.fn(),
+        } as unknown as Job<VectorUpdateJobDto>);
 
         await expect(
             service.addUserEmbeddingBatchJob("user-1", ["tags"] as TableType[]),
@@ -51,7 +55,6 @@ describe("EmbeddingQueueService", () => {
             "tags",
         ] as TableType[]);
 
-        expect(queueMock.getJobCounts).toHaveBeenCalledTimes(1);
         expect(queueMock.add).toHaveBeenCalledTimes(2);
         expect(queueMock.add).toHaveBeenNthCalledWith(
             1,
@@ -76,11 +79,14 @@ describe("EmbeddingQueueService", () => {
     });
 
     it("skips enqueue when duplicate job already exists", async () => {
+        const existingJob = {
+            id: "batch:user-1:tags",
+            getState: jest.fn().mockResolvedValue("waiting"),
+            remove: jest.fn(),
+        } as unknown as Job<VectorUpdateJobDto>;
         queueMock.getJob.mockImplementation((jobId: string) => {
             if (jobId === "batch:user-1:tags") {
-                return Promise.resolve({
-                    id: jobId,
-                } as unknown as Job<VectorUpdateJobDto>);
+                return Promise.resolve(existingJob);
             }
             return Promise.resolve(null);
         });

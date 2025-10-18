@@ -32,9 +32,9 @@
     "prepare": "ts-patch install && typia patch"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.908.0",
-    "@aws-sdk/s3-request-presigner": "^3.908.0",
-    "@google-cloud/text-to-speech": "6.3.0",
+    "@aws-sdk/client-s3": "^3.913.0",
+    "@aws-sdk/s3-request-presigner": "^3.913.0",
+    "@google-cloud/text-to-speech": "6.3.1",
     "@google/generative-ai": "^0.24.1",
     "@nestia/core": "^8.1.0",
     "@nestjs/axios": "^4.0.1",
@@ -46,7 +46,7 @@
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/typeorm": "^11.0.0",
-    "@supabase/supabase-js": "^2.75.0",
+    "@supabase/supabase-js": "^2.75.1",
     "@types/feedparser": "^2.2.8",
     "@types/uuid": "^11.0.0",
     "axios": "^1.12.2",
@@ -80,7 +80,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.7.2",
+    "@types/node": "^24.8.1",
     "@types/node-fetch": "^2.6.13",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
@@ -111,8 +111,9 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/$1",
-      "^@/(.*)$": "<rootDir>/$1"
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@test-utils/(.*)$": "<rootDir>/../test/utils/$1"
     }
   },
-  "packageManager": "pnpm@10.18.2"
+  "packageManager": "pnpm@10.18.3"
 }

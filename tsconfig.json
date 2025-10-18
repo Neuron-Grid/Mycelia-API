@@ -29,7 +29,10 @@
     "rootDir": "src",
     "outDir": "./dist",
     "baseUrl": "./",
-    "paths": { "@/*": ["src/*"] },
+    "paths": {
+      "@/*": ["src/*"],
+      "@test-utils/*": ["test/utils/*"]
+    },
     "types": ["node"],
     "plugins": [
       { "transform": "typia/lib/transform", "resolvePathAliases": true, "tsConfig": "./tsconfig.json" },

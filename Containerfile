@@ -3,7 +3,7 @@ FROM node:22-alpine AS builder
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.18.2 --activate
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
