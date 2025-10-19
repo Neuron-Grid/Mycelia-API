@@ -5,9 +5,11 @@ import {
     IsString,
     ValidateIf,
 } from "class-validator";
+import { AcceptSnakeCase } from "@/common/decorators/accept-snake-case.decorator";
 
 export class CreateSummaryDto {
     /** The text to summarize. Either text or fileRef must be provided. */
+    @AcceptSnakeCase()
     @IsString()
     @IsOptional()
     @ValidateIf((o) => !o.fileRef)
@@ -15,6 +17,7 @@ export class CreateSummaryDto {
     text?: string;
 
     /** The file reference to summarize. Either text or fileRef must be provided. */
+    @AcceptSnakeCase()
     @IsString()
     @IsOptional()
     @ValidateIf((o) => !o.text)
@@ -22,6 +25,7 @@ export class CreateSummaryDto {
     fileRef?: string;
 
     /** If true, the summary will be saved to the database. */
+    @AcceptSnakeCase()
     @IsBoolean()
     @IsOptional()
     save?: boolean = false;

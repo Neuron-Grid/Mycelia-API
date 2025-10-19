@@ -1,4 +1,5 @@
 import { IsOptional, IsString, MaxLength } from "class-validator";
+import { AcceptSnakeCase } from "@/common/decorators/accept-snake-case.decorator";
 
 /**
  * TOTP 登録リクエスト DTO
@@ -9,6 +10,7 @@ import { IsOptional, IsString, MaxLength } from "class-validator";
  */
 export class EnrollTotpDto {
     /** この TOTP デバイスを識別する任意の表示名 */
+    @AcceptSnakeCase()
     @IsOptional()
     @IsString()
     @MaxLength(64)

@@ -1,10 +1,11 @@
-import { Transform } from "class-transformer";
 import { IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { AcceptSnakeCase } from "@/common/decorators/accept-snake-case.decorator";
 
 // Podcast episode update DTO
 // @description DTO for updating a podcast episode from the client
 export class UpdatePodcastEpisodeDto {
     /** Podcast episode title */
+    @AcceptSnakeCase()
     @IsString()
     @IsOptional()
     title?: string;
@@ -14,12 +15,13 @@ export class UpdatePodcastEpisodeDto {
 // @description DTO for creating a new podcast episode
 export class CreatePodcastEpisodeDto {
     /** Related summary ID */
+    @AcceptSnakeCase()
     @IsNumber()
     @Min(1)
-    @Transform(({ obj, value }) => value ?? obj.summary_id)
     summaryId: number;
 
     /** Podcast episode title */
+    @AcceptSnakeCase()
     @IsString()
     @IsOptional()
     title?: string;
@@ -76,12 +78,13 @@ export class PodcastEpisodeListResponseDto {
 // @description DTO for a podcast episode generation job
 export class GeneratePodcastEpisodeDto {
     /** ID of the summary to generate audio from */
+    @AcceptSnakeCase()
     @IsNumber()
     @Min(1)
-    @Transform(({ obj, value }) => value ?? obj.summary_id)
     summaryId: number;
 
     /** Custom prompt (optional) */
+    @AcceptSnakeCase()
     @IsString()
     @IsOptional()
     prompt?: string;

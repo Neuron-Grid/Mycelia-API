@@ -299,11 +299,11 @@ export class DomainConfigService {
 
             return {
                 hasCustomSettings: true,
-                refreshInterval: settings.refresh_every.toHumanReadable(),
-                podcastEnabled: settings.podcast_enabled,
-                podcastSchedule: settings.podcast_schedule_time,
-                podcastLanguage: settings.podcast_language,
-                lastUpdated: settings.updated_at,
+                refreshInterval: settings.refreshEvery.toHumanReadable(),
+                podcastEnabled: settings.podcastEnabled,
+                podcastSchedule: settings.podcastScheduleTime,
+                podcastLanguage: settings.podcastLanguage,
+                lastUpdated: settings.updatedAt,
                 summary: settings.getReadableSummary(),
             };
         } catch (error) {

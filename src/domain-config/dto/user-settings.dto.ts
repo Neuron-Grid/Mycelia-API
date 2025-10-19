@@ -149,66 +149,66 @@ export class UpdateUserSettingsDto {
 
 export class UserSettingsResponseDto {
     /** User ID (UUID) */
-    user_id!: string;
+    userId!: string;
 
     /** RSS feed refresh interval */
-    refresh_every!: IntervalDto;
+    refreshEvery!: IntervalDto;
 
     /** Whether the podcast feature is enabled */
-    podcast_enabled!: boolean;
+    podcastEnabled!: boolean;
 
     /** Podcast generation schedule time */
-    podcast_schedule_time!: string | null;
+    podcastScheduleTime!: string | null;
 
     /** Whether the summary feature is enabled */
-    summary_enabled!: boolean;
+    summaryEnabled!: boolean;
 
     /** Summary generation schedule time */
-    summary_schedule_time!: string;
+    summaryScheduleTime!: string;
 
     /** Podcast language */
-    podcast_language!: "ja-JP" | "en-US";
+    podcastLanguage!: "ja-JP" | "en-US";
 
     /** Created at (ISO) */
-    created_at!: string;
+    createdAt!: string;
 
     /** Updated at (ISO) */
-    updated_at!: string;
+    updatedAt!: string;
 
     // ファクトリメソッド: データベースレコードから作成
     static fromDatabaseRecord(record: SettingsRow): UserSettingsResponseDto {
         const dto = new UserSettingsResponseDto();
-        dto.user_id = record.user_id;
+        dto.userId = record.user_id;
         // DBから取得したunknown型をstringに変換してからIntervalDtoを作成
-        dto.refresh_every = IntervalDto.fromPostgresInterval(
+        dto.refreshEvery = IntervalDto.fromPostgresInterval(
             String(record.refresh_every ?? "30 minutes"),
         );
-        dto.podcast_enabled = record.podcast_enabled || false;
-        dto.podcast_schedule_time = record.podcast_schedule_time;
-        dto.summary_enabled = record.summary_enabled || false;
-        dto.summary_schedule_time = record.summary_schedule_time;
+        dto.podcastEnabled = record.podcast_enabled || false;
+        dto.podcastScheduleTime = record.podcast_schedule_time;
+        dto.summaryEnabled = record.summary_enabled || false;
+        dto.summaryScheduleTime = record.summary_schedule_time;
         const lang = record.podcast_language;
-        dto.podcast_language =
+        dto.podcastLanguage =
             lang === "ja-JP" || lang === "en-US" ? lang : "ja-JP";
-        dto.created_at = record.created_at;
-        dto.updated_at = record.updated_at;
+        dto.createdAt = record.created_at;
+        dto.updatedAt = record.updated_at;
         return dto;
     }
 
     // 人間が読みやすい形式でのサマリー
     getReadableSummary(): string {
-        const parts = [`更新間隔: ${this.refresh_every.toHumanReadable()}`];
+        const parts = [`更新間隔: ${this.refreshEvery.toHumanReadable()}`];
 
-        if (this.podcast_enabled) {
+        if (this.podcastEnabled) {
             parts.push(
-                `ポッドキャスト: 有効（${this.podcast_schedule_time}、${this.podcast_language}）`,
+                `ポッドキャスト: 有効（${this.podcastScheduleTime}、${this.podcastLanguage}）`,
             );
         } else {
             parts.push("ポッドキャスト: 無効");
         }
 
-        if (this.summary_enabled) {
-            parts.push(`要約: 有効（${this.summary_schedule_time}）`);
+        if (this.summaryEnabled) {
+            parts.push(`要約: 有効（${this.summaryScheduleTime}）`);
         } else {
             parts.push("要約: 無効");
         }

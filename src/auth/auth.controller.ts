@@ -15,9 +15,11 @@ import type { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
 import { setAuthCookies } from "src/common/utils/cookie";
 import { AckDto } from "@/auth/dto/ack.dto";
+import type { AuthUserDto } from "@/auth/dto/auth-user.dto";
 import { EnrollTotpResponseDto } from "@/auth/dto/enroll-totp.response.dto";
 import { LoginResultDto } from "@/auth/dto/login-result.dto";
 import { RefreshResultDto } from "@/auth/dto/refresh-result.dto";
+import { mapAuthUserToDto } from "@/auth/mappers/auth-user.mapper";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { AuthService } from "./auth.service";
@@ -98,6 +100,7 @@ export class AuthController {
             user?: User | null;
             session?: { access_token?: string; refresh_token?: string } | null;
         };
+        const mappedUser = mapAuthUserToDto(authRes.user ?? null);
 
         // Supabase Sessionからアクセストークン/リフレッシュトークンを取得
         const accessToken = authRes.session?.access_token ?? "";
@@ -106,7 +109,7 @@ export class AuthController {
         if (!accessToken || !refreshToken) {
             // ありえないが保険
             return buildResponse("Login successful (no session)", {
-                user: authRes.user ?? null,
+                user: mappedUser,
             });
         }
 
@@ -145,7 +148,7 @@ export class AuthController {
 
         // トークンはレスポンスボディに含めない
         return buildResponse("Login successful", {
-            user: authRes.user ?? null,
+            user: mappedUser,
         });
     }
 
@@ -419,8 +422,11 @@ export class AuthController {
     // authController.getProfile(user)
     @TypedRoute.Get("profile")
     @UseGuards(SupabaseAuthGuard, RequiresMfaGuard)
-    getProfile(@SupabaseUser() user: User): SuccessResponse<User> {
-        return buildResponse("User profile fetched successfully", user);
+    getProfile(@SupabaseUser() user: User): SuccessResponse<AuthUserDto> {
+        return buildResponse(
+            "User profile fetched successfully",
+            mapAuthUserToDto(user),
+        );
     }
 
     // @async

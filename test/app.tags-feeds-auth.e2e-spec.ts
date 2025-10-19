@@ -8,6 +8,7 @@ import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
+import type { User } from "@supabase/supabase-js";
 import cookieParser from "cookie-parser";
 import request, { SuperAgentTest } from "supertest";
 import { AppModule } from "@/app.module";
@@ -86,10 +87,44 @@ jest.mock("@/shared/lock/distributed-lock.service", () => ({
 const runAppE2E = process.env.RUN_APP_E2E === "true";
 const describeOrSkip = runAppE2E ? describe : describe.skip;
 
+const supabaseUserFixture: User = {
+    id: "user-1",
+    aud: "authenticated",
+    app_metadata: { provider: "email" },
+    user_metadata: { username: "userOne" },
+    email: "user@example.com",
+    created_at: "2024-01-01T00:00:00.000Z",
+    confirmed_at: "2024-01-02T00:00:00.000Z",
+    email_confirmed_at: "2024-01-02T00:00:00.000Z",
+    last_sign_in_at: "2024-01-10T12:00:00.000Z",
+    role: "authenticated",
+    updated_at: "2024-01-10T12:00:00.000Z",
+    identities: [],
+    factors: [],
+    is_anonymous: false,
+    is_sso_user: false,
+};
+
+const expectCamelCaseAuthUserDto = (user: unknown) => {
+    expect(user).toEqual(
+        expect.objectContaining({
+            id: supabaseUserFixture.id,
+            email: supabaseUserFixture.email,
+            createdAt: supabaseUserFixture.created_at,
+            appMetadata: supabaseUserFixture.app_metadata,
+            userMetadata: supabaseUserFixture.user_metadata,
+            emailConfirmedAt: supabaseUserFixture.email_confirmed_at,
+        }),
+    );
+    expect(user).not.toHaveProperty("created_at");
+    expect(user).not.toHaveProperty("app_metadata");
+    expect(user).not.toHaveProperty("user_metadata");
+};
+
 class AllowAuthGuard {
     canActivate(context: Parameters<SupabaseAuthGuard["canActivate"]>[0]) {
         const req = context.switchToHttp().getRequest();
-        req.user = { id: "user-1" };
+        req.user = { ...supabaseUserFixture } as User;
         return true;
     }
 }
@@ -195,7 +230,7 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
 
     const authServiceStub = {
         signIn: jest.fn().mockResolvedValue({
-            user: { id: "user-1", email: "user@example.com" },
+            user: { ...supabaseUserFixture },
             session: {
                 access_token: "access-token",
                 refresh_token: "refresh-token",
@@ -341,6 +376,8 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
                 expect.stringContaining("__Secure-refresh_token=refresh-token"),
             ]),
         );
+        expect(res.body.data.user).toBeTruthy();
+        expectCamelCaseAuthUserDto(res.body.data.user);
     });
 
     it("rejects login when content-type is form encoded", async () => {
@@ -379,5 +416,14 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
                 expect.stringContaining("__Secure-refresh_token=refresh-token"),
             ]),
         );
+        expect(res.body.data.user).toBeTruthy();
+        expectCamelCaseAuthUserDto(res.body.data.user);
+    });
+
+    it("returns profile with camelCase user DTO", async () => {
+        const res = await agent.get("/api/v1/auth/profile").expect(200);
+
+        expect(res.body.message).toBe("User profile fetched successfully");
+        expectCamelCaseAuthUserDto(res.body.data);
     });
 });

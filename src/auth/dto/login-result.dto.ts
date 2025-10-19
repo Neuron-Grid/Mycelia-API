@@ -1,6 +1,6 @@
-import type { User } from "@supabase/supabase-js";
+import type { AuthUserDto } from "@/auth/dto/auth-user.dto";
 
 export class LoginResultDto {
     /** Authenticated user or null */
-    user!: User | null;
+    user!: AuthUserDto | null;
 }

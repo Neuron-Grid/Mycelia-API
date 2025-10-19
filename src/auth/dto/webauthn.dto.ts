@@ -5,6 +5,7 @@ import {
     IsString,
     MaxLength,
 } from "class-validator";
+import { AcceptSnakeCase } from "@/common/decorators/accept-snake-case.decorator";
 
 /**
  * WebAuthn 登録開始リクエスト DTO
@@ -14,6 +15,7 @@ import {
  */
 export class StartWebAuthnRegistrationDto {
     /** 登録するパスキーを識別する任意の表示名 */
+    @AcceptSnakeCase()
     @IsOptional()
     @IsString()
     @MaxLength(64)
@@ -28,6 +30,7 @@ export class StartWebAuthnRegistrationDto {
  */
 export class FinishWebAuthnRegistrationDto {
     /** navigator.credentials.create() で得た credential 全体 */
+    @AcceptSnakeCase()
     @IsNotEmpty()
     @IsObject()
     attestationResponse!: Record<string, unknown>;
@@ -41,11 +44,13 @@ export class FinishWebAuthnRegistrationDto {
  */
 export class VerifyWebAuthnAssertionDto {
     /** Supabase が払い出した WebAuthn ファクター ID */
+    @AcceptSnakeCase()
     @IsString()
     @IsNotEmpty()
     factorId!: string;
 
     /** navigator.credentials.get() で得た credential 全体 */
+    @AcceptSnakeCase()
     @IsNotEmpty()
     @IsObject()
     assertionResponse!: Record<string, unknown>;
