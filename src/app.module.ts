@@ -2,6 +2,7 @@ import "@/setup/nestia";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { TimeModule } from "@/shared/time/time.module";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
@@ -24,6 +25,7 @@ import { TagModule } from "./tag/tag.module";
     imports: [
         ConfigModule.forRoot({ isGlobal: true }),
         SupabaseRequestModule,
+        TimeModule,
         // FeedModuleを読み込み
         FeedModule,
         // AuthModule (認証周り)

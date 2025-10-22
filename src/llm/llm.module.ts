@@ -3,12 +3,12 @@ import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { AuthModule } from "@/auth/auth.module";
 import { EmbeddingModule } from "@/embedding/embedding.module";
 import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { SummaryController } from "./application/controllers/summary.controller";
 import { LLM_SERVICE } from "./application/services/llm.service";
@@ -70,12 +70,12 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
             },
         ),
         SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
+        AuthModule,
         EmbeddingModule, // EmbeddingQueueService を利用
     ],
     providers: [
         DailySummaryRepository,
         WorkerDailySummaryRepository,
-        SupabaseAdminService,
         UserSettingsRepository,
         {
             provide: LLM_SERVICE,

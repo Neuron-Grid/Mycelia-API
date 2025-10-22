@@ -1,11 +1,11 @@
 import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { EmbeddingModule } from "@/embedding/embedding.module";
 import { SubscriptionAdminRepository } from "@/feed/infrastructure/subscription-admin.repository";
 import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
 import { WorkerSubscriptionRepository } from "@/feed/infrastructure/worker-subscription.repository";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { RedisModule } from "../../shared/redis/redis.module";
 import { RedisService } from "../../shared/redis/redis.service";
 import { FeedFetchService } from "../application/feed-fetch.service";
@@ -17,6 +17,7 @@ import { FeedQueueService } from "./feed-queue.service";
 @Module({
     imports: [
         EmbeddingModule,
+        AuthModule,
         RedisModule,
         BullModule.registerQueueAsync({
             name: "feedQueue",
@@ -37,7 +38,6 @@ import { FeedQueueService } from "./feed-queue.service";
         SubscriptionAdminRepository,
         WorkerSubscriptionRepository,
         WorkerFeedItemRepository,
-        SupabaseAdminService,
     ],
     exports: [
         FeedQueueService,

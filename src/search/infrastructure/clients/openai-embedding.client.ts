@@ -6,6 +6,9 @@ export class OpenAIEmbeddingClient {
     private readonly logger = new Logger(OpenAIEmbeddingClient.name);
     private readonly apiKey: string;
     private readonly baseUrl = "https://api.openai.com/v1";
+    private readonly requestTimeoutMs = 15_000;
+    private readonly maxRetries = 3;
+    private readonly initialRetryDelayMs = 1_000;
 
     constructor(private readonly configService: ConfigService) {
         this.apiKey = this.configService.get<string>("OPENAI_API_KEY") || "";
@@ -42,42 +45,8 @@ export class OpenAIEmbeddingClient {
         }
 
         try {
-            const response = await fetch(`${this.baseUrl}/embeddings`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${this.apiKey}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "text-embedding-3-small",
-                    input: text.trim(),
-                    encoding_format: "float",
-                }),
-            });
+            const [embedding] = await this.requestEmbeddings([text.trim()]);
 
-            if (!response.ok) {
-                let detail: string | undefined;
-                try {
-                    const errorData =
-                        (await response.json()) as typeof OpenAIEmbeddingClient.errorShape;
-                    detail = errorData?.error?.message;
-                } catch {
-                    /* ignore parse error */
-                }
-                throw this.httpError(
-                    response.status,
-                    `OpenAI API error: ${response.status} - ${detail || "Unknown error"}`,
-                );
-            }
-
-            const result =
-                (await response.json()) as typeof OpenAIEmbeddingClient.embeddingShape;
-
-            if (!result?.data || result.data.length === 0) {
-                throw new Error("No embedding data returned from OpenAI API");
-            }
-
-            const embedding = result.data[0]?.embedding ?? [];
             this.logger.debug(
                 `Generated embedding for text (${text.length} chars): ${embedding.length} dimensions`,
             );
@@ -107,42 +76,9 @@ export class OpenAIEmbeddingClient {
         }
 
         try {
-            const response = await fetch(`${this.baseUrl}/embeddings`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${this.apiKey}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    model: "text-embedding-3-small",
-                    input: validTexts.map((text) => text.trim()),
-                    encoding_format: "float",
-                }),
-            });
-
-            if (!response.ok) {
-                let detail: string | undefined;
-                try {
-                    const errorData =
-                        (await response.json()) as typeof OpenAIEmbeddingClient.errorShape;
-                    detail = errorData?.error?.message;
-                } catch {
-                    /* ignore parse error */
-                }
-                throw this.httpError(
-                    response.status,
-                    `OpenAI API error: ${response.status} - ${detail || "Unknown error"}`,
-                );
-            }
-
-            const result =
-                (await response.json()) as typeof OpenAIEmbeddingClient.embeddingShape;
-
-            if (!result?.data || result.data.length === 0) {
-                throw new Error("No embedding data returned from OpenAI API");
-            }
-
-            const embeddings = result.data.map((item) => item.embedding ?? []);
+            const embeddings = await this.requestEmbeddings(
+                validTexts.map((text) => text.trim()),
+            );
             this.logger.debug(`Generated ${embeddings.length} embeddings`);
 
             return embeddings;
@@ -151,5 +87,130 @@ export class OpenAIEmbeddingClient {
             this.logger.error(`Failed to generate embeddings: ${msg}`);
             throw error as Error;
         }
+    }
+
+    private async requestEmbeddings(inputs: string[]): Promise<number[][]> {
+        if (inputs.length === 0) {
+            throw new Error("Embeddings input cannot be empty");
+        }
+
+        let lastError: Error | null = null;
+
+        for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+            const controller = new AbortController();
+            const timeout = setTimeout(
+                () => controller.abort(),
+                this.requestTimeoutMs,
+            );
+
+            let response: Response;
+            try {
+                response = await fetch(`${this.baseUrl}/embeddings`, {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${this.apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        model: "text-embedding-3-small",
+                        input: inputs,
+                        encoding_format: "float",
+                    }),
+                    signal: controller.signal,
+                });
+            } catch (error) {
+                clearTimeout(timeout);
+                const wrappedError = this.toError(error);
+                const shouldRetry = this.shouldRetryError(wrappedError);
+                if (!shouldRetry || attempt === this.maxRetries) {
+                    throw wrappedError;
+                }
+
+                lastError = wrappedError;
+                this.logger.warn(
+                    `OpenAI embeddings request failed (attempt ${attempt + 1}): ${wrappedError.message}. Retrying...`,
+                );
+                await this.delay(this.computeBackoff(attempt));
+                continue;
+            } finally {
+                clearTimeout(timeout);
+            }
+
+            if (response.ok) {
+                const parsed =
+                    (await response.json()) as typeof OpenAIEmbeddingClient.embeddingShape;
+                if (!parsed?.data || parsed.data.length === 0) {
+                    throw new Error(
+                        "No embedding data returned from OpenAI API",
+                    );
+                }
+                return parsed.data.map((item) => item.embedding ?? []);
+            }
+
+            const detail = await this.extractErrorDetail(response);
+            const apiError = this.httpError(
+                response.status,
+                `OpenAI API error: ${response.status} - ${detail || "Unknown error"}`,
+            );
+
+            if (
+                !this.shouldRetryStatus(response.status) ||
+                attempt === this.maxRetries
+            ) {
+                throw apiError;
+            }
+
+            lastError = apiError;
+            this.logger.warn(
+                `OpenAI embeddings request returned status ${response.status} (attempt ${attempt + 1}). Retrying...`,
+            );
+            await this.delay(this.computeBackoff(attempt));
+        }
+
+        throw lastError ?? new Error("Failed to call OpenAI embeddings API");
+    }
+
+    private shouldRetryStatus(status?: number): boolean {
+        if (!status) {
+            return false;
+        }
+        return status === 429 || status >= 500;
+    }
+
+    private shouldRetryError(error: Error & { status?: number }): boolean {
+        if (error.name === "AbortError") {
+            return true;
+        }
+        if (error.status) {
+            return this.shouldRetryStatus(error.status);
+        }
+        return error instanceof TypeError;
+    }
+
+    private async extractErrorDetail(
+        response: Response,
+    ): Promise<string | undefined> {
+        try {
+            const errorData =
+                (await response.json()) as typeof OpenAIEmbeddingClient.errorShape;
+            return errorData?.error?.message;
+        } catch {
+            return undefined;
+        }
+    }
+
+    private toError(reason: unknown): Error & { status?: number } {
+        if (reason instanceof Error) {
+            return reason as Error & { status?: number };
+        }
+        return new Error(String(reason)) as Error & { status?: number };
+    }
+
+    private computeBackoff(attempt: number): number {
+        return this.initialRetryDelayMs * 2 ** attempt;
+    }
+
+    private delay(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }

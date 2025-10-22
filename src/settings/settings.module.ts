@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { DomainConfigModule } from "@/domain-config/domain-config.module";
 import { JobsModule } from "@/jobs/jobs.module";
 import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
@@ -7,13 +8,13 @@ import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episo
 import { PodcastModule } from "@/podcast/podcast.module";
 import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { SettingsController } from "./settings.controller";
 
 @Module({
     imports: [
         SupabaseRequestModule,
+        AuthModule,
         JobsModule,
         LlmModule,
         PodcastModule,
@@ -26,7 +27,6 @@ import { SettingsController } from "./settings.controller";
         UserSettingsRepository,
         DailySummaryRepository,
         PodcastEpisodeRepository,
-        SupabaseAdminService,
     ],
 })
 export class SettingsModule {}

@@ -1,11 +1,13 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { Interval } from "@nestjs/schedule";
 import { Queue } from "bullmq";
 import {
     PODCAST_SCHEDULE_DEFAULT,
     SUMMARY_SCHEDULE_DEFAULT,
 } from "@/settings/settings.constants";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
 
 @Injectable()
 export class JobsService implements OnModuleInit {
@@ -13,6 +15,7 @@ export class JobsService implements OnModuleInit {
 
     constructor(
         private readonly settingsRepo: UserSettingsRepository,
+        private readonly time: JstDateService,
         // Summary/Podcastのrepeatableは中央スケジューラで管理するためキュー注入は不要
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
@@ -20,6 +23,7 @@ export class JobsService implements OnModuleInit {
     ) {}
 
     async onModuleInit(): Promise<void> {
+        this.time.warnIfTimezoneMismatch(this.logger);
         // Cron式を使わず、repeat.everyベースの軽量ハートビートで集中管理
         await this.registerMinutelySchedulerTick();
         await this.registerMinutelyFeedScan();
@@ -128,22 +132,19 @@ export class JobsService implements OnModuleInit {
         next_run_at_podcast: string | null;
     }> {
         const settings = await this.settingsRepo.getByUserId(userId);
-        const now = new Date();
-        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        const jst = new Date(utc + 9 * 60 * 60000);
+        const nowJst = this.time.now();
 
         const toNextIso = (hhmm: string | undefined, offsetMin = 0) => {
             if (!hhmm) return null;
             const base = this.parseTimeWithStableJitter(hhmm, userId);
-            const { hour, minute } = this.addOffset(
-                base.hour,
-                base.minute,
-                offsetMin,
+            const target = this.addOffset(base.hour, base.minute, offsetMin);
+            let candidate = this.time.setTime(
+                nowJst,
+                target.hour,
+                target.minute,
             );
-            const candidate = new Date(jst);
-            candidate.setHours(hour, minute, 0, 0);
-            if (candidate.getTime() <= jst.getTime()) {
-                candidate.setDate(candidate.getDate() + 1);
+            if (candidate.getTime() <= nowJst.getTime()) {
+                candidate = this.time.addDays(candidate, 1);
             }
             return candidate.toISOString();
         };
@@ -165,5 +166,65 @@ export class JobsService implements OnModuleInit {
                     ? toNextIso(podcastTime, 10)
                     : null,
         };
+    }
+
+    @Interval(6 * 60 * 60 * 1000)
+    async verifyRepeatableJobs(): Promise<void> {
+        await this.inspectRepeatableJobs(
+            "maintenanceQueue",
+            this.maintenanceQueue,
+        );
+        await this.inspectRepeatableJobs("feedQueue", this.feedQueue);
+    }
+
+    private async inspectRepeatableJobs(
+        name: string,
+        queue: Queue,
+    ): Promise<void> {
+        try {
+            type RepeatableJobSummary = { key: string };
+            type RepeatableAwareQueue = Queue & {
+                getRepeatableJobs(
+                    start?: number,
+                    end?: number,
+                    asc?: boolean,
+                ): Promise<RepeatableJobSummary[]>;
+            };
+
+            const repeatableQueue = queue as RepeatableAwareQueue;
+
+            if (typeof repeatableQueue.getRepeatableJobs !== "function") {
+                this.logger.warn(
+                    `[${name}] Queue adapter does not expose getRepeatableJobs(); ensure BullMQ >=5.48.0`,
+                );
+                return;
+            }
+
+            const repeatables = await repeatableQueue.getRepeatableJobs();
+            if (repeatables.length === 0) {
+                this.logger.warn(
+                    `[${name}] No repeatable jobs registered. Verify scheduler bootstrap.`,
+                );
+                return;
+            }
+            const seen = new Set<string>();
+            const duplicates: string[] = [];
+            for (const job of repeatables) {
+                if (seen.has(job.key)) {
+                    duplicates.push(job.key);
+                } else {
+                    seen.add(job.key);
+                }
+            }
+            if (duplicates.length > 0) {
+                this.logger.warn(
+                    `[${name}] Detected duplicate repeatable jobs: ${duplicates.join(", ")}`,
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to inspect repeatable jobs for ${name}: ${(error as Error).message}`,
+            );
+        }
     }
 }

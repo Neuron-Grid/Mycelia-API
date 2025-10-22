@@ -1,9 +1,9 @@
 import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SearchModule } from "../../search/search.module";
 import { EMBEDDING_BATCH_CONFIG } from "../config/embedding-batch.config";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
@@ -14,6 +14,7 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
 @Module({
     imports: [
         RedisModule,
+        AuthModule,
         BullModule.registerQueueAsync({
             name: "embeddingQueue",
             imports: [RedisModule],
@@ -39,7 +40,6 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
         EmbeddingQueueProcessor,
         EmbeddingBatchDataService,
         EmbeddingBatchUpdateService,
-        SupabaseAdminService,
     ],
     exports: [EmbeddingQueueService, BullModule],
 })

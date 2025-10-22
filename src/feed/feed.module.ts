@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { FavoriteRepository } from "@/favorite/infrastructure/favorite.repository";
 import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
 import { LlmModule } from "@/llm/llm.module";
 import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { TagRepository } from "@/tag/infrastructure/tag.repository";
 import { EmbeddingModule } from "../embedding/embedding.module";
@@ -22,6 +22,7 @@ import { SubscriptionRepository } from "./infrastructure/subscription.repository
 @Module({
     imports: [
         SupabaseRequestModule,
+        AuthModule,
         EmbeddingModule,
         FavoriteModule,
         TagModule,
@@ -44,7 +45,6 @@ import { SubscriptionRepository } from "./infrastructure/subscription.repository
         UserSettingsRepository,
         FavoriteRepository,
         TagRepository,
-        SupabaseAdminService,
     ],
 })
 export class FeedModule {}

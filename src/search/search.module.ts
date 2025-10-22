@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { SearchController } from "@/search/application/controllers/search.controller";
 import { SearchService } from "@/search/application/services/search.service";
 import { EMBEDDING_SERVICE } from "@/search/domain/interfaces/embedding-service.interface";
@@ -6,12 +7,11 @@ import { OpenAIEmbeddingClient } from "@/search/infrastructure/clients/openai-em
 import { SupabaseSearchClient } from "@/search/infrastructure/clients/supabase-search.client";
 import { SearchRepositoryImpl } from "@/search/infrastructure/repositories/search.repository";
 import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { SEARCH_REPOSITORY } from "./domain/interfaces/search-repository.interface";
 
 @Module({
-    imports: [SupabaseRequestModule],
+    imports: [SupabaseRequestModule, AuthModule],
     controllers: [SearchController],
     providers: [
         // Application Services
@@ -33,7 +33,6 @@ import { SEARCH_REPOSITORY } from "./domain/interfaces/search-repository.interfa
             provide: EMBEDDING_SERVICE,
             useClass: EmbeddingService,
         },
-        SupabaseAdminService,
     ],
     exports: [
         SearchService,

@@ -11,6 +11,8 @@ import { AuthService } from "./auth.service";
 import { AuthRepositoryPort } from "./domain/auth.repository";
 import { SupabaseAuthRepository } from "./infrastructure/supabase-auth.repository";
 import { SupabaseAuthGuard } from "./supabase-auth.guard";
+import { SupabaseAuthCacheService } from "./supabase-auth-cache.service";
+import { SupabaseAuthMetricsService } from "./supabase-auth-metrics.service";
 import { WebAuthnService } from "./webauthn.service";
 
 @Module({
@@ -28,10 +30,18 @@ import { WebAuthnService } from "./webauthn.service";
     providers: [
         AuthService,
         SupabaseAuthGuard,
+        SupabaseAuthCacheService,
+        SupabaseAuthMetricsService,
         SupabaseAdminService,
         WebAuthnService,
         // DI バインディング
         { provide: AuthRepositoryPort, useClass: SupabaseAuthRepository },
+    ],
+    exports: [
+        SupabaseAuthGuard,
+        SupabaseAuthCacheService,
+        SupabaseAuthMetricsService,
+        SupabaseAdminService,
     ],
 })
 export class AuthModule {}

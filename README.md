@@ -202,6 +202,9 @@ Jobs（管理・自身のジョブのみ）
 - インデックス/再生成: フィード登録/更新時にembedding追加、週1再構築（BullMQ）
 - 1日1回の要約/ポッドキャスト: JST指定時刻 + 自動ジッター、24h内重複回避（jobId）
 - ポッドキャストは要約が前提。有効化は要約有効時のみ可能
+- BullMQワーカー構成: API Podとは別にBullMQ専用プロセスをデプロイし、同じNestビルドをワーカーモード（例: `node dist/main-worker.js`）で常時1Pod以上稼働させる
+- ジョブ監視: Redis上の`queue.getJobCounts()`とジョブ進捗(`job.progress`)を定期ポーリングし、Grafana/Slack等へアラート通知するダッシュボードを運用する
+- Google TTS認証: `GOOGLE_TTS_CREDENTIALS`（JSONまたはBase64）を優先、未設定時は`GOOGLE_APPLICATION_CREDENTIALS`のパスでADCを利用
 
 ## トラブルシューティング（抜粋）
 

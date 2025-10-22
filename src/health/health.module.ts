@@ -6,21 +6,15 @@
 
 import { Module } from "@nestjs/common";
 import { AdminRoleGuard } from "@/auth/admin-role.guard";
+import { AuthModule } from "@/auth/auth.module";
 import { RequiresMfaGuard } from "@/auth/requires-mfa.guard";
-import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { RedisModule } from "@/shared/redis/redis.module";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { HealthController } from "./health.controller";
 
 @Module({
-    imports: [SupabaseRequestModule, RedisModule],
+    imports: [SupabaseRequestModule, RedisModule, AuthModule],
     controllers: [HealthController],
-    providers: [
-        SupabaseAdminService,
-        SupabaseAuthGuard,
-        RequiresMfaGuard,
-        AdminRoleGuard,
-    ],
+    providers: [RequiresMfaGuard, AdminRoleGuard],
 })
 export class HealthModule {}

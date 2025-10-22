@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import type { WorkerPodcastSchedule } from "@/shared/settings/worker-user-settings.repository";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
 import { MaintenanceService } from "./maintenance.service";
 
 type ScheduleTickData = {
@@ -32,8 +33,10 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         @InjectQueue("maintenanceQueue")
         private readonly maintenanceQueue: Queue,
         private readonly userSettingsRepo: WorkerUserSettingsRepository,
+        private readonly time: JstDateService,
     ) {
         super();
+        this.time.warnIfTimezoneMismatch(this.logger);
     }
 
     async process(job: Job) {
@@ -65,19 +68,6 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                 this.logger.warn(`Unknown maintenance job: ${job.name}`);
                 return { success: false };
         }
-    }
-
-    private nowJst(): Date {
-        const now = new Date();
-        const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-        return new Date(utc + 9 * 60 * 60000);
-    }
-
-    private formatDateJst(d: Date): string {
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
     }
 
     private hashToRange(key: string, min: number, max: number) {
@@ -114,10 +104,11 @@ export class MaintenanceQueueProcessor extends WorkerHost {
             tickId,
         } = job.data ?? {};
 
-        const now = this.nowJst();
-        const h = now.getHours();
-        const m = now.getMinutes();
-        const dateStr = this.formatDateJst(now);
+        const now = this.time.now();
+        const parts = this.time.getParts(now);
+        const h = Number.parseInt(parts.hour, 10);
+        const m = Number.parseInt(parts.minute, 10);
+        const dateStr = this.time.formatDate(now);
         const effectiveTickId =
             tickId ?? job.id ?? `tick-${job.timestamp ?? Date.now()}`;
         const isPrimaryTick =

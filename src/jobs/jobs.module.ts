@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { EmbeddingModule } from "@/embedding/embedding.module";
 import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
 import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
@@ -8,12 +9,14 @@ import { LlmModule } from "@/llm/llm.module";
 import { MaintenanceQueueModule } from "@/maintenance/maintenance-queue.module";
 import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { TimeModule } from "@/shared/time/time.module";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 
 @Module({
     imports: [
         SupabaseRequestModule,
+        AuthModule,
+        TimeModule,
         LlmModule,
         EmbeddingModule,
         PodcastQueueModule,
@@ -21,12 +24,7 @@ import { SupabaseRequestModule } from "@/supabase-request.module";
         MaintenanceQueueModule,
     ],
     controllers: [JobsAdminController],
-    providers: [
-        JobsService,
-        UserSettingsRepository,
-        FlowOrchestratorService,
-        SupabaseAdminService,
-    ],
+    providers: [JobsService, UserSettingsRepository, FlowOrchestratorService],
     exports: [JobsService, FlowOrchestratorService],
 })
 export class JobsModule {}

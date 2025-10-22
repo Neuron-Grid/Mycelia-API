@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
+import { AuthModule } from "@/auth/auth.module";
 import { JobsModule } from "@/jobs/jobs.module";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { PodcastConfigController } from "./application/podcast-config.controller";
 import { PodcastConfigService } from "./application/podcast-config.service";
@@ -18,6 +18,7 @@ import { PodcastQueueModule } from "./queue/podcast-queue.module";
     // CoreにTTS/R2/Reposを集約し、QueueはCoreのみに依存
     imports: [
         SupabaseRequestModule,
+        AuthModule,
         PodcastCoreModule,
         PodcastQueueModule,
         JobsModule,
@@ -31,7 +32,6 @@ import { PodcastQueueModule } from "./queue/podcast-queue.module";
         PodcastEpisodeRepository,
         PodcastEpisodeMapper,
         CloudflareR2Service,
-        SupabaseAdminService,
     ],
     exports: [
         PodcastTtsService,
