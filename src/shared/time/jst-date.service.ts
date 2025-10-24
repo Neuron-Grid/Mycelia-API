@@ -50,6 +50,15 @@ export class JstDateService {
         return this.extractParts(date);
     }
 
+    getWeekday(date: Date): number {
+        const parts = this.extractParts(date);
+        const year = Number.parseInt(parts.year, 10);
+        const month = Number.parseInt(parts.month, 10);
+        const day = Number.parseInt(parts.day, 10);
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        return utcDate.getUTCDay();
+    }
+
     warnIfTimezoneMismatch(logger: Logger): void {
         const offsetMinutes = -new Date().getTimezoneOffset();
         if (offsetMinutes !== 540) {

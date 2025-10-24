@@ -116,6 +116,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
             processPodcast &&
             summaryOffset === 0 &&
             podcastOffset === 0;
+        const weekday = this.time.getWeekday(now);
 
         // 1) ユーザー毎のサマリ実行判定（summary: ベース時刻そのまま）
         if (processSummary) {
@@ -245,7 +246,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
 
         // 4) 毎週日曜 03:00 にベクトルインデックス再構築
-        if (isPrimaryTick && now.getDay() === 0 && h === 3 && m === 0) {
+        if (isPrimaryTick && weekday === 0 && h === 3 && m === 0) {
             await this.maintenanceQueue.add(
                 "weeklyReindex",
                 {},
@@ -258,7 +259,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
 
         // 5) 毎週月曜 03:00 にアカウント一括物理削除アグリゲータを投入
-        if (isPrimaryTick && now.getDay() === 1 && h === 3 && m === 0) {
+        if (isPrimaryTick && weekday === 1 && h === 3 && m === 0) {
             await this.accountDeletionQueue.add(
                 "aggregateDeletion",
                 {},
