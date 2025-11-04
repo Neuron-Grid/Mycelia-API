@@ -59,3 +59,9 @@ export interface EmbeddingUpdateItem {
     id: number;
     embedding: number[];
 }
+
+export interface ProgressCacheEntry {
+    progress: BatchProgress;
+    expiresAt: number;
+    timeoutId?: NodeJS.Timeout;
+}

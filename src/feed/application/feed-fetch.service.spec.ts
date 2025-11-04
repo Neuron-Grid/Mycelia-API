@@ -1,15 +1,8 @@
 import { gzipSync } from "node:zlib";
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-    jest,
-} from "@jest/globals";
 import { HttpException, HttpStatus } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
+import { jest } from "@test-utils/jest-globals";
 import nock from "nock";
 import { FeedFetchService } from "@/feed/application/feed-fetch.service";
 

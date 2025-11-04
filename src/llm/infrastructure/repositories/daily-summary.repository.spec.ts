@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
 import type { SupabaseRequestService } from "@/supabase-request.service";
 

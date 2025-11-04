@@ -1,4 +1,4 @@
-import { jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import { FeedUseCaseService } from "./feed-usecase.service";
 
 describe("FeedUseCaseService", () => {

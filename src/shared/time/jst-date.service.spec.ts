@@ -1,4 +1,3 @@
-import { describe, expect, it } from "@jest/globals";
 import { JstDateService } from "@/shared/time/jst-date.service";
 
 describe("JstDateService.getWeekday", () => {

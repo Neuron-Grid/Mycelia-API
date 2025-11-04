@@ -1,4 +1,3 @@
-import { describe, expect, it } from "@jest/globals";
 import { normalizeTagPath } from "@/tag/domain/tag-path.util";
 
 describe("normalizeTagPath", () => {

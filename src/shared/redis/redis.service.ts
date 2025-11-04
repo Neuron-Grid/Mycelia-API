@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import Redis, { RedisOptions } from "ioredis";
 
 type ConnOpts = {
@@ -10,10 +10,7 @@ type ConnOpts = {
 };
 
 @Injectable()
-export class RedisService implements OnModuleDestroy {
-    private readonly logger = new Logger(RedisService.name);
-    private healthClient?: Redis;
-
+export class RedisService {
     constructor(
         @Inject("REDIS_CONNECTION_OPTIONS")
         private readonly opts: ConnOpts,
@@ -33,24 +30,9 @@ export class RedisService implements OnModuleDestroy {
         };
     }
 
-    // HealthControllerなどが使うメイン接続
+    // 各サービスが利用するRedisクライアントを生成
     createMainClient(): Redis {
         return new Redis(this.base());
-    }
-
-    getHealthClient(): Redis {
-        if (!this.healthClient) {
-            this.healthClient = this.createHealthClient();
-        }
-        return this.healthClient;
-    }
-
-    private createHealthClient(): Redis {
-        const client = new Redis(this.base());
-        client.on("error", (error: Error) => {
-            this.logger.warn(`Redis health client error: ${error.message}`);
-        });
-        return client;
     }
 
     // Bull用クライアント
@@ -68,22 +50,6 @@ export class RedisService implements OnModuleDestroy {
                     enableReadyCheck: false,
                     maxRetriesPerRequest: null,
                 });
-        }
-    }
-
-    async onModuleDestroy(): Promise<void> {
-        const clients: Array<Redis | undefined> = [this.healthClient];
-        for (const client of clients) {
-            if (!client) continue;
-            try {
-                await client.quit();
-            } catch (error) {
-                const message =
-                    error instanceof Error ? error.message : String(error);
-                this.logger.warn(
-                    `Failed to close Redis client gracefully: ${message}`,
-                );
-            }
         }
     }
 }

@@ -1,10 +1,14 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
+import { AuthAccountDeletionService } from "@/auth/application/auth-account-deletion.service";
+import { RequestUserContextService } from "@/auth/application/request-user-context.service";
+import { UserVerificationService } from "@/auth/application/user-verification.service";
 import { DomainConfigModule } from "@/domain-config/domain-config.module";
+import { AuditLogModule } from "@/shared/audit/audit-log.module";
 import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
 import { RedisModule } from "@/shared/redis/redis.module";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { SupabaseAdminModule } from "@/shared/supabase-admin.module";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
@@ -22,6 +26,8 @@ import { WebAuthnService } from "./webauthn.service";
         DomainConfigModule,
         DistributedLockModule,
         RedisModule,
+        SupabaseAdminModule,
+        AuditLogModule,
         ThrottlerModule.forRoot({
             throttlers: [{ limit: 5, ttl: 60 }],
         }),
@@ -32,8 +38,10 @@ import { WebAuthnService } from "./webauthn.service";
         SupabaseAuthGuard,
         SupabaseAuthCacheService,
         SupabaseAuthMetricsService,
-        SupabaseAdminService,
+        AuthAccountDeletionService,
         WebAuthnService,
+        UserVerificationService,
+        RequestUserContextService,
         // DI バインディング
         { provide: AuthRepositoryPort, useClass: SupabaseAuthRepository },
     ],
@@ -41,7 +49,8 @@ import { WebAuthnService } from "./webauthn.service";
         SupabaseAuthGuard,
         SupabaseAuthCacheService,
         SupabaseAuthMetricsService,
-        SupabaseAdminService,
+        RequestUserContextService,
+        UserVerificationService,
     ],
 })
 export class AuthModule {}

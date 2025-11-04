@@ -26,7 +26,7 @@
     "skipLibCheck": true,
     "sourceMap": false,
     "declaration": false,
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {

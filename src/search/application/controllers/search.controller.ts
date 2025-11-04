@@ -1,5 +1,5 @@
 import { TypedQuery, TypedRoute } from "@nestia/core";
-import { Controller, UseGuards } from "@nestjs/common";
+import { Controller, Scope, UseGuards } from "@nestjs/common";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { UserId } from "@/auth/user-id.decorator";
 import type { SuccessResponse } from "@/common/utils/response.util";
@@ -8,7 +8,7 @@ import type { SearchResultEntity } from "@/search/domain/entities/search-result.
 import { SearchResultDto } from "../dto/search-response.dto";
 import { SearchService } from "../services/search.service";
 
-@Controller("search")
+@Controller({ path: "search", scope: Scope.REQUEST })
 @UseGuards(SupabaseAuthGuard)
 export class SearchController {
     constructor(private readonly searchService: SearchService) {}

@@ -1,8 +1,8 @@
 import { gzipSync } from "node:zlib";
-import { jest } from "@jest/globals";
 import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
+import { jest } from "@test-utils/jest-globals";
 import nock from "nock";
 
 // BullMQスタブ（既存E2Eと同様）

@@ -10,15 +10,8 @@ const createService = (overrides?: Record<string, string | undefined>) => {
         CLOUDFLARE_BUCKET_NAME: "primary-bucket",
         CLOUDFLARE_PUBLIC_DOMAIN: "media.example.com",
     };
-    const configValues = new Map<string, string | undefined>(
-        Object.entries({ ...defaults, ...overrides }),
-    );
-
-    const configService = {
-        get<T = string>(key: string): T | undefined {
-            return configValues.get(key) as T | undefined;
-        },
-    } satisfies ConfigService;
+    const config = { ...defaults, ...overrides };
+    const configService = new ConfigService(config);
 
     return new CloudflareR2Service(configService);
 };

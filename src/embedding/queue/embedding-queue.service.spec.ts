@@ -1,4 +1,4 @@
-import { jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import type { Job, Queue } from "bullmq";
 import { EmbeddingBatchDataService } from "@/embedding/services/embedding-batch-data.service";
 import type { TableType } from "@/embedding/types/embedding-batch.types";
@@ -102,5 +102,88 @@ describe("EmbeddingQueueService", () => {
             expect.objectContaining({ tableType: "feed_items" }),
             expect.objectContaining({ jobId: "batch:user-1:feed_items" }),
         );
+    });
+
+    it("removes cached progress immediately after completion", () => {
+        service.initializeBatchProgress("user-1", "tags", 5);
+        expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+        service.markBatchCompleted("user-1", "tags");
+
+        expect(service.getBatchProgress("user-1")).toHaveLength(0);
+    });
+
+    it("clears cached progress when batch fails", () => {
+        service.initializeBatchProgress("user-1", "tags", 5);
+        expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+        service.markBatchFailed("user-1", "tags");
+
+        expect(service.getBatchProgress("user-1")).toHaveLength(0);
+    });
+
+    it("returns latest snapshot and evicts cache when batch finishes via increment", () => {
+        service.initializeBatchProgress("user-1", "tags", 10);
+
+        const runningSnapshot = service.incrementBatchProgress(
+            "user-1",
+            "tags",
+            4,
+            10,
+            true,
+        );
+
+        expect(runningSnapshot.status).toBe("running");
+        expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+        const completedSnapshot = service.incrementBatchProgress(
+            "user-1",
+            "tags",
+            6,
+            10,
+            false,
+        );
+
+        expect(completedSnapshot.progress).toBe(100);
+        expect(completedSnapshot.status).toBe("completed");
+        expect(service.getBatchProgress("user-1")).toHaveLength(0);
+    });
+
+    it("evicts stale progress entries after TTL elapses", () => {
+        const TTL_MS = 15 * 60 * 1000;
+        jest.useFakeTimers();
+
+        try {
+            service.initializeBatchProgress("user-1", "tags", 3);
+            expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+            jest.advanceTimersByTime(TTL_MS - 1);
+            expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+            jest.advanceTimersByTime(1);
+            expect(service.getBatchProgress("user-1")).toHaveLength(0);
+        } finally {
+            jest.useRealTimers();
+        }
+    });
+
+    it("extends TTL when progress updates occur", () => {
+        const TTL_MS = 15 * 60 * 1000;
+        jest.useFakeTimers();
+
+        try {
+            service.initializeBatchProgress("user-1", "tags", 8);
+            jest.advanceTimersByTime(TTL_MS - 1000);
+
+            service.markBatchRunning("user-1", "tags");
+
+            jest.advanceTimersByTime(999);
+            expect(service.getBatchProgress("user-1")).toHaveLength(1);
+
+            jest.advanceTimersByTime(TTL_MS);
+            expect(service.getBatchProgress("user-1")).toHaveLength(0);
+        } finally {
+            jest.useRealTimers();
+        }
     });
 });

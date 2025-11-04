@@ -9,10 +9,9 @@ import { ConfigService } from "@nestjs/config";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import type { Request } from "express";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import { UserVerificationService } from "@/auth/application/user-verification.service";
 import type { JwtAuthClaims } from "@/types/auth-claims";
 import type { Database } from "@/types/schema";
-import { SupabaseAuthCacheService } from "./supabase-auth-cache.service";
 import {
     type AuthGuardMetricOutcome,
     SupabaseAuthMetricsService,
@@ -23,9 +22,8 @@ export class SupabaseAuthGuard implements CanActivate {
     private anonClient: SupabaseClient<Database> | null = null;
 
     constructor(
-        private readonly admin: SupabaseAdminService,
         private readonly cfg: ConfigService,
-        private readonly cache: SupabaseAuthCacheService,
+        private readonly userVerificationService: UserVerificationService,
         private readonly metrics: SupabaseAuthMetricsService,
     ) {}
 
@@ -95,7 +93,10 @@ export class SupabaseAuthGuard implements CanActivate {
 
             currentUserId = data.user.id;
 
-            const active = await this.ensureAccountActive(currentUserId);
+            const active =
+                await this.userVerificationService.isAccountActive(
+                    currentUserId,
+                );
             if (!active) {
                 this.recordMetric("deleted", startedAt, currentUserId);
                 throw new UnauthorizedException("Account is deleted");
@@ -148,44 +149,6 @@ export class SupabaseAuthGuard implements CanActivate {
             return cookieToken;
         }
         return undefined;
-    }
-
-    private async ensureAccountActive(userId: string): Promise<boolean> {
-        const cached = this.cache.get(userId);
-        if (cached) {
-            return !cached.isDeleted && !cached.isSoftDeleted;
-        }
-
-        const adminClient = this.admin.getClient();
-        const [settingsRes, userRes] = await Promise.all([
-            adminClient
-                .from("user_settings")
-                .select("soft_deleted")
-                .eq("user_id", userId)
-                .maybeSingle(),
-            adminClient
-                .from("users")
-                .select("deleted_at")
-                .eq("id", userId)
-                .maybeSingle(),
-        ]);
-
-        const userRow = userRes.data as { deleted_at?: string | null } | null;
-        const settingsRow = settingsRes.data as {
-            soft_deleted?: boolean;
-        } | null;
-
-        const isDeleted =
-            !!userRes.error || !userRow || userRow.deleted_at !== null;
-        const isSoftDeleted =
-            !!settingsRes.error || Boolean(settingsRow?.soft_deleted);
-
-        this.cache.set(userId, {
-            isDeleted,
-            isSoftDeleted,
-        });
-
-        return !(isDeleted || isSoftDeleted);
     }
 
     private getAnonClient(): SupabaseClient<Database> {

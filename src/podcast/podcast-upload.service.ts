@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
-import { SupabaseRequestService } from "@/supabase-request.service";
+import { StorageManagementService } from "@/storage/application/storage-management.service";
 
 @Injectable()
 export class PodcastUploadService {
@@ -11,9 +11,9 @@ export class PodcastUploadService {
     private readonly allowedPrefixTemplates: string[];
 
     constructor(
-        private readonly supabaseRequestService: SupabaseRequestService,
         private readonly cloudflareR2Service: CloudflareR2Service,
         private readonly configService: ConfigService,
+        private readonly storageManagementService: StorageManagementService,
     ) {
         const configuredBucket =
             this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") ?? "";
@@ -113,12 +113,13 @@ export class PodcastUploadService {
         const path = this.buildPodcastObjectKey(userId, filename);
         const contentType = "audio/mpeg";
 
-        const { publicUrl } = await this.supabaseRequestService.uploadToStorage(
-            bucket,
-            path,
-            fileBuffer,
-            contentType,
-        );
+        const { publicUrl } =
+            await this.storageManagementService.uploadToStorage(
+                bucket,
+                path,
+                fileBuffer,
+                contentType,
+            );
         this.logger.log(`音声ファイルをSupabaseにアップロード: ${publicUrl}`);
         return { publicUrl };
     }

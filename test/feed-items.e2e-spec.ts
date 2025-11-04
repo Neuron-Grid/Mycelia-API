@@ -5,10 +5,10 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { jest } from "@jest/globals";
 import { ConfigService } from "@nestjs/config";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
+import { jest } from "@test-utils/jest-globals";
 import type { Request } from "express";
 
 import { FeedItemRepository } from "@/feed/infrastructure/feed-item.repository";

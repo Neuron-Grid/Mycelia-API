@@ -2,7 +2,11 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
-import { BatchProgress, TableType } from "../types/embedding-batch.types";
+import {
+    BatchProgress,
+    ProgressCacheEntry,
+    TableType,
+} from "../types/embedding-batch.types";
 import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
 
 @Injectable()
@@ -16,11 +20,12 @@ export class EmbeddingQueueService {
     ]);
 
     private static readonly MAX_BATCH_JOBS_PER_USER = 4;
+    private static readonly PROGRESS_TTL_MS = 15 * 60 * 1000;
 
     private readonly logger = new Logger(EmbeddingQueueService.name);
     private readonly progressCache = new Map<
         string,
-        Map<TableType, BatchProgress>
+        Map<TableType, ProgressCacheEntry>
     >();
 
     constructor(
@@ -168,14 +173,15 @@ export class EmbeddingQueueService {
     }
 
     getBatchProgress(userId: string): BatchProgress[] {
+        this.purgeExpiredProgress(userId);
         const userProgress = this.progressCache.get(userId);
         if (!userProgress) {
             return [];
         }
 
-        return Array.from(userProgress.values()).sort((a, b) =>
-            a.tableType.localeCompare(b.tableType),
-        );
+        return Array.from(userProgress.values())
+            .map((entry) => entry.progress)
+            .sort((a, b) => a.tableType.localeCompare(b.tableType));
     }
 
     async addGlobalEmbeddingUpdateJob(): Promise<void> {
@@ -255,7 +261,7 @@ export class EmbeddingQueueService {
         processedDelta: number,
         totalRecords?: number,
         hasMore?: boolean,
-    ): void {
+    ): BatchProgress {
         const current = this.getProgress(userId, tableType);
         const total = totalRecords ?? current?.totalRecords ?? 0;
         const processed = Math.max(
@@ -267,19 +273,31 @@ export class EmbeddingQueueService {
                 ? Math.min(100, Math.round((processed / total) * 100))
                 : 100;
 
-        this.setProgress(userId, tableType, {
+        const inProgress = hasMore === true;
+
+        const updated: BatchProgress = {
             userId,
             tableType,
-            status: hasMore ? "running" : "completed",
+            status: inProgress ? "running" : "completed",
             totalRecords: total,
             processedRecords: processed,
-            progress: hasMore ? Math.min(progress, 99) : progress,
+            progress: inProgress ? Math.min(progress, 99) : progress,
+        };
+
+        this.setProgress(userId, tableType, updated, {
+            scheduleExpiry: inProgress,
         });
+
+        if (!inProgress) {
+            this.cleanupProgress(userId, tableType);
+        }
+
+        return updated;
     }
 
     public markBatchCompleted(userId: string, tableType: TableType): void {
         const current = this.getProgress(userId, tableType);
-        this.setProgress(userId, tableType, {
+        const completed: BatchProgress = {
             userId,
             tableType,
             status: "completed",
@@ -288,25 +306,36 @@ export class EmbeddingQueueService {
             processedRecords:
                 current?.totalRecords ?? current?.processedRecords ?? 0,
             progress: 100,
+        };
+
+        this.setProgress(userId, tableType, completed, {
+            scheduleExpiry: false,
         });
+        this.cleanupProgress(userId, tableType);
     }
 
     public markBatchFailed(userId: string, tableType: TableType): void {
         const current = this.getProgress(userId, tableType);
-        this.setProgress(userId, tableType, {
+        const failed: BatchProgress = {
             userId,
             tableType,
             status: "failed",
             totalRecords: current?.totalRecords ?? current?.processedRecords,
             processedRecords: current?.processedRecords,
             progress: current?.progress ?? 0,
+        };
+
+        this.setProgress(userId, tableType, failed, {
+            scheduleExpiry: false,
         });
+        this.cleanupProgress(userId, tableType);
     }
 
     public getProgressSnapshot(
         userId: string,
         tableType: TableType,
     ): BatchProgress | undefined {
+        this.purgeExpiredProgress(userId);
         return this.getProgress(userId, tableType);
     }
 
@@ -314,19 +343,100 @@ export class EmbeddingQueueService {
         userId: string,
         tableType: TableType,
     ): BatchProgress | undefined {
-        return this.progressCache.get(userId)?.get(tableType);
+        return this.progressCache.get(userId)?.get(tableType)?.progress;
     }
 
     private setProgress(
         userId: string,
         tableType: TableType,
         progress: BatchProgress,
+        options?: { ttlMs?: number; scheduleExpiry?: boolean },
     ): void {
         let userProgress = this.progressCache.get(userId);
         if (!userProgress) {
-            userProgress = new Map<TableType, BatchProgress>();
+            userProgress = new Map<TableType, ProgressCacheEntry>();
             this.progressCache.set(userId, userProgress);
         }
-        userProgress.set(tableType, progress);
+
+        const existing = userProgress.get(tableType);
+        if (existing?.timeoutId) {
+            clearTimeout(existing.timeoutId);
+        }
+
+        const ttlMs = options?.ttlMs ?? EmbeddingQueueService.PROGRESS_TTL_MS;
+        const scheduleExpiry = options?.scheduleExpiry ?? true;
+
+        const entry: ProgressCacheEntry = {
+            progress,
+            expiresAt: Date.now() + ttlMs,
+        };
+
+        if (scheduleExpiry) {
+            entry.timeoutId = this.scheduleExpiry(userId, tableType, ttlMs);
+        }
+
+        userProgress.set(tableType, entry);
+    }
+
+    private scheduleExpiry(
+        userId: string,
+        tableType: TableType,
+        ttlMs: number,
+    ): NodeJS.Timeout {
+        const timeoutId = setTimeout(() => {
+            this.handleExpiry(userId, tableType);
+        }, ttlMs);
+
+        if (typeof timeoutId.unref === "function") {
+            timeoutId.unref();
+        }
+
+        return timeoutId;
+    }
+
+    private handleExpiry(userId: string, tableType: TableType): void {
+        const entry = this.progressCache.get(userId)?.get(tableType);
+        if (!entry) {
+            return;
+        }
+
+        if (entry.expiresAt <= Date.now()) {
+            this.cleanupProgress(userId, tableType);
+            return;
+        }
+
+        const remaining = entry.expiresAt - Date.now();
+        entry.timeoutId = this.scheduleExpiry(userId, tableType, remaining);
+    }
+
+    private purgeExpiredProgress(userId: string): void {
+        const userProgress = this.progressCache.get(userId);
+        if (!userProgress) {
+            return;
+        }
+
+        for (const [tableType, entry] of userProgress.entries()) {
+            if (entry.expiresAt <= Date.now()) {
+                this.cleanupProgress(userId, tableType);
+            }
+        }
+    }
+
+    private cleanupProgress(userId: string, tableType: TableType): void {
+        const userProgress = this.progressCache.get(userId);
+        if (!userProgress) {
+            return;
+        }
+
+        const entry = userProgress.get(tableType);
+        if (entry?.timeoutId) {
+            clearTimeout(entry.timeoutId);
+        }
+
+        userProgress.delete(tableType);
+
+        if (userProgress.size === 0) {
+            this.progressCache.delete(userId);
+        }
     }
 }

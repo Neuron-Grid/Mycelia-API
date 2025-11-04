@@ -19,7 +19,10 @@ Mycelia API は、Supabase Auth と PostgreSQL(pgvector) を用いたアカウ�
 
 - RLS前提: 全ユーザーデータは `user_id = auth.uid()` 条件でRLSを適用。アプリも常に `user_id` を付与/検証
 - SupabaseAuthGuard: `Authorization: Bearer <JWT>` を検証し、`request.user` を付与
-- SupabaseRequestService: RLS有効(anon)とService-Role(管理/RPC用途)の2クライアントをリクエストスコープで提供
+- SupabaseRequestService: RLS有効(anon)クライアントのみをリクエストスコープで提供し、Service-Role操作は専用のSupabaseAdminService経由に集約
+- SupabaseAdminService & SupabaseAdminModule: service-roleクライアントをシングルトン提供し、UseCase/ワーカー/管理系から共通利用
+- アプリケーション層ユースケース: `AuthAccountDeletionService` がHTTP経路のアカウント削除をオーケストレーションし、`StorageManagementService` がStorage操作を抽象化
+- 監査ログ: `AuditLogService` が管理系操作をCloudWatchログ + `auth.audit_log_entries` へ二重記録
 - 所有者のみアクセス: DBポリシー`owner_only` + コントローラ/リポジトリでの `userId` チェック
 - ソフトデリート方針: users等の将来拡張用に `deleted_at`/`soft_deleted` を設計（実装中/一部テーブルで対応）
 

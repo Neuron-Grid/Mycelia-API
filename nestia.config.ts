@@ -2,8 +2,7 @@ import type { INestiaConfig } from "@nestia/sdk";
 import "reflect-metadata";
 
 const config: INestiaConfig = {
-    // PoC段階ではHealth配下のみを対象にしてnestiaのルート検出/生成を確認
-    // 段階移行の後に input を広げる
+    // コントローラ全体を対象にして nestia のルート検出/生成を行う
     input: "src/**/*.controller.ts",
     clone: true,
     swagger: {

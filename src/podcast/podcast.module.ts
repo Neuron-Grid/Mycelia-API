@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AuthModule } from "@/auth/auth.module";
 import { JobsModule } from "@/jobs/jobs.module";
+import { StorageModule } from "@/storage/storage.module";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { PodcastConfigController } from "./application/podcast-config.controller";
 import { PodcastConfigService } from "./application/podcast-config.service";
@@ -22,6 +23,7 @@ import { PodcastQueueModule } from "./queue/podcast-queue.module";
         PodcastCoreModule,
         PodcastQueueModule,
         JobsModule,
+        StorageModule,
     ],
     controllers: [PodcastConfigController, PodcastEpisodeController],
     providers: [

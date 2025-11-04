@@ -1,13 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { SearchResultEntity } from "../../domain/entities/search-result.entity";
-import { SearchResult } from "../../domain/entities/search-result.entity";
-import type { SearchRepository } from "../../domain/interfaces/search-repository.interface";
+import type { SearchResultEntity } from "@/search/domain/entities/search-result.entity";
+import { SearchResult } from "@/search/domain/entities/search-result.entity";
+import type { SearchRepository } from "@/search/domain/interfaces/search-repository.interface";
 import {
     SearchCriteria,
     type SearchCriteria as SearchCriteriaType,
-} from "../../domain/value-objects/search-criteria.vo";
-import { SupabaseSearchClient } from "../clients/supabase-search.client";
-import { EmbeddingService } from "../services/embedding.service";
+} from "@/search/domain/value-objects/search-criteria.vo";
+import { SupabaseSearchClient } from "@/search/infrastructure/clients/supabase-search.client";
+import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
 
 @Injectable()
 export class SearchRepositoryImpl implements SearchRepository {
@@ -19,7 +19,6 @@ export class SearchRepositoryImpl implements SearchRepository {
     ) {}
 
     async searchFeedItems(
-        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -55,7 +54,6 @@ export class SearchRepositoryImpl implements SearchRepository {
     }
 
     async searchSummaries(
-        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -91,7 +89,6 @@ export class SearchRepositoryImpl implements SearchRepository {
     }
 
     async searchPodcastEpisodes(
-        _userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         try {
@@ -129,7 +126,6 @@ export class SearchRepositoryImpl implements SearchRepository {
     }
 
     async searchAll(
-        userId: string,
         criteria: SearchCriteriaType,
     ): Promise<SearchResultEntity[]> {
         const results: SearchResultEntity[] = [];
@@ -141,7 +137,6 @@ export class SearchRepositoryImpl implements SearchRepository {
             if (criteria.shouldIncludeFeedItems()) {
                 promises.push(
                     this.searchFeedItems(
-                        userId,
                         new SearchCriteria({
                             ...criteria,
                             limit: limitPerType,
@@ -153,7 +148,6 @@ export class SearchRepositoryImpl implements SearchRepository {
             if (criteria.shouldIncludeSummaries()) {
                 promises.push(
                     this.searchSummaries(
-                        userId,
                         new SearchCriteria({
                             ...criteria,
                             limit: limitPerType,
@@ -165,7 +159,6 @@ export class SearchRepositoryImpl implements SearchRepository {
             if (criteria.shouldIncludePodcasts()) {
                 promises.push(
                     this.searchPodcastEpisodes(
-                        userId,
                         new SearchCriteria({
                             ...criteria,
                             limit: limitPerType,

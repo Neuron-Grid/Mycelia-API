@@ -1,5 +1,5 @@
-import { jest } from "@jest/globals";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { jest } from "@test-utils/jest-globals";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
 import { TagEntity } from "@/tag/domain/tag.entity";

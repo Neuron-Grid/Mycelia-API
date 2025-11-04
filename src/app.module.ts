@@ -2,6 +2,8 @@ import "@/setup/nestia";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { AuditLogModule } from "@/shared/audit/audit-log.module";
+import { SupabaseAdminModule } from "@/shared/supabase-admin.module";
 import { TimeModule } from "@/shared/time/time.module";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -10,7 +12,6 @@ import { EmbeddingModule } from "./embedding/embedding.module";
 import { FavoriteModule } from "./favorite/favorite.module";
 import { FeedModule } from "./feed/feed.module";
 import { FeedQueueModule } from "./feed/queue/feed-queue.module";
-import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { LlmModule } from "./llm/llm.module";
 import { PodcastModule } from "./podcast/podcast.module";
@@ -31,7 +32,6 @@ import { TagModule } from "./tag/tag.module";
         // AuthModule (認証周り)
         AuthModule,
         ScheduleModule.forRoot(),
-        HealthModule,
         FeedQueueModule,
         TagModule,
         FavoriteModule,
@@ -49,6 +49,8 @@ import { TagModule } from "./tag/tag.module";
         // Daily jobs scheduler (BullMQ repeatable)
         JobsModule,
         SettingsModule,
+        AuditLogModule,
+        SupabaseAdminModule,
     ],
     controllers: [AppController],
     providers: [AppService],

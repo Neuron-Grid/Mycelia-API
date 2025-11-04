@@ -1,11 +1,4 @@
-import {
-    afterEach,
-    beforeEach,
-    describe,
-    expect,
-    it,
-    jest,
-} from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import type { Job, Queue } from "bullmq";
 import type { MaintenanceService } from "@/maintenance/maintenance.service";
 import { MaintenanceQueueProcessor } from "@/maintenance/maintenance-queue.processor";

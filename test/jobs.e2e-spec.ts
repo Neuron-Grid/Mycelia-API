@@ -1,5 +1,5 @@
 import "@/setup/nestia";
-import { jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 
 jest.mock("@nestia/core", () => ({
     TypedRoute: {

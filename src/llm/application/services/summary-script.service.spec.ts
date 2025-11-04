@@ -1,4 +1,4 @@
-import { jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import { Queue } from "bullmq";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import { SummaryScriptService } from "./summary-script.service";

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
 import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
 

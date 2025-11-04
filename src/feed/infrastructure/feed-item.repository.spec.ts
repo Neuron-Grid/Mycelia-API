@@ -1,4 +1,4 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { jest } from "@test-utils/jest-globals";
 import { FeedItemRepository } from "@/feed/infrastructure/feed-item.repository";
 import type { SupabaseRequestService } from "@/supabase-request.service";
 

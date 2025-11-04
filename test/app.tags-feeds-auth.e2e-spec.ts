@@ -3,12 +3,12 @@
  * RUN_APP_E2E=true 環境下のみ実行。
  */
 
-import { jest } from "@jest/globals";
 import { INestApplication } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import type { User } from "@supabase/supabase-js";
+import { jest } from "@test-utils/jest-globals";
 import cookieParser from "cookie-parser";
 import request, { SuperAgentTest } from "supertest";
 import { AppModule } from "@/app.module";

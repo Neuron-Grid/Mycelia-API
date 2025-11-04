@@ -99,22 +99,16 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 this.embeddingQueueService.markBatchWaiting(userId, tableType);
             }
 
-            this.embeddingQueueService.incrementBatchProgress(
-                userId,
-                tableType,
-                batchData.length,
-                job.data.totalEstimate,
-                hasMore,
-            );
-
-            const progressEntry =
-                this.embeddingQueueService.getProgressSnapshot(
+            const progressSnapshot =
+                this.embeddingQueueService.incrementBatchProgress(
                     userId,
                     tableType,
-                )?.progress;
-            if (typeof progressEntry === "number") {
-                await job.updateProgress(progressEntry);
-            }
+                    batchData.length,
+                    job.data.totalEstimate,
+                    hasMore,
+                );
+
+            await job.updateProgress(progressSnapshot.progress);
 
             this.logger.log(
                 `Processed ${batchData.length} items for user ${userId}, table ${tableType}`,
