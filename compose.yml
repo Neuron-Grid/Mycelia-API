@@ -6,6 +6,7 @@ services:
       context: ./
       dockerfile: Containerfile
     container_name: mycelia-api
+    image: mycelia-api:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
