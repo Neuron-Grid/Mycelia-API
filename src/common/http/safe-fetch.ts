@@ -114,125 +114,171 @@ export async function safeFetchOnce(
         5000,
     );
 
-    return await new Promise<IncomingMessage>((resolve, reject) => {
-        const baseAgentOptions = {
-            keepAlive: false,
-            // Nodeのlookup置換：安全に解決したIPに固定
-            lookup: (
-                _hostname: string,
-                _opts: unknown,
-                cb: (
-                    err: NodeJS.ErrnoException | null,
-                    address: string,
-                    family: 4 | 6,
-                ) => void,
-            ) => {
-                const ip = safeIps[0];
-                const family = (ip.includes(":") ? 6 : 4) as 4 | 6;
-                cb(null, ip, family);
-            },
-        };
+    const fatalErrorTypes: SafeFetchErrorType[] = [
+        "blocked_destination",
+        "timeout_total",
+    ];
 
-        const agent = isHttps
-            ? new https.Agent(baseAgentOptions)
-            : new http.Agent(baseAgentOptions);
+    const attemptFetch = async (ip: string): Promise<IncomingMessage> => {
+        return await new Promise<IncomingMessage>((resolve, reject) => {
+            const baseAgentOptions = {
+                keepAlive: false,
+                // Nodeのlookup置換：安全に解決したIPに固定
+                lookup: (
+                    _hostname: string,
+                    _opts: unknown,
+                    cb: (
+                        err: NodeJS.ErrnoException | null,
+                        address: string,
+                        family: 4 | 6,
+                    ) => void,
+                ) => {
+                    const family = (ip.includes(":") ? 6 : 4) as 4 | 6;
+                    cb(null, ip, family);
+                },
+            };
 
-        const options: RequestOptions = {
-            protocol: url.protocol,
-            host: url.hostname,
-            port,
-            path: `${url.pathname}${url.search}`,
-            method: "GET",
-            headers,
-            // 直結（プロキシ未使用）
-            agent,
-        };
+            const agent = isHttps
+                ? new https.Agent(baseAgentOptions)
+                : new http.Agent(baseAgentOptions);
 
-        if (isHttps) {
-            // SNIは元のホスト名
-            (options as https.RequestOptions).servername = url.hostname;
-            (options as https.RequestOptions).rejectUnauthorized = true;
+            const options: RequestOptions = {
+                protocol: url.protocol,
+                host: url.hostname,
+                port,
+                path: `${url.pathname}${url.search}`,
+                method: "GET",
+                headers,
+                // 直結（プロキシ未使用）
+                agent,
+            };
+
+            if (isHttps) {
+                // SNIは元のホスト名
+                (options as https.RequestOptions).servername = url.hostname;
+                (options as https.RequestOptions).rejectUnauthorized = true;
+            }
+
+            const now = Date.now();
+            const remain = Math.max(0, totalDeadlineMs - now);
+            if (remain === 0) {
+                return reject(
+                    new SafeFetchError(
+                        "timeout_total",
+                        "Total timeout reached",
+                    ),
+                );
+            }
+
+            const req = transport.request(options);
+
+            // AbortSignal
+            const abortHandler = () => {
+                req.destroy(
+                    new SafeFetchError(
+                        "timeout_total",
+                        "Aborted by total timeout/abort",
+                    ),
+                );
+            };
+            abortSignal.addEventListener("abort", abortHandler, { once: true });
+
+            // 合計タイムアウト（安全のため保険）
+            const totalTimer = setTimeout(() => {
+                req.destroy(
+                    new SafeFetchError(
+                        "timeout_total",
+                        "Total timeout reached",
+                    ),
+                );
+            }, remain);
+
+            // 接続タイムアウト：ソケット接続まで
+            let connectTimer: NodeJS.Timeout | null = setTimeout(() => {
+                req.destroy(
+                    new SafeFetchError("timeout_connect", "Connect timeout"),
+                );
+            }, connectTimeoutMs);
+
+            req.on("socket", (socket) => {
+                socket.on("connect", () => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                    }
+                });
+                socket.on("secureConnect", () => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                    }
+                });
+            });
+
+            // 応答ヘッダタイムアウト：response イベントまで
+            const responseTimer = setTimeout(() => {
+                req.destroy(
+                    new SafeFetchError(
+                        "timeout_response",
+                        "Response header timeout",
+                    ),
+                );
+            }, responseTimeoutMs);
+
+            req.on("response", (res) => {
+                clearTimeout(responseTimer);
+                if (connectTimer) {
+                    clearTimeout(connectTimer);
+                    connectTimer = null;
+                }
+                clearTimeout(totalTimer);
+                abortSignal.removeEventListener("abort", abortHandler);
+                resolve(res);
+            });
+
+            req.on("error", (err) => {
+                clearTimeout(responseTimer);
+                if (connectTimer) {
+                    clearTimeout(connectTimer);
+                    connectTimer = null;
+                }
+                clearTimeout(totalTimer);
+                abortSignal.removeEventListener("abort", abortHandler);
+                if (err instanceof SafeFetchError) return reject(err);
+                reject(new SafeFetchError("upstream_error", err.message));
+            });
+
+            req.end();
+        });
+    };
+
+    let lastError: SafeFetchError | null = null;
+    for (const [index, ip] of safeIps.entries()) {
+        try {
+            if (index > 0) {
+                logger.warn(
+                    `safeFetch retry: host=${url.hostname} attempt=${index + 1}/${safeIps.length} ip=${ip}`,
+                );
+            }
+            return await attemptFetch(ip);
+        } catch (error) {
+            if (!(error instanceof SafeFetchError)) {
+                throw error;
+            }
+            lastError = error;
+            if (fatalErrorTypes.includes(error.type)) {
+                throw error;
+            }
+            if (index === safeIps.length - 1) {
+                throw error;
+            }
+            logger.warn(
+                `safeFetch failed for host=${url.hostname} ip=${ip} type=${error.type} – trying next IP`,
+            );
         }
+    }
 
-        const req = transport.request(options);
-
-        // AbortSignal
-        const abortHandler = () => {
-            req.destroy(
-                new SafeFetchError(
-                    "timeout_total",
-                    "Aborted by total timeout/abort",
-                ),
-            );
-        };
-        abortSignal.addEventListener("abort", abortHandler, { once: true });
-
-        // 合計タイムアウト（安全のため保険）
-        const now = Date.now();
-        const remain = Math.max(0, totalDeadlineMs - now);
-        const totalTimer = setTimeout(() => {
-            req.destroy(
-                new SafeFetchError("timeout_total", "Total timeout reached"),
-            );
-        }, remain);
-
-        // 接続タイムアウト：ソケット接続まで
-        let connectTimer: NodeJS.Timeout | null = setTimeout(() => {
-            req.destroy(
-                new SafeFetchError("timeout_connect", "Connect timeout"),
-            );
-        }, connectTimeoutMs);
-
-        req.on("socket", (socket) => {
-            socket.on("connect", () => {
-                if (connectTimer) {
-                    clearTimeout(connectTimer);
-                    connectTimer = null;
-                }
-            });
-            socket.on("secureConnect", () => {
-                if (connectTimer) {
-                    clearTimeout(connectTimer);
-                    connectTimer = null;
-                }
-            });
-        });
-
-        // 応答ヘッダタイムアウト：response イベントまで
-        const responseTimer = setTimeout(() => {
-            req.destroy(
-                new SafeFetchError(
-                    "timeout_response",
-                    "Response header timeout",
-                ),
-            );
-        }, responseTimeoutMs);
-
-        req.on("response", (res) => {
-            clearTimeout(responseTimer);
-            if (connectTimer) {
-                clearTimeout(connectTimer);
-                connectTimer = null;
-            }
-            clearTimeout(totalTimer);
-            abortSignal.removeEventListener("abort", abortHandler);
-            resolve(res);
-        });
-
-        req.on("error", (err) => {
-            clearTimeout(responseTimer);
-            if (connectTimer) {
-                clearTimeout(connectTimer);
-                connectTimer = null;
-            }
-            clearTimeout(totalTimer);
-            abortSignal.removeEventListener("abort", abortHandler);
-            if (err instanceof SafeFetchError) return reject(err);
-            reject(new SafeFetchError("upstream_error", err.message));
-        });
-
-        req.end();
-    });
+    throw lastError ?? new SafeFetchError("upstream_error", "All IPs failed");
 }
 
 export async function safeFollowRedirects(

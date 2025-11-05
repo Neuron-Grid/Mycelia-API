@@ -5,7 +5,7 @@ import { AccountDeletionQueueProcessor } from "@/account-deletion/account-deleti
 import { AccountDeletionService } from "@/account-deletion/account-deletion.service";
 import { AuthModule } from "@/auth/auth.module";
 import { PodcastCoreModule } from "@/podcast/core/podcast-core.module";
-import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
+import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
 
@@ -14,6 +14,7 @@ import { RedisService } from "@/shared/redis/redis.service";
         RedisModule,
         AuthModule,
         PodcastCoreModule, // CloudflareR2Service を提供
+        DistributedLockModule,
         BullModule.registerQueueAsync({
             name: "accountDeletionQueue",
             imports: [RedisModule],
@@ -29,11 +30,7 @@ import { RedisService } from "@/shared/redis/redis.service";
             inject: [RedisService],
         }),
     ],
-    providers: [
-        DistributedLockService,
-        AccountDeletionService,
-        AccountDeletionQueueProcessor,
-    ],
+    providers: [AccountDeletionService, AccountDeletionQueueProcessor],
     exports: [BullModule],
 })
 export class AccountDeletionModule {}

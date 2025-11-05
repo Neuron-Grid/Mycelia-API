@@ -91,6 +91,39 @@ export class CloudflareR2Service {
             .filter((item) => item.length > 0);
     }
 
+    private isBucketAllowed(bucket: string): boolean {
+        return this.allowedBuckets.includes(bucket);
+    }
+
+    private isPrefixAllowed(key: string): boolean {
+        const normalizedKey = key.startsWith("/") ? key.slice(1) : key;
+        if (normalizedKey.length === 0) {
+            return false;
+        }
+        return this.allowedPrefixTemplates.some((template) => {
+            const normalizedTemplate = template.replace(/^\//, "");
+            if (normalizedTemplate.length === 0) {
+                return true;
+            }
+            const pattern = this.buildPrefixPattern(normalizedTemplate);
+            return pattern.test(normalizedKey);
+        });
+    }
+
+    private buildPrefixPattern(template: string): RegExp {
+        const placeholderToken = "__PLACEHOLDER__";
+        const provisional = template.replace(
+            /\{[a-zA-Z0-9_]+\}/g,
+            placeholderToken,
+        );
+        const escaped = provisional.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            (match) => `\\${match}`,
+        );
+        const pattern = escaped.replaceAll(placeholderToken, "[^/]+");
+        return new RegExp(`^${pattern}`);
+    }
+
     // ポッドキャスト音声ファイルをR2にアップロード（メタデータ付き）
     async uploadPodcastAudio(
         userId: string,
@@ -147,6 +180,12 @@ export class CloudflareR2Service {
         contentType: string,
         metadata?: Record<string, string>,
     ): Promise<{ publicUrl: string }> {
+        if (!this.isBucketAllowed(bucket)) {
+            throw new Error(`Bucket '${bucket}' is not permitted for uploads`);
+        }
+        if (!this.isPrefixAllowed(key)) {
+            throw new Error(`Key '${key}' does not match allowed prefixes`);
+        }
         const command = new PutObjectCommand({
             Bucket: bucket,
             Key: key,
@@ -472,7 +511,7 @@ export class CloudflareR2Service {
     // ユーザー分離の確認（指定したキーが指定ユーザーのものかチェック）
     isUserFile(key: string, userId: string, bucket?: string): boolean {
         const effectiveBucket = bucket ?? this.bucketName;
-        if (!this.allowedBuckets.includes(effectiveBucket)) {
+        if (!this.isBucketAllowed(effectiveBucket)) {
             return false;
         }
 

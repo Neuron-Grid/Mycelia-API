@@ -2,6 +2,7 @@ import "@/setup/nestia";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
+import { validateEnv } from "@/config/env.validation";
 import { AuditLogModule } from "@/shared/audit/audit-log.module";
 import { SupabaseAdminModule } from "@/shared/supabase-admin.module";
 import { TimeModule } from "@/shared/time/time.module";
@@ -24,7 +25,10 @@ import { TagModule } from "./tag/tag.module";
 
 @Module({
     imports: [
-        ConfigModule.forRoot({ isGlobal: true }),
+        ConfigModule.forRoot({
+            isGlobal: true,
+            validate: validateEnv,
+        }),
         SupabaseRequestModule,
         TimeModule,
         // FeedModuleを読み込み
