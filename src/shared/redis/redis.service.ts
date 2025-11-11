@@ -1,55 +1,82 @@
 import { Inject, Injectable } from "@nestjs/common";
-import Redis, { RedisOptions } from "ioredis";
+import Redis, {
+    Cluster,
+    ClusterNode,
+    ClusterOptions,
+    RedisOptions,
+} from "ioredis";
 
-type ConnOpts = {
-    host: string;
-    port: number;
-    password?: string;
-    db?: number;
-    tls?: RedisOptions["tls"];
+type SingleConfig = {
+    mode: "single";
+    options: RedisOptions;
 };
+
+type ClusterConfig = {
+    mode: "cluster";
+    nodes: ClusterNode[];
+    options: ClusterOptions;
+};
+
+type RedisConnectionOptions = SingleConfig | ClusterConfig;
 
 @Injectable()
 export class RedisService {
     constructor(
         @Inject("REDIS_CONNECTION_OPTIONS")
-        private readonly opts: ConnOpts,
+        private readonly opts: RedisConnectionOptions,
     ) {}
 
-    // 共通オプションを1箇所で合成
-    private base(): RedisOptions {
+    private buildSingleOptions(
+        overrides?: Partial<RedisOptions>,
+    ): RedisOptions {
+        if (this.opts.mode === "single") {
+            return {
+                ...this.opts.options,
+                ...overrides,
+            };
+        }
+        const base =
+            this.opts.options.redisOptions ??
+            ({
+                maxRetriesPerRequest: null,
+                enableReadyCheck: false,
+            } satisfies RedisOptions);
         return {
-            host: this.opts.host,
-            port: this.opts.port,
-            password: this.opts.password,
-            db: this.opts.db,
-            tls: this.opts.tls,
-            // BullMQ推奨設定を追加
-            maxRetriesPerRequest: null,
-            enableReadyCheck: false,
+            ...base,
+            ...overrides,
         };
     }
 
     // 各サービスが利用するRedisクライアントを生成
-    createMainClient(): Redis {
-        return new Redis(this.base());
+    createMainClient(): Redis | Cluster {
+        if (this.opts.mode === "cluster") {
+            return new Redis.Cluster(this.opts.nodes, {
+                ...this.opts.options,
+                redisOptions: this.buildSingleOptions(
+                    this.opts.options.redisOptions,
+                ),
+            });
+        }
+        return new Redis(this.buildSingleOptions());
     }
 
     // Bull用クライアント
     // type毎に細かな違いを吸収
     createBullClient(
         type: "client" | "subscriber" | "bclient" = "client",
-    ): Redis {
-        switch (type) {
-            case "client":
-                return new Redis(this.base());
-
-            default:
-                return new Redis({
-                    ...this.base(),
-                    enableReadyCheck: false,
-                    maxRetriesPerRequest: null,
-                });
+    ): Redis | Cluster {
+        if (this.opts.mode === "cluster") {
+            return new Redis.Cluster(this.opts.nodes, {
+                ...this.opts.options,
+                redisOptions: this.buildSingleOptions({
+                    connectionName: type,
+                }),
+            });
         }
+        return new Redis(
+            this.buildSingleOptions({
+                connectionName: type,
+            }),
+        );
     }
 }

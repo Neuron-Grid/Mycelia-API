@@ -20,4 +20,4 @@ COPY package.json ./
 RUN chown -R mycelia:mycelia /app
 USER mycelia
 EXPOSE 3000
-CMD ["node", "/app/dist/main.js"]
+CMD ["node", "/app/dist/main.api.js"]

@@ -50,6 +50,7 @@ declare module "bullmq" {
             options?: { removeChildren?: boolean },
         ): Promise<number>;
         waitUntilReady(): Promise<void>;
+        close(): Promise<void>;
     }
 
     export class FlowProducer {
@@ -57,6 +58,31 @@ declare module "bullmq" {
         add(flow: { [key: string]: unknown }): Promise<{
             job: { id: string | number };
         }>;
+        close(): Promise<void>;
+    }
+
+    export class QueueEvents {
+        constructor(name: string, opts?: unknown);
+        on(
+            event: "failed",
+            handler: (payload: {
+                jobId: string;
+                failedReason: string;
+                prev?: string;
+                stacktrace?: string[];
+            }) => void,
+        ): this;
+        on(
+            event: "completed",
+            handler: (payload: {
+                jobId: string;
+                returnvalue: string;
+                prev?: string;
+            }) => void,
+        ): this;
+        on(event: "error", handler: (error: Error) => void): this;
+        on(event: string, handler: (...args: unknown[]) => void): this;
+        waitUntilReady(): Promise<void>;
         close(): Promise<void>;
     }
 }

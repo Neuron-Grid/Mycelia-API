@@ -4,6 +4,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthModule } from "@/auth/auth.module";
+import { IS_WORKER_APP } from "@/config/runtime.constants";
 import { EmbeddingModule } from "@/embedding/embedding.module";
 import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
 import { RedisModule } from "@/shared/redis/redis.module";
@@ -23,12 +24,17 @@ import { WorkerDailySummaryRepository } from "./infrastructure/repositories/work
 import { ScriptWorker } from "./infrastructure/workers/script.worker";
 import { SummaryWorker } from "./infrastructure/workers/summary.worker";
 
+const workerImports = IS_WORKER_APP ? [DistributedLockModule] : [];
+const workerProviders = IS_WORKER_APP
+    ? [WorkerDailySummaryRepository, SummaryWorker, ScriptWorker]
+    : [];
+const controllers = IS_WORKER_APP ? [] : [SummaryController];
+
 @Module({
     imports: [
         HttpModule,
         ConfigModule, // ConfigService を使う場合
         RedisModule,
-        DistributedLockModule,
         BullModule.registerQueueAsync(
             {
                 name: SUMMARY_GENERATE_QUEUE,
@@ -72,10 +78,10 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
         SupabaseRequestModule, // SupabaseAuthGuard の依存関係を解決
         AuthModule,
         EmbeddingModule, // EmbeddingQueueService を利用
+        ...workerImports,
     ],
     providers: [
         DailySummaryRepository,
-        WorkerDailySummaryRepository,
         UserSettingsRepository,
         {
             provide: LLM_SERVICE,
@@ -89,11 +95,10 @@ import { SummaryWorker } from "./infrastructure/workers/summary.worker";
             inject: [ConfigService, HttpService], // 注入するものを指定
         },
         SummaryScriptService,
-        SummaryWorker, // ワーカーを登録
-        ScriptWorker, // ワーカーを登録
+        ...workerProviders,
         // もしGeminiFlashClientがConfigServiceを必要とするなら、それもuseFactoryで注入
     ],
-    controllers: [SummaryController],
+    controllers,
     exports: [
         LLM_SERVICE,
         SummaryScriptService,

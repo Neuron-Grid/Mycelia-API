@@ -2,6 +2,7 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { Interval } from "@nestjs/schedule";
 import { Queue } from "bullmq";
+import { IS_WORKER_APP } from "@/config/runtime.constants";
 import {
     PODCAST_SCHEDULE_DEFAULT,
     SUMMARY_SCHEDULE_DEFAULT,
@@ -23,6 +24,12 @@ export class JobsService implements OnModuleInit {
     ) {}
 
     async onModuleInit(): Promise<void> {
+        if (!IS_WORKER_APP) {
+            this.logger.log(
+                "JobsService initialized in API role; scheduler registration skipped",
+            );
+            return;
+        }
         this.time.warnIfTimezoneMismatch(this.logger);
         // Cron式を使わず、repeat.everyベースの軽量ハートビートで集中管理
         await this.registerMinutelySchedulerTick();
@@ -170,6 +177,12 @@ export class JobsService implements OnModuleInit {
 
     @Interval(6 * 60 * 60 * 1000)
     async verifyRepeatableJobs(): Promise<void> {
+        if (!IS_WORKER_APP) {
+            this.logger.log(
+                "verifyRepeatableJobs skipped in API role; scheduler runs only on worker pods",
+            );
+            return;
+        }
         await this.inspectRepeatableJobs(
             "maintenanceQueue",
             this.maintenanceQueue,

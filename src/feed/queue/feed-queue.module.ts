@@ -1,8 +1,8 @@
 import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { AuthModule } from "@/auth/auth.module";
-import { EmbeddingModule } from "@/embedding/embedding.module";
+import { IS_WORKER_APP } from "@/config/runtime.constants";
+import { EmbeddingQueueModule } from "@/embedding/queue/embedding-queue.module";
 import { SubscriptionAdminRepository } from "@/feed/infrastructure/subscription-admin.repository";
 import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
 import { WorkerSubscriptionRepository } from "@/feed/infrastructure/worker-subscription.repository";
@@ -14,10 +14,19 @@ import { FeedQueueProcessor } from "./feed-queue.processor";
 import { FeedQueueScanProcessor } from "./feed-queue.scan.processor";
 import { FeedQueueService } from "./feed-queue.service";
 
+const workerImports = IS_WORKER_APP ? [EmbeddingQueueModule] : [];
+const workerProviders = IS_WORKER_APP
+    ? [
+          FeedQueueProcessor,
+          FeedQueueScanProcessor,
+          FeedUseCaseService,
+          FeedFetchService,
+          SubscriptionAdminRepository,
+      ]
+    : [];
+
 @Module({
     imports: [
-        EmbeddingModule,
-        AuthModule,
         RedisModule,
         BullModule.registerQueueAsync({
             name: "feedQueue",
@@ -28,23 +37,19 @@ import { FeedQueueService } from "./feed-queue.service";
             }),
             inject: [RedisService],
         }),
+        ...workerImports,
     ],
     providers: [
-        FeedQueueProcessor,
-        FeedQueueScanProcessor,
         FeedQueueService,
-        FeedUseCaseService,
-        FeedFetchService,
-        SubscriptionAdminRepository,
         WorkerSubscriptionRepository,
         WorkerFeedItemRepository,
+        ...workerProviders,
     ],
     exports: [
         FeedQueueService,
-        BullModule,
-        // Export worker repositories so FeedModule can inject them
         WorkerSubscriptionRepository,
         WorkerFeedItemRepository,
+        BullModule,
     ],
 })
 export class FeedQueueModule {}

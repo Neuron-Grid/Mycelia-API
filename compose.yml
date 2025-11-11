@@ -18,12 +18,28 @@ services:
       redis:
         condition: service_healthy
 
+  mycelia-worker:
+    build:
+      context: ./
+      dockerfile: Containerfile
+    container_name: mycelia-worker
+    image: mycelia-api:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ROLE: worker
+    command: ["node", "dist/main.worker.js"]
+    volumes:
+      - "./container/mycelia-worker:/data"
+    depends_on:
+      redis:
+        condition: service_healthy
+
   redis:
     image: docker.io/library/redis:latest
     restart: unless-stopped
     container_name: redis
-    ports:
-      - "6379:6379"
     volumes:
       - "./container/redis-data:/data"
     healthcheck:

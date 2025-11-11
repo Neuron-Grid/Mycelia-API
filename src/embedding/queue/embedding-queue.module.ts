@@ -1,7 +1,7 @@
 import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { AuthModule } from "@/auth/auth.module";
+import { IS_WORKER_APP } from "@/config/runtime.constants";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
 import { SearchModule } from "../../search/search.module";
@@ -11,10 +11,14 @@ import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.
 import { EmbeddingQueueProcessor } from "./embedding-queue.processor";
 import { EmbeddingQueueService } from "./embedding-queue.service";
 
+const workerImports = IS_WORKER_APP ? [SearchModule] : [];
+const workerProviders = IS_WORKER_APP
+    ? [EmbeddingQueueProcessor, EmbeddingBatchUpdateService]
+    : [];
+
 @Module({
     imports: [
         RedisModule,
-        AuthModule,
         BullModule.registerQueueAsync({
             name: "embeddingQueue",
             imports: [RedisModule],
@@ -33,13 +37,12 @@ import { EmbeddingQueueService } from "./embedding-queue.service";
             }),
             inject: [RedisService],
         }),
-        SearchModule,
+        ...workerImports,
     ],
     providers: [
         EmbeddingQueueService,
-        EmbeddingQueueProcessor,
         EmbeddingBatchDataService,
-        EmbeddingBatchUpdateService,
+        ...workerProviders,
     ],
     exports: [EmbeddingQueueService, BullModule],
 })

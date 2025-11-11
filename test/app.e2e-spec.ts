@@ -81,7 +81,7 @@ jest.mock("@/shared/lock/distributed-lock.service", () => ({
 jest.mock("@/tag/tag.module", () => ({ TagModule: class {} }));
 jest.mock("@/tag/application/tag.service", () => ({ TagService: class {} }));
 
-import { AppModule } from "@/app.module";
+import { AppApiModule } from "@/app.api.module";
 import {
     LLM_SERVICE,
     type LlmService,
@@ -92,7 +92,7 @@ const runAppE2E = process.env.RUN_APP_E2E === "true";
 const describeOrSkip = runAppE2E ? describe : describe.skip;
 if (!runAppE2E) {
     console.warn(
-        "AppModule E2E: RUN_APP_E2E=true が指定されていないためスキップ",
+        "AppApiModule E2E: RUN_APP_E2E=true が指定されていないためスキップ",
     );
 }
 
@@ -101,7 +101,7 @@ describeOrSkip("LLM mock override (e2e)", () => {
 
     beforeAll(async () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [AppModule],
+            imports: [AppApiModule],
         })
             .overrideProvider(LLM_SERVICE)
             .useClass(MockLlmService)

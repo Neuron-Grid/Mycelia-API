@@ -2,11 +2,14 @@ const REQUIRED_STRING_KEYS: readonly string[] = [
     "SUPABASE_URL",
     "SUPABASE_ANON_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
-    "REDIS_URL",
     "CLOUDFLARE_ACCOUNT_ID",
     "CLOUDFLARE_ACCESS_KEY_ID",
     "CLOUDFLARE_SECRET_ACCESS_KEY",
     "CLOUDFLARE_BUCKET_NAME",
+];
+
+const AT_LEAST_ONE_KEY_SETS: readonly string[][] = [
+    ["REDIS_URL", "REDIS_CLUSTER_ENDPOINTS"],
 ];
 
 type NumericKeyConstraint = {
@@ -43,6 +46,25 @@ function ensureRequiredStrings(env: Record<string, unknown>): void {
     if (missing.length > 0) {
         throw new Error(
             `Missing required environment variables: ${missing.join(", ")}`,
+        );
+    }
+}
+
+function ensureAtLeastOne(env: Record<string, unknown>): void {
+    const missingGroups = AT_LEAST_ONE_KEY_SETS.filter(
+        (group) =>
+            !group.some((key) => {
+                const value = env[key];
+                return typeof value === "string" && value.trim().length > 0;
+            }),
+    );
+
+    if (missingGroups.length > 0) {
+        const formatted = missingGroups
+            .map((group) => `[${group.join(" | ")}]`)
+            .join(", ");
+        throw new Error(
+            `Missing required environment variables: provide at least one value for each of ${formatted}`,
         );
     }
 }
@@ -92,6 +114,7 @@ export function validateEnv(
     env: Record<string, unknown>,
 ): Record<string, unknown> {
     ensureRequiredStrings(env);
+    ensureAtLeastOne(env);
     ensureNumericIfPresent(env);
     return env;
 }

@@ -11,7 +11,7 @@ import type { User } from "@supabase/supabase-js";
 import { jest } from "@test-utils/jest-globals";
 import cookieParser from "cookie-parser";
 import request, { SuperAgentTest } from "supertest";
-import { AppModule } from "@/app.module";
+import { AppApiModule } from "@/app.api.module";
 import { AuthService } from "@/auth/auth.service";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { WebAuthnService } from "@/auth/webauthn.service";
@@ -262,7 +262,7 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
         process.env.CORS_ORIGIN = "https://app.example.com";
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
-            imports: [AppModule],
+            imports: [AppApiModule],
         })
             .overrideGuard(SupabaseAuthGuard)
             .useClass(AllowAuthGuard)

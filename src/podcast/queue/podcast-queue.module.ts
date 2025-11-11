@@ -2,6 +2,7 @@ import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { AuthModule } from "@/auth/auth.module";
+import { IS_WORKER_APP } from "@/config/runtime.constants";
 import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/worker-daily-summary.repository";
 import { PodcastCoreModule } from "@/podcast/core/podcast-core.module";
 import { WorkerPodcastEpisodeRepository } from "@/podcast/infrastructure/worker-podcast-episode.repository";
@@ -12,13 +13,21 @@ import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
 
+const workerImports = IS_WORKER_APP
+    ? [AuthModule, DistributedLockModule, PodcastCoreModule]
+    : [];
+const workerProviders = IS_WORKER_APP
+    ? [
+          PodcastQueueProcessor,
+          WorkerUserSettingsRepository,
+          WorkerDailySummaryRepository,
+          WorkerPodcastEpisodeRepository,
+      ]
+    : [];
+
 @Module({
     imports: [
         RedisModule,
-        AuthModule,
-        DistributedLockModule,
-        // Queue側はPodcastModuleには依存せず、Coreにのみ依存させる
-        PodcastCoreModule,
         BullModule.registerQueueAsync({
             name: "podcastQueue",
             imports: [RedisModule],
@@ -33,14 +42,9 @@ import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-sett
             }),
             inject: [RedisService],
         }),
+        ...workerImports,
     ],
-    providers: [
-        PodcastQueueProcessor,
-        PodcastQueueService,
-        WorkerUserSettingsRepository,
-        WorkerDailySummaryRepository,
-        WorkerPodcastEpisodeRepository,
-    ],
+    providers: [PodcastQueueService, ...workerProviders],
     exports: [PodcastQueueService, BullModule],
 })
 export class PodcastQueueModule {}

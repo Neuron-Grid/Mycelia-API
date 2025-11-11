@@ -1,7 +1,6 @@
 import "@/setup/nestia";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { ScheduleModule } from "@nestjs/schedule";
 import { validateEnv } from "@/config/env.validation";
 import { AuditLogModule } from "@/shared/audit/audit-log.module";
 import { SupabaseAdminModule } from "@/shared/supabase-admin.module";
@@ -12,11 +11,9 @@ import { AuthModule } from "./auth/auth.module";
 import { EmbeddingModule } from "./embedding/embedding.module";
 import { FavoriteModule } from "./favorite/favorite.module";
 import { FeedModule } from "./feed/feed.module";
-import { FeedQueueModule } from "./feed/queue/feed-queue.module";
 import { JobsModule } from "./jobs/jobs.module";
 import { LlmModule } from "./llm/llm.module";
 import { PodcastModule } from "./podcast/podcast.module";
-import { PodcastQueueModule } from "./podcast/queue/podcast-queue.module";
 import { SearchModule } from "./search/search.module";
 import { SettingsModule } from "./settings/settings.module";
 import { SummaryModule } from "./summary/summary.module";
@@ -35,13 +32,10 @@ import { TagModule } from "./tag/tag.module";
         FeedModule,
         // AuthModule (認証周り)
         AuthModule,
-        ScheduleModule.forRoot(),
-        FeedQueueModule,
         TagModule,
         FavoriteModule,
         // ポッドキャスト機能
         PodcastModule,
-        PodcastQueueModule,
         // LLM (Gemini) 機能
         LlmModule,
         // ベクトル検索機能
@@ -59,4 +53,4 @@ import { TagModule } from "./tag/tag.module";
     controllers: [AppController],
     providers: [AppService],
 })
-export class AppModule {}
+export class AppApiModule {}

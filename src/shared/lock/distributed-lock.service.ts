@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
-import Redis from "ioredis";
+import Redis, { Cluster } from "ioredis";
 import { RedisService } from "../redis/redis.service";
 import { IDistributedLockService } from "./distributed-lock.interface";
 
@@ -10,7 +10,7 @@ import { IDistributedLockService } from "./distributed-lock.interface";
 export class DistributedLockService
     implements IDistributedLockService, OnModuleDestroy
 {
-    private readonly redisClient: Redis;
+    private readonly redisClient: Redis | Cluster;
     private readonly LUA_RELEASE_SCRIPT = `
     if redis.call("get", KEYS[1]) == ARGV[1] then
       return redis.call("del", KEYS[1])
@@ -58,6 +58,16 @@ export class DistributedLockService
     }
 
     async onModuleDestroy() {
-        await this.redisClient.quit();
+        const client = this.redisClient as unknown as {
+            quit?: () => Promise<void>;
+            disconnect?: () => void | Promise<void>;
+        };
+        if (typeof client.quit === "function") {
+            await client.quit();
+            return;
+        }
+        if (typeof client.disconnect === "function") {
+            await client.disconnect();
+        }
     }
 }

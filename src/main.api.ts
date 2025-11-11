@@ -6,12 +6,12 @@ import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 // @see https://www.npmjs.com/package/helmet
 import helmet from "helmet";
+// @see ./app.api.module
+import { AppApiModule } from "@/app.api.module";
 import {
     createCsrfMiddleware,
     createHttpsEnforceMiddleware,
 } from "@/common/middleware/security.middleware";
-// @see ./app.module
-import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 
 // @async
@@ -22,7 +22,7 @@ import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 // bootstrap()
 // @see https://docs.nestjs.com/
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppApiModule);
 
     // config
     const cfg = app.get(ConfigService);
