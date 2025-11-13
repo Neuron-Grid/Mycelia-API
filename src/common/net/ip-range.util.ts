@@ -1,6 +1,5 @@
 import type { LookupAddress } from "node:dns";
 import { promises as dns } from "node:dns";
-import type { ConfigService } from "@nestjs/config";
 import ipaddr from "ipaddr.js";
 
 export type Cidr = [ipaddr.IPv4 | ipaddr.IPv6, number];
@@ -14,8 +13,7 @@ export function parseCidr(input: string): Cidr | null {
     }
 }
 
-export function parseExtraDenyCidrsFromEnv(cfg: ConfigService): Cidr[] {
-    const raw = cfg.get<string>("FEED_FETCH_EXTRA_DENY_CIDRS", "");
+export function parseExtraDenyCidrs(raw: string): Cidr[] {
     if (!raw) return [];
     const tokens = raw
         .split(/[\s,]+/)

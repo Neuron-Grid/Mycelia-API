@@ -1,19 +1,27 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { createClient } from "@supabase/supabase-js";
 import { AuthAccountDeletionService } from "@/auth/application/auth-account-deletion.service";
+import {
+    APP_ENV_TOKEN,
+    type AppEnv,
+    type SupabaseConfig,
+} from "@/config/app-env";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import { AuthRepositoryPort } from "../domain/auth.repository";
 
 @Injectable()
 export class SupabaseAuthRepository implements AuthRepositoryPort {
+    private readonly supabaseConfig: SupabaseConfig;
+
     constructor(
         private readonly supabaseReq: SupabaseRequestService,
         private readonly lockService: DistributedLockService,
         private readonly accountDeletionService: AuthAccountDeletionService,
-        private readonly cfg: ConfigService,
-    ) {}
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
+    ) {
+        this.supabaseConfig = this.appEnv.getSupabaseConfig();
+    }
 
     // ... (other methods remain the same) ...
     async signUp(email: string, password: string, username: string) {
@@ -129,15 +137,8 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         }
 
         try {
-            const SUPABASE_URL = this.cfg.get<string>("SUPABASE_URL");
-            const SUPABASE_ANON_KEY = this.cfg.get<string>("SUPABASE_ANON_KEY");
-
-            if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-                throw new HttpException(
-                    "Supabase environment variables are not set.",
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                );
-            }
+            const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } =
+                this.supabaseConfig;
 
             // 専用クライアントでアトミックに処理
             const tempClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

@@ -1,15 +1,33 @@
 #!/usr/bin/env node
 const { spawn } = require("node:child_process");
+const { buildCliAppEnv } = require("./lib/env-loader");
 
 const processes = [];
 
+let cliEnv;
+let validatedSnapshot;
+
+try {
+    cliEnv = buildCliAppEnv(process.env);
+    validatedSnapshot = cliEnv.toProcessEnvSnapshot();
+    console.log(`[start:prod] Environment validation passed`);
+    console.log(`[start:prod] Starting with APP_ROLE=${cliEnv.appRole}`);
+} catch (error) {
+    console.error(
+        `[start:prod] Environment validation failed:`,
+        error instanceof Error ? error.message : error,
+    );
+    process.exit(1);
+}
+
 function spawnProcess(label, args, role) {
+    const childEnv = {
+        ...validatedSnapshot,
+        APP_ROLE: role,
+    };
     const child = spawn("node", args, {
         stdio: "inherit",
-        env: {
-            ...process.env,
-            APP_ROLE: role,
-        },
+        env: childEnv,
     });
 
     child.on("exit", (code, signal) => {

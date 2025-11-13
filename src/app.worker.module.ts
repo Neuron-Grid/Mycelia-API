@@ -1,8 +1,7 @@
 import "@/setup/nestia";
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
-import { validateEnv } from "@/config/env.validation";
+import { EnvModule } from "@/config/env.module";
 import { EmbeddingQueueModule } from "@/embedding/queue/embedding-queue.module";
 import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
 import { JobsModule } from "@/jobs/jobs.module";
@@ -15,10 +14,7 @@ import { SupabaseRequestModule } from "@/supabase-request.module";
 
 @Module({
     imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-            validate: validateEnv,
-        }),
+        EnvModule,
         ScheduleModule.forRoot(),
         SupabaseRequestModule,
         RedisModule,

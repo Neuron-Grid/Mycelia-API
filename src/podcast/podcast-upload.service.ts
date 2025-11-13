@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
 import { StorageManagementService } from "@/storage/application/storage-management.service";
 
@@ -12,39 +12,13 @@ export class PodcastUploadService {
 
     constructor(
         private readonly cloudflareR2Service: CloudflareR2Service,
-        private readonly configService: ConfigService,
         private readonly storageManagementService: StorageManagementService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
-        const configuredBucket =
-            this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") ?? "";
-        if (!configuredBucket) {
-            throw new Error("CLOUDFLARE_BUCKET_NAME is not configured");
-        }
-        this.bucketName = configuredBucket;
-
-        const configuredBuckets = this.parseList(
-            this.configService.get<string>("CLOUDFLARE_ALLOWED_BUCKETS"),
-        );
-        this.allowedBuckets =
-            configuredBuckets.length > 0
-                ? configuredBuckets
-                : [this.bucketName];
-
-        const configuredPrefixes = this.parseList(
-            this.configService.get<string>("CLOUDFLARE_ALLOWED_PREFIXES"),
-        );
-        this.allowedPrefixTemplates =
-            configuredPrefixes.length > 0
-                ? configuredPrefixes
-                : ["podcasts/{userId}/"];
-    }
-
-    private parseList(raw?: string | null): string[] {
-        if (!raw) return [];
-        return raw
-            .split(/[\s,]+/)
-            .map((value) => value.trim())
-            .filter((value) => value.length > 0);
+        const cloudflare = this.appEnv.getCloudflareR2Config();
+        this.bucketName = cloudflare.bucketName;
+        this.allowedBuckets = [...cloudflare.allowedBuckets];
+        this.allowedPrefixTemplates = [...cloudflare.allowedPrefixTemplates];
     }
 
     private isBucketAllowed(bucket: string): boolean {

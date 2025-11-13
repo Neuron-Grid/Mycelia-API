@@ -4,11 +4,11 @@ import { PassThrough, Readable, Transform } from "node:stream";
 import { URL } from "node:url";
 import { createBrotliDecompress, createGunzip, createInflate } from "node:zlib";
 import { Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import {
-    parseExtraDenyCidrsFromEnv,
+    parseExtraDenyCidrs,
     resolveAndFilterUnicast,
 } from "@/common/net/ip-range.util";
+import type { FeedFetchConfig } from "@/config/app-env";
 
 const logger = new Logger("SafeFetch");
 
@@ -42,8 +42,8 @@ function getPort(url: URL): number {
     return url.protocol === "https:" ? 443 : 80;
 }
 
-function validateSchemeAndPort(url: URL, cfg: ConfigService) {
-    const allowHttp = cfg.get<boolean>("FEED_FETCH_ALLOW_HTTP", false);
+function validateSchemeAndPort(url: URL, config: FeedFetchConfig) {
+    const allowHttp = config.allowHttp;
     if (url.protocol !== "https:" && !(allowHttp && url.protocol === "http:")) {
         throw new SafeFetchError(
             "disallowed_scheme",
@@ -61,13 +61,10 @@ function validateSchemeAndPort(url: URL, cfg: ConfigService) {
 }
 
 function buildHeaders(
-    cfg: ConfigService,
+    config: FeedFetchConfig,
     host: string,
 ): Record<string, string> {
-    const ua = cfg.get<string>(
-        "FEED_FETCH_USER_AGENT",
-        "MyceliaRSSFetcher/1.0",
-    );
+    const ua = config.userAgent;
     return {
         Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
@@ -78,13 +75,12 @@ function buildHeaders(
 
 export async function safeFetchOnce(
     url: URL,
-    cfg: ConfigService,
+    config: FeedFetchConfig,
+    extraCidrs: ReturnType<typeof parseExtraDenyCidrs>,
     abortSignal: AbortSignal,
     totalDeadlineMs: number,
 ): Promise<IncomingMessage> {
-    validateSchemeAndPort(url, cfg);
-
-    const extraCidrs = parseExtraDenyCidrsFromEnv(cfg);
+    validateSchemeAndPort(url, config);
     const { safeIps, allIps } = await resolveAndFilterUnicast(
         url.hostname,
         extraCidrs,
@@ -101,18 +97,12 @@ export async function safeFetchOnce(
 
     const isHttps = url.protocol === "https:";
     const transport = isHttps ? https : http;
-    const headers = buildHeaders(cfg, url.hostname);
+    const headers = buildHeaders(config, url.hostname);
     const port = getPort(url);
 
     // タイムアウト管理
-    const connectTimeoutMs = cfg.get<number>(
-        "FEED_FETCH_CONNECT_TIMEOUT_MS",
-        2000,
-    );
-    const responseTimeoutMs = cfg.get<number>(
-        "FEED_FETCH_RESPONSE_TIMEOUT_MS",
-        5000,
-    );
+    const connectTimeoutMs = config.connectTimeoutMs;
+    const responseTimeoutMs = config.responseTimeoutMs;
 
     const fatalErrorTypes: SafeFetchErrorType[] = [
         "blocked_destination",
@@ -283,18 +273,20 @@ export async function safeFetchOnce(
 
 export async function safeFollowRedirects(
     initialUrl: URL,
-    cfg: ConfigService,
+    config: FeedFetchConfig,
     totalTimeoutMs: number,
 ): Promise<IncomingMessage> {
-    const maxRedirects = cfg.get<number>("FEED_FETCH_MAX_REDIRECTS", 3);
-    const allowHttp = cfg.get<boolean>("FEED_FETCH_ALLOW_HTTP", false);
+    const maxRedirects = config.maxRedirects;
+    const allowHttp = config.allowHttp;
     const start = Date.now();
     let url = initialUrl;
+    const extraCidrs = parseExtraDenyCidrs(config.extraDenyCidrsRaw);
     for (let i = 0; i <= maxRedirects; i++) {
         const controller = new AbortController();
         const res = await safeFetchOnce(
             url,
-            cfg,
+            config,
+            extraCidrs,
             controller.signal,
             start + totalTimeoutMs,
         );

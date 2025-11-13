@@ -10,8 +10,8 @@ import {
     S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 
 export interface PodcastMetadata {
     userId: string;
@@ -31,47 +31,24 @@ export class CloudflareR2Service {
     private readonly publicDomain: string;
     private readonly allowedBuckets: string[];
     private readonly allowedPrefixTemplates: string[];
+    private readonly accountId: string;
 
-    constructor(private readonly configService: ConfigService) {
-        // Cloudflare R2の接続情報
-        const accountId = this.configService.get<string>(
-            "CLOUDFLARE_ACCOUNT_ID",
-        );
-        const accessKeyId = this.configService.get<string>(
-            "CLOUDFLARE_ACCESS_KEY_ID",
-        );
-        const secretAccessKey = this.configService.get<string>(
-            "CLOUDFLARE_SECRET_ACCESS_KEY",
-        );
-        this.bucketName =
-            this.configService.get<string>("CLOUDFLARE_BUCKET_NAME") || "";
-        this.publicDomain =
-            this.configService.get<string>("CLOUDFLARE_PUBLIC_DOMAIN") || "";
+    constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
+        const {
+            accountId,
+            accessKeyId,
+            secretAccessKey,
+            bucketName,
+            publicDomain,
+            allowedBuckets,
+            allowedPrefixTemplates,
+        } = this.appEnv.getCloudflareR2Config();
 
-        const configuredBuckets = this.parseList(
-            this.configService.get<string>("CLOUDFLARE_ALLOWED_BUCKETS"),
-        );
-        this.allowedBuckets =
-            configuredBuckets.length > 0
-                ? configuredBuckets
-                : [this.bucketName];
-
-        const configuredPrefixes = this.parseList(
-            this.configService.get<string>("CLOUDFLARE_ALLOWED_PREFIXES"),
-        );
-        this.allowedPrefixTemplates =
-            configuredPrefixes.length > 0
-                ? configuredPrefixes
-                : ["podcasts/{userId}/", "summaries/{userId}/"];
-
-        if (
-            !accountId ||
-            !accessKeyId ||
-            !secretAccessKey ||
-            !this.bucketName
-        ) {
-            throw new Error("Cloudflare R2の環境変数が設定されていません");
-        }
+        this.accountId = accountId;
+        this.bucketName = bucketName;
+        this.publicDomain = publicDomain;
+        this.allowedBuckets = [...allowedBuckets];
+        this.allowedPrefixTemplates = [...allowedPrefixTemplates];
 
         this.s3Client = new S3Client({
             region: "auto",
@@ -81,14 +58,6 @@ export class CloudflareR2Service {
                 secretAccessKey,
             },
         });
-    }
-
-    private parseList(raw?: string | null): string[] {
-        if (!raw) return [];
-        return raw
-            .split(/[,\s]+/)
-            .map((item) => item.trim())
-            .filter((item) => item.length > 0);
     }
 
     private isBucketAllowed(bucket: string): boolean {
@@ -349,10 +318,7 @@ export class CloudflareR2Service {
         }
 
         // カスタムドメインが設定されていない場合はデフォルトを使用
-        const accountId = this.configService.get<string>(
-            "CLOUDFLARE_ACCOUNT_ID",
-        );
-        return `https://${this.bucketName}.${accountId}.r2.cloudflarestorage.com/${key}`;
+        return `https://${this.bucketName}.${this.accountId}.r2.cloudflarestorage.com/${key}`;
     }
 
     // オブジェクトを取得

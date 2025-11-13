@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 
 type CacheEntry = {
     isDeleted: boolean;
@@ -13,18 +13,10 @@ export class SupabaseAuthCacheService {
     private readonly store = new Map<string, CacheEntry>();
     private readonly ttlMs: number;
 
-    constructor(private readonly config: ConfigService) {
-        const rawTtl = this.config.get<string | number>(
-            "SUPABASE_AUTH_CACHE_TTL_MS",
-        );
-        const parsed =
-            typeof rawTtl === "number"
-                ? rawTtl
-                : typeof rawTtl === "string"
-                  ? Number.parseInt(rawTtl, 10)
-                  : Number.NaN;
-        this.ttlMs = Number.isFinite(parsed) && parsed > 0 ? parsed : 60_000;
-        if (!Number.isFinite(parsed) || parsed <= 0) {
+    constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
+        const { ttlMs } = this.appEnv.getSupabaseAuthCacheConfig();
+        this.ttlMs = ttlMs;
+        if (ttlMs === 60_000) {
             this.logger.debug(
                 `Using default auth status cache TTL ${this.ttlMs}ms`,
             );

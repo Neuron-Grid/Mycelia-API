@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { HttpException, HttpStatus } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
 import type { NextFunction, Request, Response } from "express";
+import type { AppEnv } from "@/config/app-env";
 
 const resolveRequestScheme = (req: Request): "http" | "https" => {
     const toScheme = (
@@ -41,16 +41,15 @@ const resolveRequestScheme = (req: Request): "http" | "https" => {
  * - For non-idempotent methods, requires `X-CSRF-Token` header to match cookie.
  * - Skips a small set of auth endpoints to avoid bootstrap friction.
  */
-export function createCsrfMiddleware(cfg: ConfigService) {
-    const isProd =
-        (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
+export function createCsrfMiddleware(appEnv: AppEnv) {
+    const isProd = appEnv.nodeEnv === "production";
     const skipPaths = new Set<string>([
         // Allow bootstrap on auth refresh/logout where rotating tokens may occur
         "/api/v1/auth/login",
         "/api/v1/auth/refresh",
         "/api/v1/auth/logout",
     ]);
-    const allowedOriginsRaw = cfg.get<string>("CORS_ORIGIN")?.trim() ?? "";
+    const allowedOriginsRaw = appEnv.corsOriginRaw;
     const allowedOrigins = allowedOriginsRaw
         ? new Set(
               allowedOriginsRaw
@@ -162,9 +161,8 @@ export function createCsrfMiddleware(cfg: ConfigService) {
  * Enforce HTTPS in production by checking req.secure or x-forwarded-proto.
  * Returns 403 when accessed via plain HTTP.
  */
-export function createHttpsEnforceMiddleware(cfg: ConfigService) {
-    const isProd =
-        (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
+export function createHttpsEnforceMiddleware(appEnv: AppEnv) {
+    const isProd = appEnv.nodeEnv === "production";
 
     return function httpsOnly(
         req: Request,

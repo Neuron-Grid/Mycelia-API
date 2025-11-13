@@ -1,6 +1,5 @@
 import { gzipSync } from "node:zlib";
 import { INestApplication } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { jest } from "@test-utils/jest-globals";
 import nock from "nock";
@@ -64,31 +63,36 @@ jest.mock("@/common/net/ip-range.util", () => ({
         safeIps: ["93.184.216.34"],
         allIps: ["93.184.216.34"],
     })),
-    parseExtraDenyCidrsFromEnv: jest.fn(() => []),
+    parseExtraDenyCidrs: jest.fn(() => []),
 }));
 
+import { APP_ENV_TOKEN, type FeedFetchConfig } from "@/config/app-env";
 import { FeedFetchService } from "@/feed/application/feed-fetch.service";
+import { createAppEnvStub } from "./utils/app-env";
 
 describe("FeedFetchService (e2e)", () => {
     let app: INestApplication;
+    const feedFetchConfig: FeedFetchConfig = {
+        allowHttp: false,
+        maxRedirects: 3,
+        connectTimeoutMs: 500,
+        responseTimeoutMs: 1000,
+        bodyIdleTimeoutMs: 1000,
+        totalTimeoutMs: 5000,
+        maxBytes: 1024 * 5,
+        userAgent: "MyceliaRSSFetcher/1.0",
+        extraDenyCidrsRaw: "",
+    };
+
+    const appEnv = createAppEnvStub({
+        getFeedFetchConfig: jest.fn(() => feedFetchConfig),
+    });
 
     beforeAll(async () => {
         const moduleFixture: TestingModule = await Test.createTestingModule({
             providers: [
                 FeedFetchService,
-                {
-                    provide: ConfigService,
-                    useValue: new ConfigService({
-                        FEED_FETCH_ALLOW_HTTP: false,
-                        FEED_FETCH_MAX_REDIRECTS: 3,
-                        FEED_FETCH_CONNECT_TIMEOUT_MS: 500,
-                        FEED_FETCH_RESPONSE_TIMEOUT_MS: 1000,
-                        FEED_FETCH_BODY_IDLE_TIMEOUT_MS: 1000,
-                        FEED_FETCH_TOTAL_TIMEOUT_MS: 5000,
-                        FEED_FETCH_MAX_BYTES: 1024 * 5,
-                        FEED_FETCH_USER_AGENT: "MyceliaRSSFetcher/1.0",
-                    }),
-                },
+                { provide: APP_ENV_TOKEN, useValue: appEnv },
             ],
         }).compile();
 

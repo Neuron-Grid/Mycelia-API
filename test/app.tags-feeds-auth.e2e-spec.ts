@@ -4,10 +4,15 @@
  */
 
 import { INestApplication } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import type { User } from "@supabase/supabase-js";
+import {
+    patchTestProcessEnv,
+    readRawEnv,
+    readRuntimeFlag,
+    resetTestAppEnv,
+} from "@test-utils/app-env";
 import { jest } from "@test-utils/jest-globals";
 import cookieParser from "cookie-parser";
 import request, { SuperAgentTest } from "supertest";
@@ -16,6 +21,7 @@ import { AuthService } from "@/auth/auth.service";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { WebAuthnService } from "@/auth/webauthn.service";
 import { createCsrfMiddleware } from "@/common/middleware/security.middleware";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { FeedItemService } from "@/feed/application/feed-item.service";
 import { FeedUseCaseService } from "@/feed/application/feed-usecase.service";
 import { SubscriptionService } from "@/feed/application/subscription.service";
@@ -84,7 +90,7 @@ jest.mock("@/shared/lock/distributed-lock.service", () => ({
         }
     },
 }));
-const runAppE2E = process.env.RUN_APP_E2E === "true";
+const runAppE2E = readRuntimeFlag("RUN_APP_E2E");
 const describeOrSkip = runAppE2E ? describe : describe.skip;
 
 const supabaseUserFixture: User = {
@@ -132,6 +138,7 @@ class AllowAuthGuard {
 describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
     let app: INestApplication;
     let agent: SuperAgentTest;
+    let restoreEnv: (() => void) | null = null;
 
     const tagRows = [
         {
@@ -254,12 +261,13 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
     };
 
     beforeAll(async () => {
-        process.env.SUPABASE_URL = process.env.SUPABASE_URL ?? "http://local";
-        process.env.SUPABASE_ANON_KEY =
-            process.env.SUPABASE_ANON_KEY ?? "anon-key";
-        process.env.SUPABASE_SERVICE_ROLE_KEY =
-            process.env.SUPABASE_SERVICE_ROLE_KEY ?? "service-key";
-        process.env.CORS_ORIGIN = "https://app.example.com";
+        restoreEnv = patchTestProcessEnv({
+            SUPABASE_URL: readRawEnv("SUPABASE_URL") ?? "http://local",
+            SUPABASE_ANON_KEY: readRawEnv("SUPABASE_ANON_KEY") ?? "anon-key",
+            SUPABASE_SERVICE_ROLE_KEY:
+                readRawEnv("SUPABASE_SERVICE_ROLE_KEY") ?? "service-key",
+            CORS_ORIGIN: "https://app.example.com",
+        });
 
         const moduleFixture: TestingModule = await Test.createTestingModule({
             imports: [AppApiModule],
@@ -282,9 +290,9 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
             .useValue({});
 
         app = moduleFixture.createNestApplication();
-        const cfg = app.get(ConfigService);
+        const appEnv = app.get<AppEnv>(APP_ENV_TOKEN);
         app.use(cookieParser());
-        app.use(createCsrfMiddleware(cfg));
+        app.use(createCsrfMiddleware(appEnv));
         app.setGlobalPrefix("api/v1");
         await app.init();
         agent = request.agent(app.getHttpServer());
@@ -292,6 +300,8 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
 
     afterAll(async () => {
         await app?.close();
+        restoreEnv?.();
+        resetTestAppEnv();
     });
 
     const extractXsrfFrom = (setCookieHeader: string[] | undefined) => {

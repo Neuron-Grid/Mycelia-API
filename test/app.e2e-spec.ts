@@ -5,6 +5,7 @@
 
 import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
+import { readRuntimeFlag } from "@test-utils/app-env";
 import { jest } from "@test-utils/jest-globals";
 
 // BullMQはE2Eでは外部接続を行わないようスタブ化
@@ -88,7 +89,7 @@ import {
 } from "@/llm/application/services/llm.service";
 import { MockLlmService } from "@/llm/infrastructure/clients/mock-llm.service";
 
-const runAppE2E = process.env.RUN_APP_E2E === "true";
+const runAppE2E = readRuntimeFlag("RUN_APP_E2E");
 const describeOrSkip = runAppE2E ? describe : describe.skip;
 if (!runAppE2E) {
     console.warn(

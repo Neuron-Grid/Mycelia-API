@@ -5,26 +5,26 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { ConfigService } from "@nestjs/config";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
+import { readRawEnv } from "@test-utils/app-env";
 import { jest } from "@test-utils/jest-globals";
 import type { Request } from "express";
-
+import type { SupabaseConfig } from "@/config/app-env";
 import { FeedItemRepository } from "@/feed/infrastructure/feed-item.repository";
 import { SupabaseRequestService } from "@/supabase-request.service";
 import type { FeedItemsInsertWithoutHash } from "@/types/overrides";
 import type { Database } from "@/types/schema";
+import { createAppEnvStub } from "./utils/app-env";
 
 import { computeExpectedHash, isValidLinkHash } from "./utils/hash";
 
 jest.setTimeout(45_000);
 
 describe("feed_items link_hash trigger (e2e)", () => {
-    const config = new ConfigService();
-    const supabaseUrl = config.get<string>("SUPABASE_URL");
-    const anonKey = config.get<string>("SUPABASE_ANON_KEY");
-    const serviceRoleKey = config.get<string>("SUPABASE_SERVICE_ROLE_KEY");
+    const supabaseUrl = readRawEnv("SUPABASE_URL");
+    const anonKey = readRawEnv("SUPABASE_ANON_KEY");
+    const serviceRoleKey = readRawEnv("SUPABASE_SERVICE_ROLE_KEY");
     const supabaseAvailable = Boolean(supabaseUrl && anonKey && serviceRoleKey);
     const describeOrSkip = supabaseAvailable ? describe : describe.skip;
     if (!supabaseAvailable) {
@@ -38,6 +38,14 @@ describe("feed_items link_hash trigger (e2e)", () => {
         const resolvedSupabaseUrl = supabaseUrl as string;
         const resolvedAnonKey = anonKey as string;
         const resolvedServiceRoleKey = serviceRoleKey as string;
+
+        const appEnv = createAppEnvStub({
+            getSupabaseConfig: (): SupabaseConfig => ({
+                url: resolvedSupabaseUrl,
+                anonKey: resolvedAnonKey,
+                serviceRoleKey: resolvedServiceRoleKey,
+            }),
+        });
 
         const PUBLISHED_AT = "2024-01-01T00:00:00.000Z";
 
@@ -175,7 +183,7 @@ describe("feed_items link_hash trigger (e2e)", () => {
                 headers: { authorization: `Bearer ${accessToken}` },
                 cookies: {},
             } as Request;
-            const supabaseRequest = new SupabaseRequestService(req, config);
+            const supabaseRequest = new SupabaseRequestService(req, appEnv);
             return {
                 supabaseRequest,
                 repository: new FeedItemRepository(supabaseRequest),

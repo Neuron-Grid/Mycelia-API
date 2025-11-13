@@ -2,14 +2,19 @@ import { performance } from "node:perf_hooks";
 import {
     type CanActivate,
     type ExecutionContext,
+    Inject,
     Injectable,
     UnauthorizedException,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import type { Request } from "express";
 import { UserVerificationService } from "@/auth/application/user-verification.service";
+import {
+    APP_ENV_TOKEN,
+    type AppEnv,
+    type SupabaseConfig,
+} from "@/config/app-env";
 import type { JwtAuthClaims } from "@/types/auth-claims";
 import type { Database } from "@/types/schema";
 import {
@@ -20,12 +25,15 @@ import {
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
     private anonClient: SupabaseClient<Database> | null = null;
+    private readonly supabaseConfig: SupabaseConfig;
 
     constructor(
-        private readonly cfg: ConfigService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
         private readonly userVerificationService: UserVerificationService,
         private readonly metrics: SupabaseAuthMetricsService,
-    ) {}
+    ) {
+        this.supabaseConfig = this.appEnv.getSupabaseConfig();
+    }
 
     private static decodeJwtClaims(token: string): JwtAuthClaims | null {
         try {
@@ -156,12 +164,8 @@ export class SupabaseAuthGuard implements CanActivate {
             return this.anonClient;
         }
 
-        const supabaseUrl = this.cfg.get<string>("SUPABASE_URL");
-        const supabaseAnonKey = this.cfg.get<string>("SUPABASE_ANON_KEY");
-
-        if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error("Missing Supabase configuration");
-        }
+        const { url: supabaseUrl, anonKey: supabaseAnonKey } =
+            this.supabaseConfig;
 
         this.anonClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
             auth: {

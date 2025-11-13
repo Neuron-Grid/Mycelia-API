@@ -1,17 +1,19 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 
 @Injectable()
 export class OpenAIEmbeddingClient {
     private readonly logger = new Logger(OpenAIEmbeddingClient.name);
     private readonly apiKey: string;
-    private readonly baseUrl = "https://api.openai.com/v1";
+    private readonly baseUrl: string;
     private readonly requestTimeoutMs = 15_000;
     private readonly maxRetries = 3;
     private readonly initialRetryDelayMs = 1_000;
 
-    constructor(private readonly configService: ConfigService) {
-        this.apiKey = this.configService.get<string>("OPENAI_API_KEY") || "";
+    constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
+        const config = this.appEnv.getOpenAiConfig();
+        this.apiKey = config.apiKey;
+        this.baseUrl = config.baseUrl;
         if (!this.apiKey) {
             this.logger.warn(
                 "OPENAI_API_KEY not set, embedding service will not work",

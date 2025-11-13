@@ -1,10 +1,11 @@
 import {
     BadRequestException,
+    Inject,
     Injectable,
     Logger,
     NotFoundException,
 } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import {
     PODCAST_SCHEDULE_DEFAULT,
     SUMMARY_SCHEDULE_DEFAULT,
@@ -21,7 +22,7 @@ export class DomainConfigService {
     private readonly logger = new Logger(DomainConfigService.name);
 
     constructor(
-        private readonly configService: ConfigService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
         private readonly supabaseRequestService: SupabaseRequestService,
     ) {}
 
@@ -29,9 +30,10 @@ export class DomainConfigService {
     // なければデフォルト値を返す。
     getDomain(): string {
         // ① FRONT_ORIGIN を取得（無ければ従来の PRODUCTION_DOMAIN）
+        const domainConfig = this.appEnv.getDomainConfig();
         const origin =
-            this.configService.get<string>("FRONT_ORIGIN") ??
-            this.configService.get<string>("PRODUCTION_DOMAIN") ??
+            domainConfig.frontOrigin ??
+            domainConfig.productionDomain ??
             "example.com";
 
         // originがスキーム付きならホスト名に変換

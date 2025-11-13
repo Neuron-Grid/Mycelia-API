@@ -2,8 +2,8 @@ import { HttpModule, HttpService } from "@nestjs/axios";
 import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthModule } from "@/auth/auth.module";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { IS_WORKER_APP } from "@/config/runtime.constants";
 import { EmbeddingModule } from "@/embedding/embedding.module";
 import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
@@ -33,7 +33,6 @@ const controllers = IS_WORKER_APP ? [] : [SummaryController];
 @Module({
     imports: [
         HttpModule,
-        ConfigModule, // ConfigService を使う場合
         RedisModule,
         BullModule.registerQueueAsync(
             {
@@ -85,18 +84,13 @@ const controllers = IS_WORKER_APP ? [] : [SummaryController];
         UserSettingsRepository,
         {
             provide: LLM_SERVICE,
-            useFactory: (
-                configService: ConfigService,
-                httpClient: HttpService,
-            ) => {
-                // 本番コードでは常に実クライアントを提供
-                return new GeminiFlashClient(httpClient, configService);
+            useFactory: (httpClient: HttpService, appEnv: AppEnv) => {
+                return new GeminiFlashClient(httpClient, appEnv);
             },
-            inject: [ConfigService, HttpService], // 注入するものを指定
+            inject: [HttpService, APP_ENV_TOKEN],
         },
         SummaryScriptService,
         ...workerProviders,
-        // もしGeminiFlashClientがConfigServiceを必要とするなら、それもuseFactoryで注入
     ],
     controllers,
     exports: [

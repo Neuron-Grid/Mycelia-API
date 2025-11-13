@@ -1,6 +1,5 @@
 import { ValidationPipe } from "@nestjs/common";
 // @see https://docs.nestjs.com/techniques/configuration
-import { ConfigService } from "@nestjs/config";
 // @see https://docs.nestjs.com/
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
@@ -12,6 +11,7 @@ import {
     createCsrfMiddleware,
     createHttpsEnforceMiddleware,
 } from "@/common/middleware/security.middleware";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 
 // @async
@@ -25,19 +25,15 @@ async function bootstrap() {
     const app = await NestFactory.create(AppApiModule);
 
     // config
-    const cfg = app.get(ConfigService);
-    const originsRaw = cfg.get<string>("CORS_ORIGIN")?.trim() ?? "";
-    const allowed = originsRaw.length
-        ? originsRaw.split(/\s+/).filter(Boolean)
-        : [];
+    const appEnv = app.get<AppEnv>(APP_ENV_TOKEN);
+    const corsConfig = appEnv.getCorsConfig();
     app.enableCors({
-        origin: allowed.length ? allowed : false,
-        credentials: true,
+        origin: corsConfig.origins.length ? corsConfig.origins : false,
+        credentials: corsConfig.credentials,
     });
 
     // helmet + HSTS 強化（prod環境のみ preload/subdomainsを有効化）
-    const isProd =
-        (cfg.get<string>("NODE_ENV") || "").toLowerCase() === "production";
+    const isProd = appEnv.nodeEnv === "production";
     app.use(
         helmet({
             hsts: isProd
@@ -52,9 +48,9 @@ async function bootstrap() {
     // cookie
     app.use(cookieParser());
     // HTTPS 強制（proxy 配下想定）
-    app.use(createHttpsEnforceMiddleware(cfg));
+    app.use(createHttpsEnforceMiddleware(appEnv));
     // Double submit cookie 方式の CSRF 対策
-    app.use(createCsrfMiddleware(cfg));
+    app.use(createCsrfMiddleware(appEnv));
 
     // global settings
     app.useGlobalPipes(
@@ -68,14 +64,14 @@ async function bootstrap() {
     app.setGlobalPrefix("api/v1");
     app.getHttpAdapter()
         .getInstance()
-        .set("trust proxy", Number(cfg.get<number>("TRUST_PROXY_HOPS") || 0));
+        .set("trust proxy", appEnv.trustProxyHops);
     app.enableShutdownHooks();
 
     // OpenAPIは開発時に nestia で静的生成（swagger.json）し、
     // ランタイムでの @nestjs/swagger による生成・出力は行わない。
 
     // start server
-    const port = Number(cfg.get<string>("PORT")) || 3000;
+    const port = appEnv.port;
     await app.listen(port, "0.0.0.0");
 }
 bootstrap();

@@ -1,19 +1,22 @@
-import { ConfigService } from "@nestjs/config";
-
+import type { AppEnv, CloudflareR2Config } from "@/config/app-env";
 import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
 
-const createService = (overrides?: Record<string, string | undefined>) => {
-    const defaults: Record<string, string | undefined> = {
-        CLOUDFLARE_ACCOUNT_ID: "test-account",
-        CLOUDFLARE_ACCESS_KEY_ID: "test-access-key",
-        CLOUDFLARE_SECRET_ACCESS_KEY: "test-secret",
-        CLOUDFLARE_BUCKET_NAME: "primary-bucket",
-        CLOUDFLARE_PUBLIC_DOMAIN: "media.example.com",
+const createService = (overrides?: Partial<CloudflareR2Config>) => {
+    const config: CloudflareR2Config = {
+        accountId: "test-account",
+        accessKeyId: "test-access-key",
+        secretAccessKey: "test-secret",
+        bucketName: "primary-bucket",
+        publicDomain: "media.example.com",
+        allowedBuckets: ["primary-bucket"],
+        allowedPrefixTemplates: ["podcasts/{userId}/"],
+        ...overrides,
     };
-    const config = { ...defaults, ...overrides };
-    const configService = new ConfigService(config);
+    const appEnv = {
+        getCloudflareR2Config: () => config,
+    } as unknown as AppEnv;
 
-    return new CloudflareR2Service(configService);
+    return new CloudflareR2Service(appEnv);
 };
 
 describe("CloudflareR2Service.extractObjectLocationFromUrl", () => {

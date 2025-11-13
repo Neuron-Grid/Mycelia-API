@@ -1,6 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { Database } from "@/types/schema";
 
 @Injectable()
@@ -8,15 +8,9 @@ export class SupabaseAdminService {
     private readonly logger = new Logger(SupabaseAdminService.name);
     private readonly admin: SupabaseClient<Database>;
 
-    constructor(private readonly config: ConfigService) {
-        const url = this.config.get<string>("SUPABASE_URL");
-        const serviceRole = this.config.get<string>(
-            "SUPABASE_SERVICE_ROLE_KEY",
-        );
-        if (!url || !serviceRole) {
-            throw new Error("SUPABASE_URL or SERVICE_ROLE_KEY missing");
-        }
-        this.admin = createClient<Database>(url, serviceRole, {
+    constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
+        const { url, serviceRoleKey } = this.appEnv.getSupabaseConfig();
+        this.admin = createClient<Database>(url, serviceRoleKey, {
             auth: { autoRefreshToken: false, persistSession: false },
         });
         this.logger.debug("Initialized Supabase service-role client");

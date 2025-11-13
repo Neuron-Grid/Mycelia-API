@@ -30,7 +30,6 @@ jest.mock("@/shared/supabase-admin.service", () => ({
 
 import { getQueueToken } from "@nestjs/bullmq";
 import { BadRequestException, ValidationPipe } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
 import { RetryAllDto } from "@/jobs/dto/retry-all.dto";
 import { JobsAdminController } from "@/jobs/jobs-admin.controller";
@@ -63,23 +62,6 @@ async function createController(overrides?: {
                 useValue: scriptQueue,
             },
             { provide: getQueueToken("podcastQueue"), useValue: podcastQueue },
-            {
-                provide: ConfigService,
-                useValue: {
-                    get: (key: string) => {
-                        switch (key) {
-                            case "SUPABASE_URL":
-                                return "https://example.supabase.co";
-                            case "SUPABASE_SERVICE_ROLE_KEY":
-                                return "service_role";
-                            case "SUPABASE_ANON_KEY":
-                                return "anon_key";
-                            default:
-                                return undefined;
-                        }
-                    },
-                },
-            },
         ],
     }).compile();
 

@@ -1,12 +1,12 @@
 // @file Supabaseクライアントのリクエストスコープサービス
 import { Inject, Injectable, Scope } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 // @see https://docs.nestjs.com/providers#injection-scopes
 import { REQUEST } from "@nestjs/core";
 // @see https://supabase.com/docs/reference/javascript/create-client
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // @see https://expressjs.com/
 import { Request } from "express";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 // @see ./types/schema
 import { Database } from "@/types/schema";
 
@@ -24,12 +24,9 @@ export class SupabaseRequestService {
     // @public
     constructor(
         @Inject(REQUEST) private readonly req: Request,
-        private readonly cfg: ConfigService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
-        const url = this.cfg.get<string>("SUPABASE_URL");
-        const anonKey = this.cfg.get<string>("SUPABASE_ANON_KEY");
-        if (!url || !anonKey)
-            throw new Error("SUPABASE_URL / ANON_KEY missing");
+        const { url, anonKey } = this.appEnv.getSupabaseConfig();
 
         // 通常クライアント
         // RLS 適用

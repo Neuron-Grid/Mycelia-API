@@ -1,10 +1,10 @@
 import { HttpService } from "@nestjs/axios";
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config"; // ConfigService をインポート
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { AxiosError, AxiosResponse } from "axios";
 import { backOff } from "exponential-backoff";
 import { firstValueFrom } from "rxjs";
 import sanitizeMarkdown from "sanitize-markdown";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import {
     GeminiScriptRequest,
     GeminiScriptResponse,
@@ -56,12 +56,11 @@ export class GeminiFlashClient implements LlmService {
 
     constructor(
         public readonly http: HttpService,
-        private readonly configService: ConfigService, // ConfigService を注入
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
-        this.apiUrl =
-            this.configService.get<string>("GEMINI_API_URL") ||
-            "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent";
-        this.apiKey = this.configService.get<string>("GEMINI_API_KEY") || "";
+        const config = this.appEnv.getGeminiConfig();
+        this.apiUrl = config.apiUrl;
+        this.apiKey = config.apiKey;
 
         if (!this.apiKey) {
             this.logger.error("GEMINI_API_KEY is not set");

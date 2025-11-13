@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { AuthAccountDeletionService } from "@/auth/application/auth-account-deletion.service";
 import { RequestUserContextService } from "@/auth/application/request-user-context.service";
@@ -22,7 +21,6 @@ import { WebAuthnService } from "./webauthn.service";
 @Module({
     imports: [
         SupabaseRequestModule,
-        ConfigModule,
         DomainConfigModule,
         DistributedLockModule,
         RedisModule,

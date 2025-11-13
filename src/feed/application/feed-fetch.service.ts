@@ -2,8 +2,13 @@
 
 import type { IncomingMessage } from "node:http";
 import { Readable, Transform } from "node:stream";
-import { HttpException, HttpStatus, Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import {
+    HttpException,
+    HttpStatus,
+    Inject,
+    Injectable,
+    Logger,
+} from "@nestjs/common";
 // @see https://www.npmjs.com/package/feedparser
 import FeedParser, { Item as FeedparserItem, Meta } from "feedparser";
 import {
@@ -12,6 +17,11 @@ import {
     SafeFetchError,
     safeFollowRedirects,
 } from "@/common/http/safe-fetch";
+import {
+    APP_ENV_TOKEN,
+    type AppEnv,
+    type FeedFetchConfig,
+} from "@/config/app-env";
 
 @Injectable()
 // @public
@@ -19,7 +29,11 @@ import {
 export class FeedFetchService {
     private readonly logger = new Logger(FeedFetchService.name);
 
-    constructor(private readonly cfg: ConfigService) {}
+    constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
+        this.feedFetchConfig = this.appEnv.getFeedFetchConfig();
+    }
+
+    private readonly feedFetchConfig: FeedFetchConfig;
     // @async
     // @public
     // @since 1.0.0
@@ -56,10 +70,7 @@ export class FeedFetchService {
             };
 
             // 本文無通信間隔監視タイマー
-            const bodyIdleTimeoutMs = this.cfg.get<number>(
-                "FEED_FETCH_BODY_IDLE_TIMEOUT_MS",
-                5000,
-            );
+            const bodyIdleTimeoutMs = this.feedFetchConfig.bodyIdleTimeoutMs;
             let idleTimer: NodeJS.Timeout | null = null;
             const resetIdleTimer = () => {
                 if (idleTimer) clearTimeout(idleTimer);
@@ -85,13 +96,10 @@ export class FeedFetchService {
                         );
                         return;
                     }
-                    const totalTimeoutMs = this.cfg.get<number>(
-                        "FEED_FETCH_TOTAL_TIMEOUT_MS",
-                        10000,
-                    );
+                    const totalTimeoutMs = this.feedFetchConfig.totalTimeoutMs;
                     const response = await safeFollowRedirects(
                         parsedUrl,
-                        this.cfg,
+                        this.feedFetchConfig,
                         totalTimeoutMs,
                     );
 
@@ -144,10 +152,7 @@ export class FeedFetchService {
                                 | string
                                 | undefined
                         )?.toLowerCase() ?? "";
-                    const maxBytes = this.cfg.get<number>(
-                        "FEED_FETCH_MAX_BYTES",
-                        5_242_880,
-                    );
+                    const maxBytes = this.feedFetchConfig.maxBytes;
 
                     const decompressed: Readable = createDecompressionStream(
                         encoding,

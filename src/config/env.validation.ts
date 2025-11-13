@@ -6,6 +6,8 @@ const REQUIRED_STRING_KEYS: readonly string[] = [
     "CLOUDFLARE_ACCESS_KEY_ID",
     "CLOUDFLARE_SECRET_ACCESS_KEY",
     "CLOUDFLARE_BUCKET_NAME",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
 ];
 
 const AT_LEAST_ONE_KEY_SETS: readonly string[][] = [
@@ -31,6 +33,31 @@ const NUMERIC_KEYS: readonly NumericKeyConstraint[] = [
         key: "FEED_FETCH_MAX_REDIRECTS",
         minimum: 0,
         maximum: 10,
+    },
+    {
+        key: "FEED_FETCH_BODY_IDLE_TIMEOUT_MS",
+        minimum: 100,
+    },
+    {
+        key: "FEED_FETCH_TOTAL_TIMEOUT_MS",
+        minimum: 100,
+    },
+    {
+        key: "FEED_FETCH_MAX_BYTES",
+        minimum: 1024,
+    },
+    {
+        key: "SUPABASE_AUTH_CACHE_TTL_MS",
+        minimum: 1000,
+    },
+    {
+        key: "PORT",
+        minimum: 1,
+        maximum: 65535,
+    },
+    {
+        key: "TRUST_PROXY_HOPS",
+        minimum: 0,
     },
 ];
 

@@ -1,9 +1,13 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { protos, TextToSpeechClient } from "@google-cloud/text-to-speech";
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
+import {
+    APP_ENV_TOKEN,
+    type AppEnv,
+    type GoogleTtsConfig,
+} from "@/config/app-env";
 import { CloudflareR2Service } from "./cloudflare-r2.service";
 
 export interface SpeechSynthesisOptions {
@@ -23,11 +27,13 @@ type GoogleTtsCredentials = {
 export class PodcastTtsService {
     private readonly logger = new Logger(PodcastTtsService.name);
     private readonly client: TextToSpeechClient;
+    private readonly googleTtsConfig: GoogleTtsConfig;
 
     constructor(
         private readonly r2: CloudflareR2Service,
-        private readonly configService: ConfigService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
+        this.googleTtsConfig = this.appEnv.getGoogleTtsConfig();
         this.client = this.createClient();
     }
 
@@ -149,16 +155,12 @@ export class PodcastTtsService {
     private buildClientOptions(): ConstructorParameters<
         typeof TextToSpeechClient
     >[0] {
-        const inlineCredentials = this.configService.get<string>(
-            "GOOGLE_TTS_CREDENTIALS",
-        );
+        const inlineCredentials = this.googleTtsConfig.inlineCredentialsRaw;
         const credentials = inlineCredentials
             ? this.parseInlineCredentials(inlineCredentials)
             : null;
 
-        const keyFilename = this.configService.get<string>(
-            "GOOGLE_APPLICATION_CREDENTIALS",
-        );
+        const keyFilename = this.googleTtsConfig.credentialsFile;
 
         const options: ConstructorParameters<typeof TextToSpeechClient>[0] = {};
 

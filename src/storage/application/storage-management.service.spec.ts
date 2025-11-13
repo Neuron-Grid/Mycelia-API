@@ -1,5 +1,5 @@
-import type { ConfigService } from "@nestjs/config";
 import { jest } from "@test-utils/jest-globals";
+import type { AppEnv, StorageConfig } from "@/config/app-env";
 import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { StorageManagementService } from "./storage-management.service";
 
@@ -9,18 +9,15 @@ describe("StorageManagementService", () => {
     const buffer = Buffer.from("payload");
     const contentType = "text/plain";
 
-    let configService: jest.Mocked<ConfigService>;
+    let appEnv: jest.Mocked<AppEnv>;
     let adminService: jest.Mocked<SupabaseAdminService>;
     let upload: jest.Mock;
     let getPublicUrl: jest.Mock;
 
-    const createService = (flagValue?: string | boolean | null) => {
-        configService = {
-            get: jest.fn().mockImplementation((key: string) => {
-                if (key === "STORAGE_R2_MIGRATION_ENABLED") return flagValue;
-                return undefined;
-            }),
-        } as unknown as jest.Mocked<ConfigService>;
+    const createService = (config: StorageConfig) => {
+        appEnv = {
+            getStorageConfig: jest.fn().mockReturnValue(config),
+        } as unknown as jest.Mocked<AppEnv>;
 
         upload = jest.fn().mockResolvedValue({ error: null });
         getPublicUrl = jest.fn().mockReturnValue({
@@ -38,11 +35,11 @@ describe("StorageManagementService", () => {
             }),
         } as unknown as jest.Mocked<SupabaseAdminService>;
 
-        return new StorageManagementService(adminService, configService);
+        return new StorageManagementService(adminService, appEnv);
     };
 
     it("uploads file to Supabase Storage when migration flag is disabled", async () => {
-        const service = createService("false");
+        const service = createService({ supabaseUploadEnabled: true });
 
         const result = await service.uploadToStorage(
             bucket,
@@ -59,7 +56,7 @@ describe("StorageManagementService", () => {
     });
 
     it("throws when migration flag disables Supabase Storage", async () => {
-        const service = createService("true");
+        const service = createService({ supabaseUploadEnabled: false });
 
         await expect(
             service.uploadToStorage(bucket, path, buffer, contentType),
@@ -68,7 +65,7 @@ describe("StorageManagementService", () => {
     });
 
     it("throws when upload fails", async () => {
-        const service = createService(false);
+        const service = createService({ supabaseUploadEnabled: true });
         upload.mockResolvedValueOnce({
             error: { message: "upload failed" },
         });

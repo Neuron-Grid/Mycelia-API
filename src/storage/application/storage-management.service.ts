@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
 @Injectable()
@@ -9,13 +9,10 @@ export class StorageManagementService {
 
     constructor(
         private readonly adminService: SupabaseAdminService,
-        private readonly configService: ConfigService,
+        @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
-        this.supabaseUploadEnabled = !this.parseBooleanFlag(
-            this.configService.get<string | boolean | null>(
-                "STORAGE_R2_MIGRATION_ENABLED",
-            ),
-        );
+        const { supabaseUploadEnabled } = this.appEnv.getStorageConfig();
+        this.supabaseUploadEnabled = supabaseUploadEnabled;
     }
 
     async uploadToStorage(
@@ -58,13 +55,5 @@ export class StorageManagementService {
 
         const { data: urlData } = admin.storage.from(bucket).getPublicUrl(path);
         return { publicUrl: urlData.publicUrl };
-    }
-
-    private parseBooleanFlag(flag?: string | boolean | null): boolean {
-        if (typeof flag === "boolean") return flag;
-        if (typeof flag === "string") {
-            return ["1", "true", "yes", "on"].includes(flag.toLowerCase());
-        }
-        return false;
     }
 }

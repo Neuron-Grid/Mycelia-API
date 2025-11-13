@@ -1,10 +1,15 @@
 import { gzipSync } from "node:zlib";
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { jest } from "@test-utils/jest-globals";
 import nock from "nock";
+import {
+    APP_ENV_TOKEN,
+    type AppEnv,
+    type FeedFetchConfig,
+} from "@/config/app-env";
 import { FeedFetchService } from "@/feed/application/feed-fetch.service";
+import { createAppEnvStub } from "../../../test/utils/app-env";
 
 // Mock DNS/IP utilities to avoid real resolution
 jest.mock("@/common/net/ip-range.util", () => ({
@@ -12,20 +17,24 @@ jest.mock("@/common/net/ip-range.util", () => ({
         safeIps: ["93.184.216.34"],
         allIps: ["93.184.216.34"],
     })),
-    parseExtraDenyCidrsFromEnv: jest.fn(() => []),
+    parseExtraDenyCidrs: jest.fn(() => []),
 }));
 
-function createConfig(values: Record<string, unknown> = {}): ConfigService {
-    return new ConfigService({
-        FEED_FETCH_ALLOW_HTTP: false,
-        FEED_FETCH_MAX_REDIRECTS: 3,
-        FEED_FETCH_CONNECT_TIMEOUT_MS: 200,
-        FEED_FETCH_RESPONSE_TIMEOUT_MS: 200,
-        FEED_FETCH_BODY_IDLE_TIMEOUT_MS: 200,
-        FEED_FETCH_TOTAL_TIMEOUT_MS: 2000,
-        FEED_FETCH_MAX_BYTES: 1024 * 5,
-        FEED_FETCH_USER_AGENT: "MyceliaRSSFetcher/1.0",
-        ...values,
+const baseConfig: FeedFetchConfig = {
+    allowHttp: false,
+    maxRedirects: 3,
+    connectTimeoutMs: 200,
+    responseTimeoutMs: 200,
+    bodyIdleTimeoutMs: 200,
+    totalTimeoutMs: 2000,
+    maxBytes: 1024 * 5,
+    userAgent: "MyceliaRSSFetcher/1.0",
+    extraDenyCidrsRaw: "",
+};
+
+function createAppEnv(config: FeedFetchConfig): AppEnv {
+    return createAppEnvStub({
+        getFeedFetchConfig: jest.fn(() => config),
     });
 }
 
@@ -44,11 +53,15 @@ describe("FeedFetchService", () => {
         nock.cleanAll();
     });
 
-    async function build(values: Record<string, unknown> = {}) {
+    async function build(overrides: Partial<FeedFetchConfig> = {}) {
+        const config: FeedFetchConfig = {
+            ...baseConfig,
+            ...overrides,
+        };
         const moduleRef = await Test.createTestingModule({
             providers: [
                 FeedFetchService,
-                { provide: ConfigService, useValue: createConfig(values) },
+                { provide: APP_ENV_TOKEN, useValue: createAppEnv(config) },
             ],
         }).compile();
         return moduleRef.get(FeedFetchService);
@@ -77,7 +90,7 @@ describe("FeedFetchService", () => {
     });
 
     it("rejects http when not allowed", async () => {
-        const svc = await build({ FEED_FETCH_ALLOW_HTTP: false });
+        const svc = await build({ allowHttp: false });
         await expect(
             svc.parseFeed("http://example.com/rss.xml"),
         ).rejects.toBeInstanceOf(HttpException);
@@ -122,7 +135,7 @@ describe("FeedFetchService", () => {
     });
 
     it("enforces size limit (413)", async () => {
-        const svc = await build({ FEED_FETCH_MAX_BYTES: 100 });
+        const svc = await build({ maxBytes: 100 });
         const big = `<rss>${"a".repeat(5000)}</rss>`;
         nock("https://example.com").get("/big").reply(200, big, {
             "Content-Type": "application/rss+xml",
@@ -134,8 +147,8 @@ describe("FeedFetchService", () => {
 
     it("times out on response header (504)", async () => {
         const svc = await build({
-            FEED_FETCH_RESPONSE_TIMEOUT_MS: 50,
-            FEED_FETCH_TOTAL_TIMEOUT_MS: 500,
+            responseTimeoutMs: 50,
+            totalTimeoutMs: 500,
         });
         nock("https://example.com")
             .get("/slow-header")
@@ -150,8 +163,8 @@ describe("FeedFetchService", () => {
 
     it("times out on connect (504)", async () => {
         const svc = await build({
-            FEED_FETCH_CONNECT_TIMEOUT_MS: 50,
-            FEED_FETCH_TOTAL_TIMEOUT_MS: 500,
+            connectTimeoutMs: 50,
+            totalTimeoutMs: 500,
         });
         nock("https://example.com")
             .get("/slow-connect")
@@ -166,8 +179,8 @@ describe("FeedFetchService", () => {
 
     it("times out on body idle (504)", async () => {
         const svc = await build({
-            FEED_FETCH_BODY_IDLE_TIMEOUT_MS: 50,
-            FEED_FETCH_TOTAL_TIMEOUT_MS: 1000,
+            bodyIdleTimeoutMs: 50,
+            totalTimeoutMs: 1000,
         });
         nock("https://example.com")
             .get("/idle")

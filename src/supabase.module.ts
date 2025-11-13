@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config"; // ConfigService をインポート
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { Database } from "./types/schema";
 
 export const SUPABASE_CLIENT = "SUPABASE_CLIENT";
@@ -9,17 +9,11 @@ export const SUPABASE_CLIENT = "SUPABASE_CLIENT";
     providers: [
         {
             provide: SUPABASE_CLIENT,
-            useFactory: (
-                configService: ConfigService,
-            ): SupabaseClient<Database> => {
-                // ConfigService を注入
-                const supabaseUrl =
-                    configService.get<string>("SUPABASE_URL") || "";
-                const supabaseKey =
-                    configService.get<string>("SUPABASE_ANON_KEY") || "";
-                return createClient(supabaseUrl, supabaseKey);
+            useFactory: (appEnv: AppEnv): SupabaseClient<Database> => {
+                const { url, anonKey } = appEnv.getSupabaseConfig();
+                return createClient(url, anonKey);
             },
-            inject: [ConfigService], // ConfigService を注入する
+            inject: [APP_ENV_TOKEN],
         },
     ],
     exports: [SUPABASE_CLIENT],
