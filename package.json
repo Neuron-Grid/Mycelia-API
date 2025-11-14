@@ -36,8 +36,8 @@
     "prepare": "ts-patch install && typia patch"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.928.0",
-    "@aws-sdk/s3-request-presigner": "^3.928.0",
+    "@aws-sdk/client-s3": "^3.931.0",
+    "@aws-sdk/s3-request-presigner": "^3.931.0",
     "@google-cloud/text-to-speech": "6.4.0",
     "@google/generative-ai": "^0.24.1",
     "@nestia/core": "^9.0.1",
@@ -49,11 +49,11 @@
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/typeorm": "^11.0.0",
-    "@supabase/supabase-js": "^2.81.0",
+    "@supabase/supabase-js": "^2.81.1",
     "@types/feedparser": "^2.2.8",
     "@types/uuid": "^11.0.0",
     "axios": "^1.13.2",
-    "bullmq": "^5.63.0",
+    "bullmq": "^5.63.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "cookie-parser": "^1.4.7",
@@ -63,7 +63,7 @@
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
     "ipaddr.js": "^2.2.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "node-fetch": "^3.3.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -83,7 +83,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.5",
     "@types/jest": "^30.0.0",
-    "@types/node": "^24.10.0",
+    "@types/node": "^24.10.1",
     "@types/node-fetch": "^2.6.13",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
@@ -93,6 +93,7 @@
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",
+    "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.6",
     "typescript": "5.9.3"
   },
@@ -118,5 +119,5 @@
       "^@test-utils/(.*)$": "<rootDir>/../test/utils/$1"
     }
   },
-  "packageManager": "pnpm@10.21.0"
+  "packageManager": "pnpm@10.22.0"
 }
