@@ -127,6 +127,7 @@ function applyDefaults(snapshot: NodeJS.ProcessEnv): void {
         }
     }
     snapshot.NODE_ENV = snapshot.NODE_ENV ?? "test";
+    snapshot.DEPLOY_STAGE = snapshot.DEPLOY_STAGE ?? "development";
     snapshot.PORT = snapshot.PORT ?? "3000";
 }
 
@@ -157,6 +158,7 @@ export function createAppEnvStub(
 
     const stubBase: AppEnv = {
         nodeEnv: "test",
+        deployStage: "development",
         port: Number(stubRawEnv.PORT ?? 3000),
         corsOriginRaw: stubRawEnv.CORS_ORIGIN ?? "",
         trustProxyHops: Number(stubRawEnv.TRUST_PROXY_HOPS ?? 0),

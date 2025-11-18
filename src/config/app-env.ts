@@ -88,6 +88,7 @@ export interface DomainConfig {
 
 export interface AppEnv {
     readonly nodeEnv: string;
+    readonly deployStage: "development" | "production";
     readonly port: number;
     readonly corsOriginRaw: string;
     readonly trustProxyHops: number;
@@ -135,6 +136,7 @@ export function resolveNodeEnvironment(env: NodeJS.ProcessEnv): string {
 
 class AppEnvImpl implements AppEnv {
     public readonly nodeEnv: string;
+    public readonly deployStage: "development" | "production";
     public readonly port: number;
     public readonly corsOriginRaw: string;
     public readonly trustProxyHops: number;
@@ -148,6 +150,7 @@ class AppEnvImpl implements AppEnv {
     constructor(env: NodeJS.ProcessEnv, argv: readonly string[]) {
         this.env = env;
         this.nodeEnv = resolveNodeEnvironment(env);
+        this.deployStage = deriveDeployStage(env);
         this.port = parsePort(env.PORT, 3000);
         this.corsOriginRaw = env.CORS_ORIGIN?.trim() ?? "";
         this.trustProxyHops = parsePositiveInt(env.TRUST_PROXY_HOPS, 0);
@@ -365,6 +368,17 @@ function deriveAppRole(
     }
 
     return "api";
+}
+
+function deriveDeployStage(
+    env: NodeJS.ProcessEnv,
+): "development" | "production" {
+    const explicit = env.DEPLOY_STAGE?.trim().toLowerCase();
+    if (explicit === "development" || explicit === "production") {
+        return explicit;
+    }
+    const runtimeNodeEnv = resolveNodeEnvironment(env);
+    return runtimeNodeEnv === "production" ? "production" : "development";
 }
 
 function cloneRedisConfig(

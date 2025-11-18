@@ -16,8 +16,9 @@
       "WebFetch(domain:docs.nestjs.com)",
       "WebFetch(domain:www.postgresql.org)",
       "WebFetch(domain:docs.bullmq.io)",
-      "Bash(redis-cli:*)"
+      "Bash(redis-cli:*)",
+      "Bash(tree:*)"
     ],
-    "deny": []
+    "deny": ["Bash(curl:*)", "Bash(git:*)"]
   }
 }
