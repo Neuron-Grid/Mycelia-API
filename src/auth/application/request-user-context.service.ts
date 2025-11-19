@@ -14,6 +14,7 @@ type RequestWithUser = Request & {
 
 @Injectable({ scope: Scope.REQUEST })
 export class RequestUserContextService {
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Request is stored for later access in getCurrentUserId/assertSameUser.
     constructor(@Inject(REQUEST) private readonly request: RequestWithUser) {}
 
     getCurrentUserId(): string | undefined {

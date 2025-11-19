@@ -1,21 +1,21 @@
-import { Inject, Injectable } from "@nestjs/common";
 import { AuthRepositoryPort } from "@/auth/domain/auth.repository";
 import { RedisService } from "@/shared/redis/redis.service";
+import { Inject, Injectable } from "@nestjs/common";
 
-/**
- * WebAuthn(パスキー) MFA のドメインサービス
- *
- * Supabase Auth RPC ラッパー (AuthRepository) と Redis を橋渡しし、
- * ブラウザ ↔ Supabase 間で使用する challenge を一時保存して検証を補助する。
- *
- * 現状は Supabase 側で challengeId を内部に保持しているため
- * 追加の DB 永続化は行わず、TTL 付きキャッシュとしてのみ保持する。
- * 将来的に device binding / 複数ステップなどが必要になれば
- * challenge → factorId のマッピング保存に拡張する。
- */
+// WebAuthn(パスキー) MFA のドメインサービス
+//
+// Supabase Auth RPC ラッパー (AuthRepository) と Redis を橋渡しし、
+// ブラウザ ↔ Supabase 間で使用する challenge を一時保存して検証を補助する。
+//
+// 現状は Supabase 側で challengeId を内部に保持しているため
+// 追加の DB 永続化は行わず、TTL 付きキャッシュとしてのみ保持する。
+// 将来的に device binding / 複数ステップなどが必要になれば
+// challenge → factorId のマッピング保存に拡張する。
+
 @Injectable()
 export class WebAuthnService {
-    /** challenge の有効期限 (秒) */
+    // challenge の有効期限
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Constant is referenced inside cacheChallenge but analyzer fails to track static usage.
     private static readonly CHALLENGE_TTL_SEC = 300;
 
     constructor(
@@ -58,11 +58,9 @@ export class WebAuthnService {
         return await this.authRepo.verifyWebAuthnAssertion(assertionResponse);
     }
 
-    /* ------------------------------------------------------------------ */
-    /*                               Helpers                              */
-    /* ------------------------------------------------------------------ */
+    // Helpers
 
-    /** publicKey.challenge を redis に TTL 付きで保存 */
+    // publicKey.challenge を redis に TTL 付きで保存
     private async cacheChallenge(publicKey?: unknown) {
         try {
             if (
@@ -82,11 +80,11 @@ export class WebAuthnService {
                 }
             }
         } catch {
-            /* ignore cache errors */
+            // ignore cache errors
         }
     }
 
-    /** attestationResponse 内の challenge を削除 */
+    // attestationResponse 内の challenge を削除
     private async removeCachedChallenge(resp: Record<string, unknown>) {
         try {
             const challenge = (
@@ -97,7 +95,7 @@ export class WebAuthnService {
                 await client.del(`webauthn:challenge:${challenge}`);
             }
         } catch {
-            /* ignore cache errors */
+            // ignore cache errors
         }
     }
 }

@@ -18,8 +18,8 @@ ALTER TABLE public.embedding_config FORCE ROW LEVEL SECURITY;
 CREATE POLICY embedding_config_service_manage
     ON public.embedding_config
     FOR ALL
-    USING (auth.role() = 'service_role' OR auth.jwt() IS NULL)
-    WITH CHECK (auth.role() = 'service_role' OR auth.jwt() IS NULL);
+    USING ((select auth.role()) = 'service_role' OR (select auth.jwt()) IS NULL)
+    WITH CHECK ((select auth.role()) = 'service_role' OR (select auth.jwt()) IS NULL);
 
 -- 初期レコード
 -- 存在しなければ作成

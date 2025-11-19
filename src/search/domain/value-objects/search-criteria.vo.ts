@@ -26,6 +26,7 @@ export class SearchCriteria {
         ];
     }
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Helper is invoked inside constructor; static analysis fails to trace private call.
     private validateLimit(limit?: number): number {
         const defaultLimit = 20;
         if (limit === undefined) return defaultLimit;
@@ -34,6 +35,7 @@ export class SearchCriteria {
         return Math.floor(limit);
     }
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Helper is invoked inside constructor; suppression documents intentional usage.
     private validateThreshold(threshold?: number): number {
         const defaultThreshold = 0.7;
         if (threshold === undefined) return defaultThreshold;

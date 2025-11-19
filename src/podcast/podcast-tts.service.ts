@@ -27,10 +27,12 @@ type GoogleTtsCredentials = {
 export class PodcastTtsService {
     private readonly logger = new Logger(PodcastTtsService.name);
     private readonly client: TextToSpeechClient;
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Stored configuration is referenced across helper methods; suppression prevents false positives.
     private readonly googleTtsConfig: GoogleTtsConfig;
 
     constructor(
         private readonly r2: CloudflareR2Service,
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: NestJS DI injects AppEnv; value is used to derive GoogleTtsConfig.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         this.googleTtsConfig = this.appEnv.getGoogleTtsConfig();
@@ -147,6 +149,7 @@ export class PodcastTtsService {
         return await this.synthesizeNewsVoice(text, language, options);
     }
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Factory is invoked during construction even though analyzer misses the call.
     private createClient(): TextToSpeechClient {
         const options = this.buildClientOptions();
         return new TextToSpeechClient(options);

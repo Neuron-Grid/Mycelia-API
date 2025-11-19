@@ -13,44 +13,38 @@
 import "@supabase/supabase-js";
 
 declare module "@supabase/supabase-js" {
-    /* ------------------------------------------------------------------
-     * Enroll
-     * ------------------------------------------------------------------ */
-    /** Params for enrolling a WebAuthn (passkey) factor */
+    // Enroll
+    // Params for enrolling a WebAuthn (passkey) factor
     interface MFAEnrollWebAuthnParams {
         factorType: "webauthn";
-        /** Optional display name shown in Supabase dashboard */
+        // Optional display name shown in Supabase dashboard
         friendlyName?: string;
     }
 
-    /* ------------------------------------------------------------------
-     * Verify
-     * ------------------------------------------------------------------ */
-    /** Params when finishing registration (attestation) */
+    // Verify
+    // Params when finishing registration (attestation)
     interface MFAVerifyWebAuthnAttestationParams {
         attestationResponse: Record<string, unknown>;
     }
 
-    /** Params when verifying a login assertion */
+    // Params when verifying a login assertion
     interface MFAVerifyWebAuthnAssertionParams {
         assertionResponse: Record<string, unknown>;
     }
 
-    /* ------------------------------------------------------------------
-     * API augmentation
-     * ------------------------------------------------------------------ */
+    // API augmentation
     interface AuthMFAApi {
-        /** Enroll (register) WebAuthn factor */
+        // Enroll (register) WebAuthn factor
         enroll(
             params: MFAEnrollWebAuthnParams,
         ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;
 
-        /** Finish WebAuthn registration */
+        // Finish WebAuthn registration
         verify(
             params: MFAVerifyWebAuthnAttestationParams,
         ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;
 
-        /** Verify a WebAuthn login assertion */
+        // Verify a WebAuthn login assertion
         verify(
             params: MFAVerifyWebAuthnAssertionParams,
         ): Promise<import("@supabase/auth-js").AuthMFAEnrollResponse>;

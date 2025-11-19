@@ -9,10 +9,12 @@ type CacheEntry = {
 
 @Injectable()
 export class SupabaseAuthCacheService {
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Logger is referenced for TTL diagnostics but lint mis-detects.
     private readonly logger = new Logger(SupabaseAuthCacheService.name);
     private readonly store = new Map<string, CacheEntry>();
     private readonly ttlMs: number;
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is used in constructor to fetch cache settings.
     constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
         const { ttlMs } = this.appEnv.getSupabaseAuthCacheConfig();
         this.ttlMs = ttlMs;

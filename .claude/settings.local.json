@@ -17,8 +17,20 @@
       "WebFetch(domain:www.postgresql.org)",
       "WebFetch(domain:docs.bullmq.io)",
       "Bash(redis-cli:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "mcp__serena__search_for_pattern",
+      "mcp__serena__list_memories",
+      "mcp__serena__list_dir",
+      "mcp__serena__read_memory",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm build:*)",
+      "mcp__serena__get_symbols_overview",
+      "Bash(pnpm run format:*)",
+      "Bash(pnpm exec biome check:*)"
     ],
-    "deny": ["Bash(curl:*)", "Bash(git:*)"]
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(git:*)"
+    ]
   }
 }

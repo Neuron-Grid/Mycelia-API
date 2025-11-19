@@ -13,6 +13,7 @@ export class PodcastUploadService {
     constructor(
         private readonly cloudflareR2Service: CloudflareR2Service,
         private readonly storageManagementService: StorageManagementService,
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv provides Cloudflare bucket configuration consumed in constructor.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const cloudflare = this.appEnv.getCloudflareR2Config();

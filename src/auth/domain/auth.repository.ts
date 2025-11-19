@@ -29,9 +29,7 @@ export abstract class AuthRepositoryPort {
     abstract verifyEmail(email: string, token: string): Promise<unknown>;
     abstract verifyTotp(factorId: string, code: string): Promise<unknown>;
 
-    /* ------------------------------------------------------------------
-     * WebAuthn (パスキー) 関連
-     * ------------------------------------------------------------------ */
+    // WebAuthn (パスキー) 関連
     /**
      * WebAuthn 登録開始（CreateCredentialOptions 生成）
      * @param displayName - デバイス表示名（例: "MacBook Pro TouchID"）

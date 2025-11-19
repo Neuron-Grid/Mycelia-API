@@ -29,6 +29,7 @@ import {
 export class FeedFetchService {
     private readonly logger = new Logger(FeedFetchService.name);
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is needed to resolve per-request feed fetch configuration.
     constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
         this.feedFetchConfig = this.appEnv.getFeedFetchConfig();
     }

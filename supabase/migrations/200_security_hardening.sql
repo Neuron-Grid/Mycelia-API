@@ -82,14 +82,14 @@ BEGIN
         EXECUTE format($f$
             CREATE POLICY policy_owner_select ON public.%I
             FOR SELECT
-            USING (user_id = auth.uid() AND (soft_deleted = FALSE OR soft_deleted IS NULL));
+            USING (user_id = (select auth.uid()) AND (soft_deleted = FALSE OR soft_deleted IS NULL));
         $f$, t);
 
         -- INSERT: 自分のレコードのみ作成可
         EXECUTE format($f$
             CREATE POLICY policy_owner_insert ON public.%I
             FOR INSERT
-            WITH CHECK (user_id = auth.uid());
+            WITH CHECK (user_id = (select auth.uid()));
         $f$, t);
 
         -- UPDATE: 自分の非削除レコードのみ更新可
@@ -97,15 +97,15 @@ BEGIN
         EXECUTE format($f$
             CREATE POLICY policy_owner_update ON public.%I
             FOR UPDATE
-            USING (user_id = auth.uid() AND (soft_deleted = FALSE OR soft_deleted IS NULL))
-            WITH CHECK (user_id = auth.uid());
+            USING (user_id = (select auth.uid()) AND (soft_deleted = FALSE OR soft_deleted IS NULL))
+            WITH CHECK (user_id = (select auth.uid()));
         $f$, t);
 
         -- DELETE: 自分の非削除レコードのみ削除可
         EXECUTE format($f$
             CREATE POLICY policy_owner_delete ON public.%I
             FOR DELETE
-            USING (user_id = auth.uid() AND (soft_deleted = FALSE OR soft_deleted IS NULL));
+            USING (user_id = (select auth.uid()) AND (soft_deleted = FALSE OR soft_deleted IS NULL));
         $f$, t);
     END LOOP;
 END;
@@ -122,16 +122,16 @@ DROP POLICY IF EXISTS policy_users_update ON public.users;
 DROP POLICY IF EXISTS policy_users_delete ON public.users;
 
 CREATE POLICY policy_users_select ON public.users
-    FOR SELECT USING (id = auth.uid() AND deleted_at IS NULL);
+    FOR SELECT USING (id = (select auth.uid()) AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_insert ON public.users
-    FOR INSERT WITH CHECK (id = auth.uid() AND deleted_at IS NULL);
+    FOR INSERT WITH CHECK (id = (select auth.uid()) AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_update ON public.users
-    FOR UPDATE USING (id = auth.uid() AND deleted_at IS NULL)
-    WITH CHECK (id = auth.uid() AND deleted_at IS NULL);
+    FOR UPDATE USING (id = (select auth.uid()) AND deleted_at IS NULL)
+    WITH CHECK (id = (select auth.uid()) AND deleted_at IS NULL);
 
 CREATE POLICY policy_users_delete ON public.users
-    FOR DELETE USING (id = auth.uid() AND deleted_at IS NULL);
+    FOR DELETE USING (id = (select auth.uid()) AND deleted_at IS NULL);
 
 COMMIT;

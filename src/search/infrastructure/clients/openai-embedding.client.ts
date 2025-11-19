@@ -10,6 +10,7 @@ export class OpenAIEmbeddingClient {
     private readonly maxRetries = 3;
     private readonly initialRetryDelayMs = 1_000;
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection provides OpenAI configuration consumed immediately in the constructor.
     constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
         const config = this.appEnv.getOpenAiConfig();
         this.apiKey = config.apiKey;
@@ -22,10 +23,12 @@ export class OpenAIEmbeddingClient {
     }
 
     // OpenAI Embeddings API response shapes
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used purely for typed JSON parsing; suppression documents intentional usage.
     private static readonly errorShape: {
         error?: { message?: string };
     } = {};
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Parsed response typing relies on this shape even though lint cannot detect usage.
     private static readonly embeddingShape: {
         data: Array<{ embedding: number[] }>;
     } = { data: [] };

@@ -25,9 +25,11 @@ import {
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
     private anonClient: SupabaseClient<Database> | null = null;
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Supabase config is referenced when creating clients, but analyzer misses cross-method usage.
     private readonly supabaseConfig: SupabaseConfig;
 
     constructor(
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection supplies Supabase credentials used during guard initialization.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
         private readonly userVerificationService: UserVerificationService,
         private readonly metrics: SupabaseAuthMetricsService,
@@ -35,6 +37,7 @@ export class SupabaseAuthGuard implements CanActivate {
         this.supabaseConfig = this.appEnv.getSupabaseConfig();
     }
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Helper is invoked within canActivate to parse JWT payloads.
     private static decodeJwtClaims(token: string): JwtAuthClaims | null {
         try {
             const [, payload] = token.split(".");

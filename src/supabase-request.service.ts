@@ -23,7 +23,9 @@ export class SupabaseRequestService {
     // @since 1.0.0
     // @public
     constructor(
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Request is stored for header/cookie inspection later in the constructor.
         @Inject(REQUEST) private readonly req: Request,
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is required to resolve Supabase credentials.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const { url, anonKey } = this.appEnv.getSupabaseConfig();

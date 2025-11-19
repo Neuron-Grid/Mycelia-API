@@ -11,9 +11,6 @@ import {
 } from "@nestjs/common";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 // @see https://supabase.com/docs/reference/javascript/auth-api
-import type { User } from "@supabase/supabase-js";
-import type { Request, Response } from "express";
-import { setAuthCookies } from "src/common/utils/cookie";
 import { AckDto } from "@/auth/dto/ack.dto";
 import type { AuthUserDto } from "@/auth/dto/auth-user.dto";
 import { EnrollTotpResponseDto } from "@/auth/dto/enroll-totp.response.dto";
@@ -22,6 +19,9 @@ import { RefreshResultDto } from "@/auth/dto/refresh-result.dto";
 import { mapAuthUserToDto } from "@/auth/mappers/auth-user.mapper";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
+import type { User } from "@supabase/supabase-js";
+import type { Request, Response } from "express";
+import { setAuthCookies } from "src/common/utils/cookie";
 import { AuthService } from "./auth.service";
 import type { DisableTotpDto } from "./dto/disable-totp.dto";
 import type { EnrollTotpDto } from "./dto/enroll-totp.dto";
@@ -480,9 +480,7 @@ export class AuthController {
         return buildResponse("TOTP verified successfully", { ok: !!result });
     }
 
-    /* ------------------------------------------------------------------
-     * WebAuthn (Passkey) endpoints
-     * ------------------------------------------------------------------ */
+    // WebAuthn (Passkey) endpoints
     // 登録開始: navigator.credentials.create() 前段で呼び出し
     @TypedRoute.Post("mfa/webauthn/register")
     @UseGuards(SupabaseAuthGuard, ThrottlerGuard)

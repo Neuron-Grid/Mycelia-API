@@ -13,6 +13,7 @@ export class GeminiService {
 
     constructor(
         private readonly http: HttpService,
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection provides Gemini credentials consumed here.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const { apiUrl, apiKey } = this.appEnv.getGeminiConfig();

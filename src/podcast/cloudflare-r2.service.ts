@@ -33,6 +33,7 @@ export class CloudflareR2Service {
     private readonly allowedPrefixTemplates: string[];
     private readonly accountId: string;
 
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is used to build Cloudflare R2 credentials/config.
     constructor(@Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv) {
         const {
             accountId,

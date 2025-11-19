@@ -1,5 +1,3 @@
-import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
-import { createClient } from "@supabase/supabase-js";
 import { AuthAccountDeletionService } from "@/auth/application/auth-account-deletion.service";
 import {
     APP_ENV_TOKEN,
@@ -8,16 +6,20 @@ import {
 } from "@/config/app-env";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseRequestService } from "@/supabase-request.service";
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { createClient } from "@supabase/supabase-js";
 import { AuthRepositoryPort } from "../domain/auth.repository";
 
 @Injectable()
 export class SupabaseAuthRepository implements AuthRepositoryPort {
+    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Supabase configuration is consumed in password update logic but Biome fails to trace.
     private readonly supabaseConfig: SupabaseConfig;
 
     constructor(
         private readonly supabaseReq: SupabaseRequestService,
         private readonly lockService: DistributedLockService,
         private readonly accountDeletionService: AuthAccountDeletionService,
+        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is required to resolve runtime Supabase credentials.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         this.supabaseConfig = this.appEnv.getSupabaseConfig();
@@ -316,9 +318,7 @@ export class SupabaseAuthRepository implements AuthRepositoryPort {
         return data;
     }
 
-    /* ------------------------------------------------------------------
-     * WebAuthn (パスキー) 関連
-     * ------------------------------------------------------------------ */
+    //  WebAuthn (パスキー) 関連
     // 1. 登録開始: PublicKeyCredentialCreationOptions を取得
     async startWebAuthnRegistration(displayName?: string) {
         const sb = this.supabaseReq.getClient();
