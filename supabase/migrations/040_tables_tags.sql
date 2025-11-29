@@ -5,15 +5,15 @@
 CREATE TABLE public.tags(
     id             bigint GENERATED ALWAYS AS IDENTITY,
     user_id        uuid   NOT NULL REFERENCES public.users (id) ON DELETE CASCADE,
-    tag_name       citext NOT NULL,
+    tag_name       extensions.citext NOT NULL,
     parent_tag_id  bigint,
     description    text,
     color          text,
-    tag_emb        vector(1536),
+    tag_emb        extensions.vector(1536),
 
     -- GENERATED列ではなく通常の列として定義
     -- BEFOREトリガーで必ずセットされるため NOT NULL（calculate_tag_path が責務を負う）
-    path           ltree NOT NULL,
+    path           extensions.ltree NOT NULL,
 
     created_at     timestamptz NOT NULL DEFAULT NOW(),
     updated_at     timestamptz NOT NULL DEFAULT NOW(),
@@ -28,14 +28,18 @@ CREATE TABLE public.tags(
     UNIQUE (id, user_id),
 
     CHECK (id <> parent_tag_id),
-    CHECK (nlevel(path) <= 5),
+    CHECK (extensions.nlevel(path) <= 5),
     CHECK (color IS NULL OR color ~ '^#[0-9A-Fa-f]{6}$'),
     CONSTRAINT chk_tag_name_len CHECK (char_length(tag_name::text) <= 100)
 );
 
 -- 循環参照を防止するトリガー関数
 CREATE OR REPLACE FUNCTION public.check_tag_circular_reference()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 DECLARE
     current_id bigint;
     depth int := 0;
@@ -61,13 +65,17 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- タグ深度チェック関数
 CREATE OR REPLACE FUNCTION public.check_tag_depth()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 DECLARE
-    parent_path ltree;
+    parent_path extensions.ltree;
     parent_depth int;
 BEGIN
     IF NEW.parent_tag_id IS NULL THEN
@@ -91,14 +99,18 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- path を自動計算する BEFORE トリガー関数
 -- BEFORE で実行され、その後に NOT NULL / 深度 CHECK が効く
 CREATE OR REPLACE FUNCTION public.calculate_tag_path()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 DECLARE
-    parent_path ltree;
+    parent_path extensions.ltree;
 BEGIN
     IF pg_trigger_depth() > 1 THEN
         RETURN NEW;
@@ -119,11 +131,15 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- 親変更 / 改名時に子孫 path を一括更新する AFTER トリガ
 CREATE OR REPLACE FUNCTION public.update_tag_descendant_paths()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
     IF pg_trigger_depth() > 1 THEN
         RETURN NEW;
@@ -139,7 +155,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- トリガーの作成順序
 -- BEFORE 群 → AFTER 群 → updated_at

@@ -1,6 +1,6 @@
+import { Inject, Injectable } from "@nestjs/common";
 import { AuthRepositoryPort } from "@/auth/domain/auth.repository";
 import { RedisService } from "@/shared/redis/redis.service";
-import { Inject, Injectable } from "@nestjs/common";
 
 // WebAuthn(パスキー) MFA のドメインサービス
 //
@@ -15,7 +15,6 @@ import { Inject, Injectable } from "@nestjs/common";
 @Injectable()
 export class WebAuthnService {
     // challenge の有効期限
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Constant is referenced inside cacheChallenge but analyzer fails to track static usage.
     private static readonly CHALLENGE_TTL_SEC = 300;
 
     constructor(

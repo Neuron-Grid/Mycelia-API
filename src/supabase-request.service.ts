@@ -4,8 +4,8 @@ import { Inject, Injectable, Scope } from "@nestjs/common";
 import { REQUEST } from "@nestjs/core";
 // @see https://supabase.com/docs/reference/javascript/create-client
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-// @see https://expressjs.com/
 import { Request } from "express";
+// @see https://expressjs.com/
 import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 // @see ./types/schema
 import { Database } from "@/types/schema";
@@ -23,9 +23,7 @@ export class SupabaseRequestService {
     // @since 1.0.0
     // @public
     constructor(
-        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Request is stored for header/cookie inspection later in the constructor.
         @Inject(REQUEST) private readonly req: Request,
-        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection is required to resolve Supabase credentials.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const { url, anonKey } = this.appEnv.getSupabaseConfig();

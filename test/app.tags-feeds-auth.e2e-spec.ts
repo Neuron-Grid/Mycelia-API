@@ -15,7 +15,7 @@ import {
 } from "@test-utils/app-env";
 import { jest } from "@test-utils/jest-globals";
 import cookieParser from "cookie-parser";
-import request, { SuperAgentTest } from "supertest";
+import request from "supertest";
 import { AppApiModule } from "@/app.api.module";
 import { AuthService } from "@/auth/auth.service";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
@@ -31,7 +31,7 @@ import { TagService } from "@/tag/application/tag.service";
 jest.mock("@nestjs/bullmq", () => {
     class BullMqStubModule {}
     class WorkerHost {
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: stub only
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: モック用の空実装
         process() {}
     }
 
@@ -137,7 +137,7 @@ class AllowAuthGuard {
 
 describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
     let app: INestApplication;
-    let agent: SuperAgentTest;
+    let agent: ReturnType<typeof request.agent>;
     let restoreEnv: (() => void) | null = null;
 
     const tagRows = [
@@ -287,7 +287,8 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
             .overrideProvider(AuthService)
             .useValue(authServiceStub)
             .overrideProvider(WebAuthnService)
-            .useValue({});
+            .useValue({})
+            .compile();
 
         app = moduleFixture.createNestApplication();
         const appEnv = app.get<AppEnv>(APP_ENV_TOKEN);
@@ -316,7 +317,9 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
 
     const prepareCsrfToken = async (): Promise<string> => {
         const res = await agent.get("/api/v1/auth/login").expect(404);
-        const token = extractXsrfFrom(res.headers["set-cookie"]);
+        const token = extractXsrfFrom(
+            res.headers["set-cookie"] as unknown as string[],
+        );
         if (!token) {
             throw new Error("Failed to obtain XSRF token");
         }

@@ -26,7 +26,7 @@ declare module "@nestjs/bullmq" {
     export const JOB_REF: "REQUEST";
     export function getQueueToken(name?: string): string;
 
-    /* biome-ignore lint/complexity/noStaticOnlyClass: shim aligns with NestJS API */
+    // biome-ignore lint/complexity/noStaticOnlyClass: NestJSモジュールの型定義のため静的クラスが必要
     export class BullModule {
         static registerQueueAsync(
             ...options: QueueRegisterOptions[]

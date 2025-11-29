@@ -9,6 +9,8 @@ RETURNS TABLE(
     total_feed_items_tagged    bigint
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     RETURN QUERY

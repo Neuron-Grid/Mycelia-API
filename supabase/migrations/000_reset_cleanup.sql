@@ -13,13 +13,13 @@ DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.update_timestamp() CASCADE;
 DROP FUNCTION IF EXISTS public.check_tag_depth() CASCADE;
 DROP FUNCTION IF EXISTS public.get_tag_statistics() CASCADE;
-DROP FUNCTION IF EXISTS public.search_feed_items_by_vector(vector, float, int) CASCADE;
-DROP FUNCTION IF EXISTS public.search_summaries_by_vector(vector, float, int) CASCADE;
-DROP FUNCTION IF EXISTS public.search_podcast_episodes_by_vector(vector, float, int) CASCADE;
-DROP FUNCTION IF EXISTS public.search_tags_by_vector(vector, float, int) CASCADE;
-DROP FUNCTION IF EXISTS public.search_all_content_by_vector(vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_feed_items_by_vector(extensions.vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_summaries_by_vector(extensions.vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_podcast_episodes_by_vector(extensions.vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_tags_by_vector(extensions.vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_all_content_by_vector(extensions.vector, float, int) CASCADE;
 DROP FUNCTION IF EXISTS public.get_embedding_dimensions() CASCADE;
-DROP FUNCTION IF EXISTS public.search_items_dynamic(vector, float, int) CASCADE;
+DROP FUNCTION IF EXISTS public.search_items_dynamic(extensions.vector, float, int) CASCADE;
 DROP FUNCTION IF EXISTS public.auto_apply_rls_policy() CASCADE;
 
 -- Event Triggers

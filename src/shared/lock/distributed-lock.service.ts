@@ -19,7 +19,6 @@ export class DistributedLockService
     end
   `;
 
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: RedisService injection is stored for subsequent client creation.
     constructor(private readonly redisService: RedisService) {
         this.redisClient = this.redisService.createMainClient();
     }

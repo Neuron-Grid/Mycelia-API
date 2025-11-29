@@ -18,9 +18,7 @@ type ScheduleTickData = {
 @Injectable()
 export class MaintenanceQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(MaintenanceQueueProcessor.name);
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Constant is consumed in pagination logic; suppression avoids false positives.
     private static readonly SUMMARY_PAGE_SIZE = 500;
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Constant is consumed in pagination logic for podcasts.
     private static readonly PODCAST_PAGE_SIZE = 500;
 
     constructor(

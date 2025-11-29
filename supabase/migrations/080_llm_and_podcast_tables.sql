@@ -7,7 +7,7 @@ CREATE TABLE public.daily_summaries(
     summary_date date NOT NULL,
     markdown     text NOT NULL,
     summary_title text NOT NULL,
-    summary_emb  vector(1536),
+    summary_emb  extensions.vector(1536),
     script_text  text,
     script_tts_duration_sec int,
 
@@ -44,7 +44,7 @@ CREATE TABLE public.podcast_episodes(
     user_id    uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     summary_id bigint NOT NULL,
     title      text NOT NULL,
-    title_emb  vector(1536),
+    title_emb  extensions.vector(1536),
     audio_url  text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT NOW(),
     updated_at timestamptz NOT NULL DEFAULT NOW(),
@@ -64,6 +64,8 @@ CREATE TRIGGER trg_podcast_episodes_updated
 CREATE OR REPLACE FUNCTION public.enforce_podcast_enabled()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     IF NOT EXISTS(
@@ -87,6 +89,8 @@ CREATE TRIGGER trg_podcast_insert_guard
 CREATE OR REPLACE FUNCTION public.enqueue_r2_delete()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     PERFORM pg_notify('r2_delete', OLD.audio_url);

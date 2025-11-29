@@ -11,7 +11,7 @@ CREATE TABLE public.feed_items(
     link_hash            text   NOT NULL,
     description          text,
     published_at         timestamptz,
-    title_emb            vector(1536),
+    title_emb            extensions.vector(1536),
     created_at           timestamptz NOT NULL DEFAULT NOW(),
     updated_at           timestamptz NOT NULL DEFAULT NOW(),
 

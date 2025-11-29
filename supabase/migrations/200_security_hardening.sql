@@ -39,10 +39,10 @@ TO authenticated;
 
 -- 1-4) Functions: 明示的に公開API関数のみGRANT
 GRANT EXECUTE ON FUNCTION
-    public.search_feed_items_by_vector(vector, float, int),
-    public.search_summaries_by_vector(vector, float, int),
-    public.search_podcast_episodes_by_vector(vector, float, int),
-    public.search_tags_by_vector(vector, float, int),
+    public.search_feed_items_by_vector(extensions.vector(1536), float, int),
+    public.search_summaries_by_vector(extensions.vector(1536), float, int),
+    public.search_podcast_episodes_by_vector(extensions.vector(1536), float, int),
+    public.search_tags_by_vector(extensions.vector(1536), float, int),
     public.get_tag_statistics(),
     public.get_embedding_dimensions()
 TO authenticated;

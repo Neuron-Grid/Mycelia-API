@@ -56,7 +56,6 @@ export class GeminiFlashClient implements LlmService {
 
     constructor(
         public readonly http: HttpService,
-        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv supplies Gemini credentials that are read in this constructor.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const config = this.appEnv.getGeminiConfig();

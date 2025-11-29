@@ -5,7 +5,7 @@
 BEGIN;
 
 -- 0) Replace search functions to take float8[] instead of vector(1536)
-DROP FUNCTION IF EXISTS public.search_feed_items_by_vector(vector, float, int);
+DROP FUNCTION IF EXISTS public.search_feed_items_by_vector(extensions.vector(1536), float, int);
 CREATE OR REPLACE FUNCTION public.search_feed_items_by_vector(
     query_embedding float8[],
     match_threshold float,
@@ -16,10 +16,12 @@ RETURNS TABLE(
     published_at timestamptz, feed_title text, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
-DECLARE v_vec vector(1536);
+DECLARE v_vec extensions.vector(1536);
 BEGIN
-    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::vector(1536) END;
+    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::extensions.vector(1536) END;
     RETURN QUERY
     SELECT
         fi.id, fi.title, fi.description, fi.link, fi.published_at,
@@ -38,7 +40,7 @@ $$;
 REVOKE ALL ON FUNCTION public.search_feed_items_by_vector(float8[], float, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_feed_items_by_vector(float8[], float, int) TO authenticated;
 
-DROP FUNCTION IF EXISTS public.search_summaries_by_vector(vector, float, int);
+DROP FUNCTION IF EXISTS public.search_summaries_by_vector(float8[], float, int);
 CREATE OR REPLACE FUNCTION public.search_summaries_by_vector(
     query_embedding float8[],
     match_threshold float,
@@ -49,10 +51,12 @@ RETURNS TABLE(
     script_text text, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
-DECLARE v_vec vector(1536);
+DECLARE v_vec extensions.vector(1536);
 BEGIN
-    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::vector(1536) END;
+    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::extensions.vector(1536) END;
     RETURN QUERY
     SELECT
         ds.id, ds.summary_title, ds.markdown, ds.summary_date,
@@ -68,7 +72,7 @@ $$;
 REVOKE ALL ON FUNCTION public.search_summaries_by_vector(float8[], float, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_summaries_by_vector(float8[], float, int) TO authenticated;
 
-DROP FUNCTION IF EXISTS public.search_podcast_episodes_by_vector(vector, float, int);
+DROP FUNCTION IF EXISTS public.search_podcast_episodes_by_vector(extensions.vector(1536), float, int);
 CREATE OR REPLACE FUNCTION public.search_podcast_episodes_by_vector(
     query_embedding float8[],
     match_threshold float,
@@ -79,10 +83,12 @@ RETURNS TABLE(
     created_at timestamptz, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
-DECLARE v_vec vector(1536);
+DECLARE v_vec extensions.vector(1536);
 BEGIN
-    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::vector(1536) END;
+    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::extensions.vector(1536) END;
     RETURN QUERY
     SELECT
         pe.id, pe.title, pe.audio_url, pe.summary_id,
@@ -98,20 +104,22 @@ $$;
 REVOKE ALL ON FUNCTION public.search_podcast_episodes_by_vector(float8[], float, int) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.search_podcast_episodes_by_vector(float8[], float, int) TO authenticated;
 
-DROP FUNCTION IF EXISTS public.search_tags_by_vector(vector, float, int);
+DROP FUNCTION IF EXISTS public.search_tags_by_vector(extensions.vector(1536), float, int);
 CREATE OR REPLACE FUNCTION public.search_tags_by_vector(
     query_embedding float8[],
     match_threshold float,
     match_count int
 )
 RETURNS TABLE(
-    id bigint, tag_name citext, parent_tag_id bigint, similarity float
+    id bigint, tag_name extensions.citext, parent_tag_id bigint, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
-DECLARE v_vec vector(1536);
+DECLARE v_vec extensions.vector(1536);
 BEGIN
-    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::vector(1536) END;
+    v_vec := CASE WHEN query_embedding IS NULL THEN NULL ELSE query_embedding::extensions.vector(1536) END;
     RETURN QUERY
     SELECT
         t.id, t.tag_name, t.parent_tag_id,
@@ -129,7 +137,7 @@ GRANT EXECUTE ON FUNCTION public.search_tags_by_vector(float8[], float, int) TO 
 
 
 -- 1) Replace worker RPCs that take vector inputs to accept float8[]
-DROP FUNCTION IF EXISTS public.fn_upsert_daily_summary(uuid, date, text, text, vector);
+DROP FUNCTION IF EXISTS public.fn_upsert_daily_summary(uuid, date, text, text, extensions.vector(1536));
 CREATE OR REPLACE FUNCTION public.fn_upsert_daily_summary(
   p_user_id uuid,
   p_summary_date date,
@@ -142,9 +150,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE v_row public.daily_summaries;
-DECLARE v_emb vector(1536);
+DECLARE v_emb extensions.vector(1536);
 BEGIN
-  v_emb := CASE WHEN p_summary_emb IS NULL THEN NULL ELSE p_summary_emb::vector(1536) END;
+  v_emb := CASE WHEN p_summary_emb IS NULL THEN NULL ELSE p_summary_emb::extensions.vector(1536) END;
   INSERT INTO public.daily_summaries(user_id, summary_date, summary_title, markdown, summary_emb)
   VALUES (p_user_id, p_summary_date, COALESCE(p_summary_title, ''), COALESCE(p_markdown, ''), v_emb)
   ON CONFLICT (user_id, summary_date) DO UPDATE
@@ -163,7 +171,7 @@ REVOKE ALL ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, fl
 GRANT  EXECUTE ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, float8[]) TO service_role;
 
 
-DROP FUNCTION IF EXISTS public.fn_upsert_podcast_episode(uuid, bigint, text, vector);
+DROP FUNCTION IF EXISTS public.fn_upsert_podcast_episode(uuid, bigint, text, extensions.vector(1536));
 CREATE OR REPLACE FUNCTION public.fn_upsert_podcast_episode(
   p_user_id uuid,
   p_summary_id bigint,
@@ -175,7 +183,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE v_ep public.podcast_episodes;
-DECLARE v_emb vector(1536);
+DECLARE v_emb extensions.vector(1536);
 BEGIN
   -- 機能フラグ
   IF NOT EXISTS (
@@ -196,7 +204,7 @@ BEGIN
     RAISE EXCEPTION 'Summary not found or access denied' USING ERRCODE = '42501';
   END IF;
 
-  v_emb := CASE WHEN p_title_emb IS NULL THEN NULL ELSE p_title_emb::vector(1536) END;
+  v_emb := CASE WHEN p_title_emb IS NULL THEN NULL ELSE p_title_emb::extensions.vector(1536) END;
   INSERT INTO public.podcast_episodes(user_id, summary_id, title, title_emb, audio_url)
   VALUES (p_user_id, p_summary_id, COALESCE(p_title, ''), v_emb, '')
   ON CONFLICT (summary_id) DO UPDATE
@@ -213,7 +221,7 @@ REVOKE ALL ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, floa
 GRANT  EXECUTE ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, float8[]) TO service_role;
 
 
-DROP FUNCTION IF EXISTS public.fn_update_feed_item_embedding(uuid, bigint, vector);
+DROP FUNCTION IF EXISTS public.fn_update_feed_item_embedding(uuid, bigint, extensions.vector(1536));
 CREATE OR REPLACE FUNCTION public.fn_update_feed_item_embedding(
   p_user_id uuid,
   p_id bigint,
@@ -225,9 +233,11 @@ SET search_path = public
 AS $$
 BEGIN
   UPDATE public.feed_items
-     SET title_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::vector(1536) END,
+     SET title_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::extensions.vector(1536) END,
          updated_at = NOW()
-   WHERE id = p_id AND user_id = p_user_id AND COALESCE(soft_deleted, FALSE) = FALSE;
+   WHERE id = p_id
+     AND user_id = p_user_id
+     AND COALESCE(soft_deleted, FALSE) = FALSE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Feed item not found or access denied' USING ERRCODE = '42501';
   END IF;
@@ -237,7 +247,7 @@ REVOKE ALL ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, float8
 GRANT  EXECUTE ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, float8[]) TO service_role;
 
 
-DROP FUNCTION IF EXISTS public.fn_update_summary_embedding(uuid, bigint, vector);
+DROP FUNCTION IF EXISTS public.fn_update_summary_embedding(uuid, bigint, extensions.vector(1536));
 CREATE OR REPLACE FUNCTION public.fn_update_summary_embedding(
   p_user_id uuid,
   p_id bigint,
@@ -249,7 +259,7 @@ SET search_path = public
 AS $$
 BEGIN
   UPDATE public.daily_summaries
-     SET summary_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::vector(1536) END,
+     SET summary_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::extensions.vector(1536) END,
          updated_at = NOW()
    WHERE id = p_id AND user_id = p_user_id AND COALESCE(soft_deleted, FALSE) = FALSE;
   IF NOT FOUND THEN
@@ -261,7 +271,7 @@ REVOKE ALL ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, float8[]
 GRANT  EXECUTE ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, float8[]) TO service_role;
 
 
-DROP FUNCTION IF EXISTS public.fn_update_podcast_embedding(uuid, bigint, vector);
+DROP FUNCTION IF EXISTS public.fn_update_tag_embedding(uuid, bigint, extensions.vector(1536));
 CREATE OR REPLACE FUNCTION public.fn_update_podcast_embedding(
   p_user_id uuid,
   p_id bigint,
@@ -273,7 +283,7 @@ SET search_path = public
 AS $$
 BEGIN
   UPDATE public.podcast_episodes
-     SET title_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::vector(1536) END,
+     SET title_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::extensions.vector(1536) END,
          updated_at = NOW()
    WHERE id = p_id AND user_id = p_user_id AND COALESCE(soft_deleted, FALSE) = FALSE;
   IF NOT FOUND THEN
@@ -285,7 +295,6 @@ REVOKE ALL ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, float8[]
 GRANT  EXECUTE ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, float8[]) TO service_role;
 
 
-DROP FUNCTION IF EXISTS public.fn_update_tag_embedding(uuid, bigint, vector);
 CREATE OR REPLACE FUNCTION public.fn_update_tag_embedding(
   p_user_id uuid,
   p_id bigint,
@@ -297,7 +306,7 @@ SET search_path = public
 AS $$
 BEGIN
   UPDATE public.tags
-     SET tag_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::vector(1536) END,
+     SET tag_emb = CASE WHEN p_vec IS NULL THEN NULL ELSE p_vec::extensions.vector(1536) END,
          updated_at = NOW()
    WHERE id = p_id AND user_id = p_user_id AND COALESCE(soft_deleted, FALSE) = FALSE;
   IF NOT FOUND THEN
@@ -309,4 +318,3 @@ REVOKE ALL ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, float8[]) FR
 GRANT  EXECUTE ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, float8[]) TO service_role;
 
 COMMIT;
-

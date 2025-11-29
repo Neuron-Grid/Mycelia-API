@@ -3,7 +3,7 @@
 
 -- フィードアイテム検索
 CREATE OR REPLACE FUNCTION public.search_feed_items_by_vector(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1536),
     match_threshold float,
     match_count int
 )
@@ -12,6 +12,8 @@ RETURNS TABLE(
     published_at timestamptz, feed_title text, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     RETURN QUERY
@@ -32,7 +34,7 @@ $$;
 
 -- サマリー検索
 CREATE OR REPLACE FUNCTION public.search_summaries_by_vector(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1536),
     match_threshold float,
     match_count int
 )
@@ -41,6 +43,8 @@ RETURNS TABLE(
     script_text text, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     RETURN QUERY
@@ -58,7 +62,7 @@ $$;
 
 -- ポッドキャスト検索
 CREATE OR REPLACE FUNCTION public.search_podcast_episodes_by_vector(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1536),
     match_threshold float,
     match_count int
 )
@@ -67,6 +71,8 @@ RETURNS TABLE(
     created_at timestamptz, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     RETURN QUERY
@@ -84,14 +90,16 @@ $$;
 
 -- タグ検索
 CREATE OR REPLACE FUNCTION public.search_tags_by_vector(
-    query_embedding vector(1536),
+    query_embedding extensions.vector(1536),
     match_threshold float,
     match_count int
 )
 RETURNS TABLE(
-    id bigint, tag_name citext, parent_tag_id bigint, similarity float
+    id bigint, tag_name extensions.citext, parent_tag_id bigint, similarity float
 )
 LANGUAGE plpgsql STABLE
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 BEGIN
     RETURN QUERY
@@ -107,7 +115,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.search_feed_items_by_vector(vector, float, int)      TO authenticated;
-GRANT EXECUTE ON FUNCTION public.search_summaries_by_vector(vector, float, int)       TO authenticated;
-GRANT EXECUTE ON FUNCTION public.search_podcast_episodes_by_vector(vector, float, int) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.search_tags_by_vector(vector, float, int)            TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_feed_items_by_vector(extensions.vector(1536), float, int)      TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_summaries_by_vector(extensions.vector(1536), float, int)       TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_podcast_episodes_by_vector(extensions.vector(1536), float, int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_tags_by_vector(extensions.vector(1536), float, int)            TO authenticated;

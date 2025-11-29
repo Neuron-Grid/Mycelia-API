@@ -10,6 +10,9 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import type { User } from "@supabase/supabase-js";
+import type { Request, Response } from "express";
+import { setAuthCookies } from "src/common/utils/cookie";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { AckDto } from "@/auth/dto/ack.dto";
 import type { AuthUserDto } from "@/auth/dto/auth-user.dto";
@@ -19,9 +22,6 @@ import { RefreshResultDto } from "@/auth/dto/refresh-result.dto";
 import { mapAuthUserToDto } from "@/auth/mappers/auth-user.mapper";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
-import type { User } from "@supabase/supabase-js";
-import type { Request, Response } from "express";
-import { setAuthCookies } from "src/common/utils/cookie";
 import { AuthService } from "./auth.service";
 import type { DisableTotpDto } from "./dto/disable-totp.dto";
 import type { EnrollTotpDto } from "./dto/enroll-totp.dto";

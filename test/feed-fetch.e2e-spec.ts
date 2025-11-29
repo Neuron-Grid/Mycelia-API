@@ -8,7 +8,7 @@ import nock from "nock";
 jest.mock("@nestjs/bullmq", () => {
     class BullMqStubModule {}
     class WorkerHost {
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: stub
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: モック用の空実装
         process() {}
     }
 

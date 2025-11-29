@@ -9,7 +9,6 @@ export class StorageManagementService {
 
     constructor(
         private readonly adminService: SupabaseAdminService,
-        // biome-ignore lint/correctness/noUnusedPrivateClassMembers: AppEnv injection provides storage configuration consumed here.
         @Inject(APP_ENV_TOKEN) private readonly appEnv: AppEnv,
     ) {
         const { supabaseUploadEnabled } = this.appEnv.getStorageConfig();

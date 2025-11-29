@@ -228,6 +228,7 @@ export type Database = {
                     friendly_name: string | null;
                     id: string;
                     last_challenged_at: string | null;
+                    last_webauthn_challenge_data: Json | null;
                     phone: string | null;
                     secret: string | null;
                     status: Database["auth"]["Enums"]["factor_status"];
@@ -242,6 +243,7 @@ export type Database = {
                     friendly_name?: string | null;
                     id: string;
                     last_challenged_at?: string | null;
+                    last_webauthn_challenge_data?: Json | null;
                     phone?: string | null;
                     secret?: string | null;
                     status: Database["auth"]["Enums"]["factor_status"];
@@ -256,6 +258,7 @@ export type Database = {
                     friendly_name?: string | null;
                     id?: string;
                     last_challenged_at?: string | null;
+                    last_webauthn_challenge_data?: Json | null;
                     phone?: string | null;
                     secret?: string | null;
                     status?: Database["auth"]["Enums"]["factor_status"];
@@ -274,11 +277,92 @@ export type Database = {
                     },
                 ];
             };
+            oauth_authorizations: {
+                Row: {
+                    approved_at: string | null;
+                    authorization_code: string | null;
+                    authorization_id: string;
+                    client_id: string;
+                    code_challenge: string | null;
+                    code_challenge_method:
+                        | Database["auth"]["Enums"]["code_challenge_method"]
+                        | null;
+                    created_at: string;
+                    expires_at: string;
+                    id: string;
+                    nonce: string | null;
+                    redirect_uri: string;
+                    resource: string | null;
+                    response_type: Database["auth"]["Enums"]["oauth_response_type"];
+                    scope: string;
+                    state: string | null;
+                    status: Database["auth"]["Enums"]["oauth_authorization_status"];
+                    user_id: string | null;
+                };
+                Insert: {
+                    approved_at?: string | null;
+                    authorization_code?: string | null;
+                    authorization_id: string;
+                    client_id: string;
+                    code_challenge?: string | null;
+                    code_challenge_method?:
+                        | Database["auth"]["Enums"]["code_challenge_method"]
+                        | null;
+                    created_at?: string;
+                    expires_at?: string;
+                    id: string;
+                    nonce?: string | null;
+                    redirect_uri: string;
+                    resource?: string | null;
+                    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
+                    scope: string;
+                    state?: string | null;
+                    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
+                    user_id?: string | null;
+                };
+                Update: {
+                    approved_at?: string | null;
+                    authorization_code?: string | null;
+                    authorization_id?: string;
+                    client_id?: string;
+                    code_challenge?: string | null;
+                    code_challenge_method?:
+                        | Database["auth"]["Enums"]["code_challenge_method"]
+                        | null;
+                    created_at?: string;
+                    expires_at?: string;
+                    id?: string;
+                    nonce?: string | null;
+                    redirect_uri?: string;
+                    resource?: string | null;
+                    response_type?: Database["auth"]["Enums"]["oauth_response_type"];
+                    scope?: string;
+                    state?: string | null;
+                    status?: Database["auth"]["Enums"]["oauth_authorization_status"];
+                    user_id?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "oauth_authorizations_client_id_fkey";
+                        columns: ["client_id"];
+                        isOneToOne: false;
+                        referencedRelation: "oauth_clients";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "oauth_authorizations_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    },
+                ];
+            };
             oauth_clients: {
                 Row: {
-                    client_id: string;
                     client_name: string | null;
-                    client_secret_hash: string;
+                    client_secret_hash: string | null;
+                    client_type: Database["auth"]["Enums"]["oauth_client_type"];
                     client_uri: string | null;
                     created_at: string;
                     deleted_at: string | null;
@@ -290,9 +374,9 @@ export type Database = {
                     updated_at: string;
                 };
                 Insert: {
-                    client_id: string;
                     client_name?: string | null;
-                    client_secret_hash: string;
+                    client_secret_hash?: string | null;
+                    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
                     client_uri?: string | null;
                     created_at?: string;
                     deleted_at?: string | null;
@@ -304,9 +388,9 @@ export type Database = {
                     updated_at?: string;
                 };
                 Update: {
-                    client_id?: string;
                     client_name?: string | null;
-                    client_secret_hash?: string;
+                    client_secret_hash?: string | null;
+                    client_type?: Database["auth"]["Enums"]["oauth_client_type"];
                     client_uri?: string | null;
                     created_at?: string;
                     deleted_at?: string | null;
@@ -318,6 +402,48 @@ export type Database = {
                     updated_at?: string;
                 };
                 Relationships: [];
+            };
+            oauth_consents: {
+                Row: {
+                    client_id: string;
+                    granted_at: string;
+                    id: string;
+                    revoked_at: string | null;
+                    scopes: string;
+                    user_id: string;
+                };
+                Insert: {
+                    client_id: string;
+                    granted_at?: string;
+                    id: string;
+                    revoked_at?: string | null;
+                    scopes: string;
+                    user_id: string;
+                };
+                Update: {
+                    client_id?: string;
+                    granted_at?: string;
+                    id?: string;
+                    revoked_at?: string | null;
+                    scopes?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "oauth_consents_client_id_fkey";
+                        columns: ["client_id"];
+                        isOneToOne: false;
+                        referencedRelation: "oauth_clients";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "oauth_consents_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    },
+                ];
             };
             one_time_tokens: {
                 Row: {
@@ -511,9 +637,13 @@ export type Database = {
                     created_at: string | null;
                     factor_id: string | null;
                     id: string;
-                    ip: unknown | null;
+                    ip: unknown;
                     not_after: string | null;
+                    oauth_client_id: string | null;
+                    refresh_token_counter: number | null;
+                    refresh_token_hmac_key: string | null;
                     refreshed_at: string | null;
+                    scopes: string | null;
                     tag: string | null;
                     updated_at: string | null;
                     user_agent: string | null;
@@ -524,9 +654,13 @@ export type Database = {
                     created_at?: string | null;
                     factor_id?: string | null;
                     id: string;
-                    ip?: unknown | null;
+                    ip?: unknown;
                     not_after?: string | null;
+                    oauth_client_id?: string | null;
+                    refresh_token_counter?: number | null;
+                    refresh_token_hmac_key?: string | null;
                     refreshed_at?: string | null;
+                    scopes?: string | null;
                     tag?: string | null;
                     updated_at?: string | null;
                     user_agent?: string | null;
@@ -537,15 +671,26 @@ export type Database = {
                     created_at?: string | null;
                     factor_id?: string | null;
                     id?: string;
-                    ip?: unknown | null;
+                    ip?: unknown;
                     not_after?: string | null;
+                    oauth_client_id?: string | null;
+                    refresh_token_counter?: number | null;
+                    refresh_token_hmac_key?: string | null;
                     refreshed_at?: string | null;
+                    scopes?: string | null;
                     tag?: string | null;
                     updated_at?: string | null;
                     user_agent?: string | null;
                     user_id?: string;
                 };
                 Relationships: [
+                    {
+                        foreignKeyName: "sessions_oauth_client_id_fkey";
+                        columns: ["oauth_client_id"];
+                        isOneToOne: false;
+                        referencedRelation: "oauth_clients";
+                        referencedColumns: ["id"];
+                    },
                     {
                         foreignKeyName: "sessions_user_id_fkey";
                         columns: ["user_id"];
@@ -730,29 +875,24 @@ export type Database = {
             [_ in never]: never;
         };
         Functions: {
-            email: {
-                Args: Record<PropertyKey, never>;
-                Returns: string;
-            };
-            jwt: {
-                Args: Record<PropertyKey, never>;
-                Returns: Json;
-            };
-            role: {
-                Args: Record<PropertyKey, never>;
-                Returns: string;
-            };
-            uid: {
-                Args: Record<PropertyKey, never>;
-                Returns: string;
-            };
+            email: { Args: never; Returns: string };
+            jwt: { Args: never; Returns: Json };
+            role: { Args: never; Returns: string };
+            uid: { Args: never; Returns: string };
         };
         Enums: {
             aal_level: "aal1" | "aal2" | "aal3";
             code_challenge_method: "s256" | "plain";
             factor_status: "unverified" | "verified";
             factor_type: "totp" | "webauthn" | "phone";
+            oauth_authorization_status:
+                | "pending"
+                | "approved"
+                | "denied"
+                | "expired";
+            oauth_client_type: "public" | "confidential";
             oauth_registration_type: "dynamic" | "manual";
+            oauth_response_type: "code";
             one_time_token_type:
                 | "confirmation_token"
                 | "reauthentication_token"
@@ -760,6 +900,123 @@ export type Database = {
                 | "email_change_token_new"
                 | "email_change_token_current"
                 | "phone_change_token";
+        };
+        CompositeTypes: {
+            [_ in never]: never;
+        };
+    };
+    extensions: {
+        Tables: {
+            [_ in never]: never;
+        };
+        Views: {
+            pg_stat_statements: {
+                Row: {
+                    calls: number | null;
+                    dbid: unknown;
+                    jit_deform_count: number | null;
+                    jit_deform_time: number | null;
+                    jit_emission_count: number | null;
+                    jit_emission_time: number | null;
+                    jit_functions: number | null;
+                    jit_generation_time: number | null;
+                    jit_inlining_count: number | null;
+                    jit_inlining_time: number | null;
+                    jit_optimization_count: number | null;
+                    jit_optimization_time: number | null;
+                    local_blk_read_time: number | null;
+                    local_blk_write_time: number | null;
+                    local_blks_dirtied: number | null;
+                    local_blks_hit: number | null;
+                    local_blks_read: number | null;
+                    local_blks_written: number | null;
+                    max_exec_time: number | null;
+                    max_plan_time: number | null;
+                    mean_exec_time: number | null;
+                    mean_plan_time: number | null;
+                    min_exec_time: number | null;
+                    min_plan_time: number | null;
+                    minmax_stats_since: string | null;
+                    plans: number | null;
+                    query: string | null;
+                    queryid: number | null;
+                    rows: number | null;
+                    shared_blk_read_time: number | null;
+                    shared_blk_write_time: number | null;
+                    shared_blks_dirtied: number | null;
+                    shared_blks_hit: number | null;
+                    shared_blks_read: number | null;
+                    shared_blks_written: number | null;
+                    stats_since: string | null;
+                    stddev_exec_time: number | null;
+                    stddev_plan_time: number | null;
+                    temp_blk_read_time: number | null;
+                    temp_blk_write_time: number | null;
+                    temp_blks_read: number | null;
+                    temp_blks_written: number | null;
+                    toplevel: boolean | null;
+                    total_exec_time: number | null;
+                    total_plan_time: number | null;
+                    userid: unknown;
+                    wal_bytes: number | null;
+                    wal_fpi: number | null;
+                    wal_records: number | null;
+                };
+                Relationships: [];
+            };
+            pg_stat_statements_info: {
+                Row: {
+                    dealloc: number | null;
+                    stats_reset: string | null;
+                };
+                Relationships: [];
+            };
+        };
+        Functions: {
+            dearmor: { Args: { "": string }; Returns: string };
+            gen_random_uuid: { Args: never; Returns: string };
+            gen_salt: { Args: { "": string }; Returns: string };
+            pg_stat_statements: {
+                Args: { showtext: boolean };
+                Returns: Record<string, unknown>[];
+            };
+            pg_stat_statements_info: {
+                Args: never;
+                Returns: Record<string, unknown>;
+            };
+            pg_stat_statements_reset: {
+                Args: {
+                    dbid?: unknown;
+                    minmax_only?: boolean;
+                    queryid?: number;
+                    userid?: unknown;
+                };
+                Returns: string;
+            };
+            pgp_armor_headers: {
+                Args: { "": string };
+                Returns: Record<string, unknown>[];
+            };
+            text2ltree: { Args: { "": string }; Returns: unknown };
+            uuid_generate_v1: { Args: never; Returns: string };
+            uuid_generate_v1mc: { Args: never; Returns: string };
+            uuid_generate_v3: {
+                Args: { name: string; namespace: string };
+                Returns: string;
+            };
+            uuid_generate_v4: { Args: never; Returns: string };
+            uuid_generate_v5: {
+                Args: { name: string; namespace: string };
+                Returns: string;
+            };
+            uuid_nil: { Args: never; Returns: string };
+            uuid_ns_dns: { Args: never; Returns: string };
+            uuid_ns_oid: { Args: never; Returns: string };
+            uuid_ns_url: { Args: never; Returns: string };
+            uuid_ns_x500: { Args: never; Returns: string };
+        };
+        Enums: {
+            [_ in never]: never;
         };
         CompositeTypes: {
             [_ in never]: never;
@@ -1289,45 +1546,9 @@ export type Database = {
             [_ in never]: never;
         };
         Functions: {
-            _ltree_compress: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            _ltree_gist_options: {
-                Args: { "": unknown };
-                Returns: undefined;
-            };
-            binary_quantize: {
-                Args: { "": string } | { "": unknown };
-                Returns: unknown;
-            };
             build_tag_node: {
                 Args: { p_tag_id: number; p_user_id: string };
                 Returns: Json;
-            };
-            citext: {
-                Args: { "": boolean } | { "": string } | { "": unknown };
-                Returns: string;
-            };
-            citext_hash: {
-                Args: { "": string };
-                Returns: number;
-            };
-            citextin: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            citextout: {
-                Args: { "": string };
-                Returns: unknown;
-            };
-            citextrecv: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            citextsend: {
-                Args: { "": string };
-                Returns: string;
             };
             compute_feed_item_hash: {
                 Args: { p_canonical_url?: string; p_link: string };
@@ -1483,11 +1704,26 @@ export type Database = {
                     updated_at: string;
                     user_id: string;
                 };
+                SetofOptions: {
+                    from: "*";
+                    to: "podcast_episodes";
+                    isOneToOne: true;
+                    isSetofReturn: false;
+                };
             };
-            fn_update_podcast_embedding: {
-                Args: { p_id: number; p_user_id: string; p_vec: number[] };
-                Returns: undefined;
-            };
+            fn_update_podcast_embedding:
+                | {
+                      Args: { p_id: number; p_user_id: string; p_vec: string };
+                      Returns: undefined;
+                  }
+                | {
+                      Args: {
+                          p_id: number;
+                          p_user_id: string;
+                          p_vec: number[];
+                      };
+                      Returns: undefined;
+                  };
             fn_update_summary_embedding: {
                 Args: { p_id: number; p_user_id: string; p_vec: number[] };
                 Returns: undefined;
@@ -1517,6 +1753,12 @@ export type Database = {
                     updated_at: string;
                     user_id: string;
                 };
+                SetofOptions: {
+                    from: "*";
+                    to: "daily_summaries";
+                    isOneToOne: true;
+                    isSetofReturn: false;
+                };
             };
             fn_upsert_podcast_episode: {
                 Args: {
@@ -1536,21 +1778,18 @@ export type Database = {
                     updated_at: string;
                     user_id: string;
                 };
+                SetofOptions: {
+                    from: "*";
+                    to: "podcast_episodes";
+                    isOneToOne: true;
+                    isSetofReturn: false;
+                };
             };
-            get_embedding_dimensions: {
-                Args: Record<PropertyKey, never>;
-                Returns: number;
-            };
-            get_tag_hierarchy: {
-                Args: Record<PropertyKey, never>;
-                Returns: Json;
-            };
-            get_tag_path: {
-                Args: { p_tag_id: number };
-                Returns: Json;
-            };
+            get_embedding_dimensions: { Args: never; Returns: number };
+            get_tag_hierarchy: { Args: never; Returns: Json };
+            get_tag_path: { Args: { p_tag_id: number }; Returns: Json };
             get_tag_statistics: {
-                Args: Record<PropertyKey, never>;
+                Args: never;
                 Returns: {
                     root_tags: number;
                     total_feed_items_tagged: number;
@@ -1558,146 +1797,7 @@ export type Database = {
                     total_tags: number;
                 }[];
             };
-            get_tag_subtree: {
-                Args: { p_tag_id: number };
-                Returns: Json;
-            };
-            halfvec_avg: {
-                Args: { "": number[] };
-                Returns: unknown;
-            };
-            halfvec_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            halfvec_send: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            halfvec_typmod_in: {
-                Args: { "": unknown[] };
-                Returns: number;
-            };
-            hash_ltree: {
-                Args: { "": unknown };
-                Returns: number;
-            };
-            hnsw_bit_support: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            hnsw_halfvec_support: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            hnsw_sparsevec_support: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            hnswhandler: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ivfflat_bit_support: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ivfflat_halfvec_support: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ivfflathandler: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            l2_norm: {
-                Args: { "": unknown } | { "": unknown };
-                Returns: number;
-            };
-            l2_normalize: {
-                Args: { "": string } | { "": unknown } | { "": unknown };
-                Returns: string;
-            };
-            lca: {
-                Args: { "": unknown[] };
-                Returns: unknown;
-            };
-            lquery_in: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            lquery_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            lquery_recv: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            lquery_send: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            ltree_compress: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_decompress: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_gist_in: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_gist_options: {
-                Args: { "": unknown };
-                Returns: undefined;
-            };
-            ltree_gist_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_in: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_recv: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltree_send: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            ltree2text: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            ltxtq_in: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltxtq_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltxtq_recv: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            ltxtq_send: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            nlevel: {
-                Args: { "": unknown };
-                Returns: number;
-            };
+            get_tag_subtree: { Args: { p_tag_id: number }; Returns: Json };
             rebuild_vector_index: {
                 Args: { p_index_name: string };
                 Returns: string;
@@ -1739,21 +1839,37 @@ export type Database = {
                     title: string;
                 }[];
             };
-            search_summaries_by_vector: {
-                Args: {
-                    match_count: number;
-                    match_threshold: number;
-                    query_embedding: number[];
-                };
-                Returns: {
-                    id: number;
-                    markdown: string;
-                    script_text: string;
-                    similarity: number;
-                    summary_date: string;
-                    summary_title: string;
-                }[];
-            };
+            search_summaries_by_vector:
+                | {
+                      Args: {
+                          match_count: number;
+                          match_threshold: number;
+                          query_embedding: number[];
+                      };
+                      Returns: {
+                          id: number;
+                          markdown: string;
+                          script_text: string;
+                          similarity: number;
+                          summary_date: string;
+                          summary_title: string;
+                      }[];
+                  }
+                | {
+                      Args: {
+                          match_count: number;
+                          match_threshold: number;
+                          query_embedding: string;
+                      };
+                      Returns: {
+                          id: number;
+                          markdown: string;
+                          script_text: string;
+                          similarity: number;
+                          summary_date: string;
+                          summary_title: string;
+                      }[];
+                  };
             search_tags_by_vector: {
                 Args: {
                     match_count: number;
@@ -1773,46 +1889,6 @@ export type Database = {
                     deleted_at: string;
                     soft_deleted: boolean;
                 }[];
-            };
-            sparsevec_out: {
-                Args: { "": unknown };
-                Returns: unknown;
-            };
-            sparsevec_send: {
-                Args: { "": unknown };
-                Returns: string;
-            };
-            sparsevec_typmod_in: {
-                Args: { "": unknown[] };
-                Returns: number;
-            };
-            text2ltree: {
-                Args: { "": string };
-                Returns: unknown;
-            };
-            vector_avg: {
-                Args: { "": number[] };
-                Returns: string;
-            };
-            vector_dims: {
-                Args: { "": string } | { "": unknown };
-                Returns: number;
-            };
-            vector_norm: {
-                Args: { "": string };
-                Returns: number;
-            };
-            vector_out: {
-                Args: { "": string };
-                Returns: unknown;
-            };
-            vector_send: {
-                Args: { "": string };
-                Returns: string;
-            };
-            vector_typmod_in: {
-                Args: { "": unknown[] };
-                Returns: number;
             };
         };
         Enums: {
@@ -1951,7 +2027,15 @@ export const Constants = {
             code_challenge_method: ["s256", "plain"],
             factor_status: ["unverified", "verified"],
             factor_type: ["totp", "webauthn", "phone"],
+            oauth_authorization_status: [
+                "pending",
+                "approved",
+                "denied",
+                "expired",
+            ],
+            oauth_client_type: ["public", "confidential"],
             oauth_registration_type: ["dynamic", "manual"],
+            oauth_response_type: ["code"],
             one_time_token_type: [
                 "confirmation_token",
                 "reauthentication_token",
@@ -1961,6 +2045,9 @@ export const Constants = {
                 "phone_change_token",
             ],
         },
+    },
+    extensions: {
+        Enums: {},
     },
     public: {
         Enums: {},

@@ -4,12 +4,11 @@ import { RedisService } from "@/shared/redis/redis.service";
 
 @Injectable()
 export class FlowOrchestratorService implements OnApplicationShutdown {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Logger is consumed in createDailyFlow/onApplicationShutdown but Biome mis-detects property usage.
+    // NOTE: Keep a dedicated Logger instance because NestJS lifecycle hooks (`createDailyFlow`, `onApplicationShutdown`) sometimes trigger Biome false positives when decorators are involved.
     private readonly logger = new Logger(FlowOrchestratorService.name);
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: FlowProducer instance is referenced across methods; suppression avoids false positive.
+    // NOTE: FlowProducer wiring remains a private property so Worker/API roles can share orchestration logic without re-instantiating the BullMQ client.
     private readonly flow: FlowProducer;
 
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: RedisService injection is kept private for NestJS DI and consumed when constructing FlowProducer.
     constructor(private readonly redisService: RedisService) {
         this.flow = new FlowProducer({
             connection: this.redisService.createBullClient(),

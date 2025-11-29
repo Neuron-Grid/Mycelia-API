@@ -11,7 +11,6 @@ import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
 
 @Injectable()
 export class EmbeddingQueueService {
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used to check job states but analyzer cannot follow Set.has usage.
     private static readonly IN_PROGRESS_STATES = new Set([
         "waiting",
         "waiting-children",
@@ -20,9 +19,7 @@ export class EmbeddingQueueService {
         "paused",
     ]);
 
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Referenced when gating concurrent jobs per user.
     private static readonly MAX_BATCH_JOBS_PER_USER = 4;
-    // biome-ignore lint/correctness/noUnusedPrivateClassMembers: Used for progress cache expiry calculations even if analyzer loses track.
     private static readonly PROGRESS_TTL_MS = 15 * 60 * 1000;
 
     private readonly logger = new Logger(EmbeddingQueueService.name);

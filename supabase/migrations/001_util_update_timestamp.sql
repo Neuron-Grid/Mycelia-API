@@ -4,6 +4,8 @@
 CREATE OR REPLACE FUNCTION public.update_timestamp()
     RETURNS TRIGGER
     LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public, extensions, auth
 AS $$
 BEGIN
     NEW.updated_at := NOW();

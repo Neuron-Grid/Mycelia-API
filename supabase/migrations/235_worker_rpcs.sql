@@ -277,7 +277,7 @@ CREATE OR REPLACE FUNCTION public.fn_upsert_daily_summary(
   p_summary_date date,
   p_summary_title text,
   p_markdown text,
-  p_summary_emb vector(1536)
+  p_summary_emb extensions.vector(1536)
 )
 RETURNS public.daily_summaries LANGUAGE plpgsql
 SECURITY DEFINER
@@ -299,10 +299,9 @@ BEGIN
   RETURN v_row;
 END;
 $$;
-ALTER FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, vector) TO service_role;
-
+ALTER FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_upsert_daily_summary(uuid, date, text, text, extensions.vector(1536)) TO service_role;
 
 -- 5) 要約とフィードアイテムの関連を追加（冪等）
 CREATE OR REPLACE FUNCTION public.fn_add_summary_items(
@@ -341,7 +340,7 @@ END;
 $$;
 ALTER FUNCTION public.fn_add_summary_items(uuid, bigint, bigint[]) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_add_summary_items(uuid, bigint, bigint[]) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_add_summary_items(uuid, bigint, bigint[]) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_add_summary_items(uuid, bigint, bigint[]) TO service_role;
 
 
 -- 6) ポッドキャストエピソードのUPSERT（機能フラグと所有者検証）
@@ -349,7 +348,7 @@ CREATE OR REPLACE FUNCTION public.fn_upsert_podcast_episode(
   p_user_id uuid,
   p_summary_id bigint,
   p_title text,
-  p_title_emb vector(1536)
+  p_title_emb extensions.vector(1536)
 )
 RETURNS public.podcast_episodes LANGUAGE plpgsql
 SECURITY DEFINER
@@ -388,9 +387,9 @@ BEGIN
   RETURN v_ep;
 END;
 $$;
-ALTER FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, vector) TO service_role;
+ALTER FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_upsert_podcast_episode(uuid, bigint, text, extensions.vector(1536)) TO service_role;
 
 
 -- 7) ポッドキャスト音声URLの更新 + サマリーのTTS秒数更新
@@ -431,7 +430,7 @@ END;
 $$;
 ALTER FUNCTION public.fn_update_podcast_audio_url(uuid, bigint, text, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_update_podcast_audio_url(uuid, bigint, text, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_update_podcast_audio_url(uuid, bigint, text, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_update_podcast_audio_url(uuid, bigint, text, int) TO service_role;
 
 
 -- 8) 埋め込み未生成データの取得（各テーブル）
@@ -458,12 +457,12 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_missing_feed_item_embeddings(uuid, bigint, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_missing_feed_item_embeddings(uuid, bigint, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_missing_feed_item_embeddings(uuid, bigint, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_missing_feed_item_embeddings(uuid, bigint, int) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_update_feed_item_embedding(
   p_user_id uuid,
   p_id bigint,
-  p_vec vector(1536)
+  p_vec extensions.vector(1536)
 )
 RETURNS void LANGUAGE plpgsql
 SECURITY DEFINER
@@ -479,9 +478,9 @@ BEGIN
   END IF;
 END;
 $$;
-ALTER FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, vector) TO service_role;
+ALTER FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_update_feed_item_embedding(uuid, bigint, extensions.vector(1536)) TO service_role;
 
 
 CREATE OR REPLACE FUNCTION public.fn_list_missing_summary_embeddings(
@@ -507,12 +506,12 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_missing_summary_embeddings(uuid, bigint, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_missing_summary_embeddings(uuid, bigint, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_missing_summary_embeddings(uuid, bigint, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_missing_summary_embeddings(uuid, bigint, int) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_update_summary_embedding(
   p_user_id uuid,
   p_id bigint,
-  p_vec vector(1536)
+  p_vec extensions.vector(1536)
 )
 RETURNS void LANGUAGE plpgsql
 SECURITY DEFINER
@@ -528,9 +527,9 @@ BEGIN
   END IF;
 END;
 $$;
-ALTER FUNCTION public.fn_update_summary_embedding(uuid, bigint, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, vector) TO service_role;
+ALTER FUNCTION public.fn_update_summary_embedding(uuid, bigint, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_update_summary_embedding(uuid, bigint, extensions.vector(1536)) TO service_role;
 
 
 CREATE OR REPLACE FUNCTION public.fn_list_missing_podcast_embeddings(
@@ -556,12 +555,12 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_missing_podcast_embeddings(uuid, bigint, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_missing_podcast_embeddings(uuid, bigint, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_missing_podcast_embeddings(uuid, bigint, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_missing_podcast_embeddings(uuid, bigint, int) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_update_podcast_embedding(
   p_user_id uuid,
   p_id bigint,
-  p_vec vector(1536)
+  p_vec extensions.vector(1536)
 )
 RETURNS void LANGUAGE plpgsql
 SECURITY DEFINER
@@ -577,17 +576,16 @@ BEGIN
   END IF;
 END;
 $$;
-ALTER FUNCTION public.fn_update_podcast_embedding(uuid, bigint, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, vector) TO service_role;
-
+ALTER FUNCTION public.fn_update_podcast_embedding(uuid, bigint, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_update_podcast_embedding(uuid, bigint, extensions.vector(1536)) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_list_missing_tag_embeddings(
   p_user_id uuid,
   p_last_id bigint DEFAULT NULL,
   p_limit int DEFAULT 50
 )
-RETURNS TABLE(id bigint, tag_name citext, description text) LANGUAGE plpgsql
+RETURNS TABLE(id bigint, tag_name extensions.citext, description text) LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
@@ -605,12 +603,12 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_missing_tag_embeddings(uuid, bigint, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_missing_tag_embeddings(uuid, bigint, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_missing_tag_embeddings(uuid, bigint, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_missing_tag_embeddings(uuid, bigint, int) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_update_tag_embedding(
   p_user_id uuid,
   p_id bigint,
-  p_vec vector(1536)
+  p_vec extensions.vector(1536)
 )
 RETURNS void LANGUAGE plpgsql
 SECURITY DEFINER
@@ -626,9 +624,9 @@ BEGIN
   END IF;
 END;
 $$;
-ALTER FUNCTION public.fn_update_tag_embedding(uuid, bigint, vector) OWNER TO postgres;
-REVOKE ALL ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, vector) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, vector) TO service_role;
+ALTER FUNCTION public.fn_update_tag_embedding(uuid, bigint, extensions.vector(1536)) OWNER TO postgres;
+REVOKE ALL ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, extensions.vector(1536)) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_update_tag_embedding(uuid, bigint, extensions.vector(1536)) TO service_role;
 
 
 -- 9) 要約生成用: 最近のフィードアイテム一覧（24hなど任意範囲）
@@ -663,7 +661,7 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) TO service_role;
 
 
 -- 10) クリーニング用: 古いポッドキャストの列挙・ソフト削除
@@ -686,7 +684,7 @@ END;
 $$;
 ALTER FUNCTION public.fn_list_old_podcast_episodes(uuid, timestamptz) OWNER TO postgres;
 REVOKE ALL ON FUNCTION public.fn_list_old_podcast_episodes(uuid, timestamptz) FROM PUBLIC, anon, authenticated;
-GRANT  EXECUTE ON FUNCTION public.fn_list_old_podcast_episodes(uuid, timestamptz) TO service_role;
+GRANT EXECUTE ON FUNCTION public.fn_list_old_podcast_episodes(uuid, timestamptz) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.fn_soft_delete_podcast_episode(
   p_user_id uuid,

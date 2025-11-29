@@ -12,8 +12,7 @@ import { jest } from "@test-utils/jest-globals";
 jest.mock("@nestjs/bullmq", () => {
     class BullMqStubModule {}
     class WorkerHost {
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: stub only
+        // biome-ignore lint/suspicious/noEmptyBlockStatements: モック用の空実装
         process() {}
     }
 

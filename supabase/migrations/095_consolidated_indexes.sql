@@ -51,22 +51,22 @@ CREATE INDEX IF NOT EXISTS idx_podcast_episodes_soft_deleted    ON public.podcas
 -- HNSW Indexes
 -- 述語はIS NOT NULLのみ。可視性はRLSに委譲
 CREATE INDEX IF NOT EXISTS idx_feed_items_title_emb_hnsw ON public.feed_items
-    USING hnsw(title_emb vector_cosine_ops)
+    USING hnsw(title_emb extensions.vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE title_emb IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_daily_summaries_summary_emb_hnsw ON public.daily_summaries
-    USING hnsw(summary_emb vector_cosine_ops)
+    USING hnsw(summary_emb extensions.vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE summary_emb IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_podcast_episodes_title_emb_hnsw ON public.podcast_episodes
-    USING hnsw(title_emb vector_cosine_ops)
+    USING hnsw(title_emb extensions.vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE title_emb IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tags_tag_emb_hnsw ON public.tags
-    USING hnsw(tag_emb vector_cosine_ops)
+    USING hnsw(tag_emb extensions.vector_cosine_ops)
     WITH (m = 16, ef_construction = 64)
     WHERE tag_emb IS NOT NULL;
 

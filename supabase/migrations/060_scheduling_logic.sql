@@ -5,6 +5,8 @@
 CREATE OR REPLACE FUNCTION public.set_next_fetch()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 DECLARE
     iv interval;
@@ -35,6 +37,8 @@ CREATE TRIGGER trg_set_next_fetch
 CREATE OR REPLACE FUNCTION public.recalc_next_fetch()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
 AS $$
 DECLARE
     has_soft_deleted boolean;
