@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { jest } from "@test-utils/jest-globals";
+import { RequestUserContextService } from "@/auth/application/request-user-context.service";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
 import { TagEntity } from "@/tag/domain/tag.entity";
@@ -42,6 +43,7 @@ describe("HierarchicalTagService", () => {
         generateEmbedding: jest.Mock;
     };
     let embeddingQueueService: { addSingleEmbeddingJob: jest.Mock };
+    let userContextService: { assertSameUser: jest.Mock };
 
     const userId = "user-1";
 
@@ -62,11 +64,15 @@ describe("HierarchicalTagService", () => {
         embeddingQueueService = {
             addSingleEmbeddingJob: jest.fn().mockResolvedValue(undefined),
         };
+        userContextService = {
+            assertSameUser: jest.fn(),
+        };
 
         service = new HierarchicalTagService(
             tagRepository as unknown as TagRepository,
             embeddingService as unknown as EmbeddingService,
             embeddingQueueService as unknown as EmbeddingQueueService,
+            userContextService as unknown as RequestUserContextService,
         );
     });
 

@@ -2,16 +2,16 @@ import type { QueueOptionsLike } from "@nestjs/bullmq";
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { IS_WORKER_APP } from "@/config/runtime.constants";
+import { SearchWorkerModule } from "@/search/search.worker.module";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
-import { SearchModule } from "../../search/search.module";
 import { EMBEDDING_BATCH_CONFIG } from "../config/embedding-batch.config";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
 import { EmbeddingQueueProcessor } from "./embedding-queue.processor";
 import { EmbeddingQueueService } from "./embedding-queue.service";
 
-const workerImports = IS_WORKER_APP ? [SearchModule] : [];
+const workerImports = IS_WORKER_APP ? [SearchWorkerModule] : [];
 const workerProviders = IS_WORKER_APP
     ? [EmbeddingQueueProcessor, EmbeddingBatchUpdateService]
     : [];

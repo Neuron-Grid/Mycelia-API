@@ -3,7 +3,9 @@ import {
     Injectable,
     Logger,
     NotFoundException,
+    Scope,
 } from "@nestjs/common";
+import { RequestUserContextService } from "@/auth/application/request-user-context.service";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { TagEntity } from "../domain/tag.entity";
@@ -52,7 +54,7 @@ type TagPathPayload = {
     level: number;
 };
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class HierarchicalTagService {
     private readonly logger = new Logger(HierarchicalTagService.name);
 
@@ -60,6 +62,7 @@ export class HierarchicalTagService {
         private readonly tagRepository: TagRepository,
         private readonly embeddingService: EmbeddingService,
         private readonly embeddingQueueService: EmbeddingQueueService,
+        private readonly userContextService: RequestUserContextService,
     ) {}
 
     // 階層構造でタグを作成
@@ -67,6 +70,7 @@ export class HierarchicalTagService {
         userId: string,
         dto: CreateHierarchicalTagDto,
     ): Promise<TagEntity> {
+        this.userContextService.assertSameUser(userId);
         // 親タグの検証
         if (dto.parentTagId) {
             const parentTag = await this.tagRepository.findById(
@@ -148,16 +152,18 @@ export class HierarchicalTagService {
     }
 
     // ユーザーの全タグを階層構造で取得
-    async getTagHierarchy(_userId: string): Promise<TagHierarchy[]> {
+    async getTagHierarchy(userId: string): Promise<TagHierarchy[]> {
+        this.userContextService.assertSameUser(userId);
         const hierarchy = await this.tagRepository.getTagHierarchy();
         return this.normalizeHierarchyList(hierarchy ?? []);
     }
 
     // 特定のタグとその子孫を取得
     async getTagSubtree(
-        _userId: string,
+        userId: string,
         tagId: number,
     ): Promise<TagHierarchy | null> {
+        this.userContextService.assertSameUser(userId);
         const subtree = await this.tagRepository.getTagSubtree(tagId);
         if (!subtree) {
             return null;
@@ -168,9 +174,10 @@ export class HierarchicalTagService {
 
     // タグのパス（ルートからのパス）を取得
     async getTagPath(
-        _userId: string,
+        userId: string,
         tagId: number,
     ): Promise<TagWithPath | null> {
+        this.userContextService.assertSameUser(userId);
         const pathResult = await this.tagRepository.getTagPath(tagId);
         if (!pathResult) {
             return null;
@@ -193,6 +200,7 @@ export class HierarchicalTagService {
         tagId: number,
         newParentId: number | null,
     ): Promise<TagEntity> {
+        this.userContextService.assertSameUser(userId);
         const tag = await this.tagRepository.findById(tagId, userId);
         if (!tag) {
             throw new NotFoundException("Tag not found");
@@ -255,6 +263,7 @@ export class HierarchicalTagService {
         subscriptionId: number,
         tagIds: number[],
     ): Promise<void> {
+        this.userContextService.assertSameUser(userId);
         // タグの存在確認
         for (const tagId of tagIds) {
             const tag = await this.tagRepository.findById(tagId, userId);
@@ -276,6 +285,7 @@ export class HierarchicalTagService {
         feedItemId: number,
         tagIds: number[],
     ): Promise<void> {
+        this.userContextService.assertSameUser(userId);
         // タグの存在確認
         for (const tagId of tagIds) {
             const tag = await this.tagRepository.findById(tagId, userId);
@@ -293,6 +303,7 @@ export class HierarchicalTagService {
         tagId: number,
         includeChildren = false,
     ) {
+        this.userContextService.assertSameUser(userId);
         const tagIds = includeChildren
             ? [
                   tagId,
@@ -311,6 +322,7 @@ export class HierarchicalTagService {
         tagId: number,
         includeChildren = false,
     ) {
+        this.userContextService.assertSameUser(userId);
         const tagIds = includeChildren
             ? [
                   tagId,

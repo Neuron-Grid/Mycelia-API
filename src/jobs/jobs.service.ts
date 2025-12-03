@@ -31,6 +31,7 @@ export class JobsService implements OnModuleInit {
             return;
         }
         this.time.warnIfTimezoneMismatch(this.logger);
+        await this.ensureRepeatables();
         // Cron式を使わず、repeat.everyベースの軽量ハートビートで集中管理
         await this.registerMinutelySchedulerTick();
         await this.registerMinutelyFeedScan();
@@ -188,6 +189,104 @@ export class JobsService implements OnModuleInit {
             this.maintenanceQueue,
         );
         await this.inspectRepeatableJobs("feedQueue", this.feedQueue);
+    }
+
+    private async ensureRepeatables(): Promise<void> {
+        type RepeatableExpectation = {
+            queueName: string;
+            queue: Queue;
+            name: string;
+            jobId: string;
+            every: number;
+            register: () => Promise<void>;
+        };
+        const expectations: RepeatableExpectation[] = [
+            {
+                queueName: "maintenanceQueue",
+                queue: this.maintenanceQueue,
+                name: "scheduleTick",
+                jobId: "scheduler-tick",
+                every: 60_000,
+                register: () => this.registerMinutelySchedulerTick(),
+            },
+            {
+                queueName: "maintenanceQueue",
+                queue: this.maintenanceQueue,
+                name: "cleanupQueues",
+                jobId: "cleanup-hourly",
+                every: 60 * 60 * 1000,
+                register: () => this.registerHourlyFailedCleanup(),
+            },
+            {
+                queueName: "feedQueue",
+                queue: this.feedQueue,
+                name: "scanDueSubscriptions",
+                jobId: "feed-scan-minutely",
+                every: 60_000,
+                register: () => this.registerMinutelyFeedScan(),
+            },
+        ];
+
+        for (const expectation of expectations) {
+            await this.ensureRepeatableJob(expectation);
+        }
+    }
+
+    private async ensureRepeatableJob(expectation: {
+        queueName: string;
+        queue: Queue;
+        name: string;
+        jobId: string;
+        every: number;
+        register: () => Promise<void>;
+    }): Promise<void> {
+        type RepeatableJobSummary = {
+            key: string;
+            name?: string;
+            id?: string;
+            every?: number;
+        };
+        type RepeatableAwareQueue = Queue & {
+            getRepeatableJobs(
+                start?: number,
+                end?: number,
+                asc?: boolean,
+            ): Promise<RepeatableJobSummary[]>;
+        };
+
+        const repeatableQueue = expectation.queue as RepeatableAwareQueue;
+
+        if (typeof repeatableQueue.getRepeatableJobs !== "function") {
+            this.logger.warn(
+                `[${expectation.queueName}] Queue adapter does not expose getRepeatableJobs(); skip ensure.`,
+            );
+            return;
+        }
+
+        const repeatables = await repeatableQueue.getRepeatableJobs();
+        const found = repeatables.some((job) => {
+            const jobEvery = (() => {
+                if (job.every === undefined || job.every === null)
+                    return undefined;
+                if (typeof job.every === "number") return job.every;
+
+                const coerced = Number(job.every);
+                return Number.isNaN(coerced) ? undefined : coerced;
+            })();
+
+            return (
+                job.name === expectation.name &&
+                job.id === expectation.jobId &&
+                jobEvery === expectation.every
+            );
+        });
+
+        if (!found) {
+            this.logger.warn(
+                `[${expectation.queueName}] Missing repeatable job ${expectation.name} (${expectation.jobId}); re-registering.`,
+            );
+            await expectation.register();
+        }
     }
 
     private async inspectRepeatableJobs(

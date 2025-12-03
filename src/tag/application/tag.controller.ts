@@ -17,6 +17,7 @@ import { AttachTagDto } from "./dto/attach-tag.dto";
 import { BulkTagDto } from "./dto/bulk-tag.dto";
 import { CreateHierarchicalTagDto } from "./dto/create-hierarchical-tag.dto";
 import { CreateTagDto } from "./dto/create-tag.dto";
+import { IncludeChildrenQueryDto } from "./dto/include-children.query.dto";
 import { TagDto } from "./dto/tag.dto";
 import {
     MoveTagDto,
@@ -39,6 +40,21 @@ export class TagController {
         private readonly tagService: TagService,
         private readonly hierarchicalTagService: HierarchicalTagService,
     ) {}
+
+    /**
+     * クエリ値を安全にbooleanへ変換する（Typiaトランスフォーム無効時のフォールバック）。
+     */
+    private coerceBoolean(value: unknown): boolean | undefined {
+        if (value === undefined || value === null || value === "")
+            return undefined;
+        if (typeof value === "boolean") return value;
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            if (["true", "1", "yes", "on"].includes(normalized)) return true;
+            if (["false", "0", "no", "off"].includes(normalized)) return false;
+        }
+        return undefined;
+    }
 
     /**
      * Get all tags for current user.
@@ -332,10 +348,11 @@ export class TagController {
     async getFeedItemsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: boolean }>()
-        query: { includeChildren?: boolean },
+        @TypedQuery<IncludeChildrenQueryDto>()
+        query: IncludeChildrenQueryDto,
     ): Promise<SuccessResponse<FeedItemDto[]>> {
-        const includeChildrenBool = this.coerceBoolean(query?.includeChildren);
+        const includeChildrenBool =
+            this.coerceBoolean(query.includeChildren) ?? false;
         const feedItems = await this.hierarchicalTagService.getFeedItemsByTag(
             userId,
             tagId,
@@ -361,14 +378,15 @@ export class TagController {
     async getSubscriptionsByTag(
         @UserId() userId: string,
         @TypedParam("tagId", parseUInt32) tagId: number,
-        @TypedQuery<{ includeChildren?: boolean }>()
-        query: { includeChildren?: boolean },
+        @TypedQuery<IncludeChildrenQueryDto>()
+        query: IncludeChildrenQueryDto,
     ): Promise<
         SuccessResponse<
             import("@/feed/application/dto/subscription.dto").SubscriptionDto[]
         >
     > {
-        const includeChildrenBool = this.coerceBoolean(query?.includeChildren);
+        const includeChildrenBool =
+            this.coerceBoolean(query.includeChildren) ?? false;
         const subscriptions =
             await this.hierarchicalTagService.getSubscriptionsByTag(
                 userId,
@@ -431,21 +449,5 @@ export class TagController {
             body.tagIds,
         );
         return buildResponse("Subscription tagged with multiple tags", null);
-    }
-
-    private coerceBoolean(value: unknown): boolean {
-        if (typeof value === "boolean") {
-            return value;
-        }
-        if (typeof value === "string") {
-            const normalized = value.trim().toLowerCase();
-            if (normalized === "true" || normalized === "1") {
-                return true;
-            }
-            if (normalized === "false" || normalized === "0") {
-                return false;
-            }
-        }
-        return false;
     }
 }
