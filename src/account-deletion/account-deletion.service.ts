@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { SupabaseAuthCacheService } from "@/auth/supabase-auth-cache.service";
 import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
@@ -11,6 +12,7 @@ export class AccountDeletionService {
         private readonly admin: SupabaseAdminService,
         private readonly r2: CloudflareR2Service,
         private readonly lock: DistributedLockService,
+        private readonly authCache: SupabaseAuthCacheService,
     ) {}
 
     // 候補抽出: soft_deleted = TRUE かつ updated_at <= NOW()-7days の user_id を列挙
@@ -151,6 +153,8 @@ export class AccountDeletionService {
 
             // 3) DB検証（主要表の残存0）
             const dbCleared = await this.verifyDbCleared(userId);
+
+            this.authCache.evict(userId);
 
             return { r2Deleted: empty, dbCleared, authDeleted };
         } finally {

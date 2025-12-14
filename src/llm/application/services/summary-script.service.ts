@@ -1,5 +1,5 @@
 import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
 // import { SupabaseRequestService } from '../supabase-request.service'; // DB直接操作はしない
 // import { GeminiService } from './gemini.service'; // LLM直接呼び出しはしない
@@ -33,9 +33,9 @@ export class SummaryScriptService {
         this.logger.log(`Requesting summary generation for user: ${userId}`);
         // 機能フラグガード: 要約が無効な場合は投入しない
         const settings = await this.userSettingsRepo.getByUserId(userId);
-        if (!settings?.summary_enabled) {
+        if (!settings || settings.soft_deleted || !settings.summary_enabled) {
             this.logger.warn(
-                `Summary generation disabled for user ${userId}. Skipping enqueue.`,
+                `Summary generation disabled or user soft-deleted for user ${userId}. Skipping enqueue.`,
             );
             return { jobId: undefined };
         }
@@ -82,6 +82,18 @@ export class SummaryScriptService {
         this.logger.log(
             `Requesting script generation for user ${userId}, summaryId: ${summaryId}`,
         );
+        const settings = await this.userSettingsRepo.getByUserId(userId);
+        if (
+            !settings ||
+            settings.soft_deleted ||
+            !settings.summary_enabled ||
+            !settings.podcast_enabled
+        ) {
+            this.logger.warn(
+                `Podcast generation disabled or user soft-deleted for user ${userId}. Skipping enqueue.`,
+            );
+            throw new BadRequestException("Podcast is disabled");
+        }
         // 仕様書のキューデータ: {summaryId}
         const job = await this.scriptGenerateQueue.add(
             "generateSummaryScript",

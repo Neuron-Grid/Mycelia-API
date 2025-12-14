@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import type { PostgrestError } from "@supabase/supabase-js";
+import { SupabaseAuthCacheService } from "@/auth/supabase-auth-cache.service";
 import { AuditLogService } from "@/shared/audit/audit-log.service";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
@@ -24,6 +25,7 @@ export class AuthAccountDeletionService {
         private readonly lockService: DistributedLockService,
         private readonly adminService: SupabaseAdminService,
         private readonly auditLogService: AuditLogService,
+        private readonly authCache: SupabaseAuthCacheService,
     ) {}
 
     async execute(userId: string, options?: AuthAccountDeletionOptions) {
@@ -84,6 +86,8 @@ export class AuthAccountDeletionService {
                 typeof softDeleteResult?.deleted_at === "string"
                     ? softDeleteResult.deleted_at
                     : new Date().toISOString();
+
+            this.authCache.evict(userId);
 
             return { softDeleted: true, deletedAt };
         } catch (error) {

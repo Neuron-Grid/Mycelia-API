@@ -197,12 +197,26 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             const sb = this.admin.getClient();
             const { data, error } = await sb
                 .from("users")
-                .select("id")
+                .select("id, user_settings!inner(soft_deleted)")
+                .is("deleted_at", null)
+                .eq("user_settings.soft_deleted", false)
                 .order("id");
             if (error) throw error as Error;
-            const users: { id: string }[] = (data as { id: string }[]) || [];
+            const users: {
+                id: string;
+                user_settings?: { soft_deleted?: boolean } | null;
+            }[] =
+                (data as {
+                    id: string;
+                    user_settings?: { soft_deleted?: boolean } | null;
+                }[]) || [];
             let enqueued = 0;
+            let skipped = 0;
             for (const u of users) {
+                if (u.user_settings?.soft_deleted) {
+                    skipped++;
+                    continue;
+                }
                 try {
                     await this.embeddingQueueService.addUserEmbeddingBatchJob(
                         u.id,
@@ -218,6 +232,11 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             this.logger.log(
                 `Enqueued embedding batch jobs for ${enqueued} user(s)`,
             );
+            if (skipped > 0) {
+                this.logger.warn(
+                    `Skipped embedding enqueue for ${skipped} soft-deleted user(s)`,
+                );
+            }
         } catch (e) {
             this.logger.error(
                 `Global embedding update scheduling failed: ${(e as Error).message}`,

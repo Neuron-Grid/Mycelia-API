@@ -1,4 +1,5 @@
 import { jest } from "@test-utils/jest-globals";
+import type { SupabaseAuthCacheService } from "@/auth/supabase-auth-cache.service";
 import type { AuditLogService } from "@/shared/audit/audit-log.service";
 import type { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import type { SupabaseAdminService } from "@/shared/supabase-admin.service";
@@ -11,6 +12,7 @@ describe("AuthAccountDeletionService", () => {
     let lockService: jest.Mocked<DistributedLockService>;
     let adminService: jest.Mocked<SupabaseAdminService>;
     let auditLogService: jest.Mocked<AuditLogService>;
+    let authCache: { evict: jest.Mock };
     let adminClient: {
         rpc: jest.Mock;
         auth: { admin: { updateUserById: jest.Mock } };
@@ -47,11 +49,13 @@ describe("AuthAccountDeletionService", () => {
         auditLogService = {
             logAdminOperation: jest.fn().mockResolvedValue(undefined),
         } as unknown as jest.Mocked<AuditLogService>;
+        authCache = { evict: jest.fn() };
 
         service = new AuthAccountDeletionService(
             lockService,
             adminService,
             auditLogService,
+            authCache as unknown as SupabaseAuthCacheService,
         );
     });
 
@@ -72,6 +76,7 @@ describe("AuthAccountDeletionService", () => {
         );
         expect(adminClient.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
         expect(signOutSession).toHaveBeenCalledTimes(1);
+        expect(authCache.evict).toHaveBeenCalledWith(userId);
         expect(lockService.release).toHaveBeenCalledWith(
             `auth-account-delete:${userId}`,
             "lock-id",
@@ -94,6 +99,7 @@ describe("AuthAccountDeletionService", () => {
                 metadata: expect.objectContaining({ stage: "BAN" }),
             }),
         );
+        expect(authCache.evict).toHaveBeenCalledWith(userId);
         expect(
             auditLogService.logAdminOperation.mock.calls
                 .filter(([call]) => call.operation === "SOFT_DELETE")

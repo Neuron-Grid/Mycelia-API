@@ -1,8 +1,10 @@
-import { Controller, Get, Header, Res } from "@nestjs/common";
+import { Controller, Get, Header, Res, UseGuards } from "@nestjs/common";
 import { Response } from "express";
+import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { BullmqSupervisorService } from "@/jobs/bullmq-supervisor.service";
 
 @Controller("metrics")
+@UseGuards(SupabaseAuthGuard)
 export class BullmqMetricsController {
     constructor(
         private readonly bullmqSupervisorService: BullmqSupervisorService,

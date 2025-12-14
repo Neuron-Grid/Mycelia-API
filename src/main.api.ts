@@ -60,7 +60,7 @@ async function bootstrap() {
             transformOptions: { enableImplicitConversion: true },
         }),
     );
-    app.useGlobalFilters(new AllExceptionsFilter());
+    app.useGlobalFilters(new AllExceptionsFilter(appEnv));
     app.setGlobalPrefix("api/v1");
     app.getHttpAdapter()
         .getInstance()

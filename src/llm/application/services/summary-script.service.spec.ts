@@ -1,3 +1,4 @@
+import { BadRequestException } from "@nestjs/common";
 import { jest } from "@test-utils/jest-globals";
 import { Queue } from "bullmq";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
@@ -17,7 +18,13 @@ describe("SummaryScriptService", () => {
         scriptQueue = {
             add: jest.fn().mockResolvedValue({ id: "script-job" }),
         };
-        userSettingsRepo = { getByUserId: jest.fn().mockResolvedValue(null) };
+        userSettingsRepo = {
+            getByUserId: jest.fn().mockResolvedValue({
+                summary_enabled: true,
+                podcast_enabled: true,
+                soft_deleted: false,
+            }),
+        };
 
         service = new SummaryScriptService(
             summaryQueue as unknown as Queue,
@@ -32,9 +39,6 @@ describe("SummaryScriptService", () => {
 
     it("enqueues summary generation when feature enabled", async () => {
         jest.setSystemTime(new Date("2025-10-16T18:15:00Z"));
-        userSettingsRepo.getByUserId.mockResolvedValue({
-            summary_enabled: true,
-        });
         summaryQueue.add.mockResolvedValue({ id: "summary:user-1:2025-10-17" });
 
         const result = await service.requestSummaryGeneration("user-1");
@@ -56,6 +60,8 @@ describe("SummaryScriptService", () => {
     it("skips enqueue when summary feature disabled", async () => {
         userSettingsRepo.getByUserId.mockResolvedValue({
             summary_enabled: false,
+            podcast_enabled: true,
+            soft_deleted: false,
         });
 
         const result = await service.requestSummaryGeneration("user-2");
@@ -64,7 +70,25 @@ describe("SummaryScriptService", () => {
         expect(result).toEqual({ jobId: undefined });
     });
 
+    it("skips enqueue when user is soft-deleted", async () => {
+        userSettingsRepo.getByUserId.mockResolvedValue({
+            summary_enabled: true,
+            podcast_enabled: true,
+            soft_deleted: true,
+        });
+
+        const result = await service.requestSummaryGeneration("user-4");
+
+        expect(summaryQueue.add).not.toHaveBeenCalled();
+        expect(result).toEqual({ jobId: undefined });
+    });
+
     it("enqueues script generation job with provided parameters", async () => {
+        userSettingsRepo.getByUserId.mockResolvedValue({
+            summary_enabled: true,
+            podcast_enabled: true,
+            soft_deleted: false,
+        });
         scriptQueue.add.mockResolvedValue({ id: "script-job" });
 
         const result = await service.requestScriptGeneration(
@@ -82,5 +106,18 @@ describe("SummaryScriptService", () => {
             }),
         );
         expect(result).toEqual({ jobId: "script-job" });
+    });
+
+    it("throws when podcast feature is disabled", async () => {
+        userSettingsRepo.getByUserId.mockResolvedValue({
+            summary_enabled: true,
+            podcast_enabled: false,
+            soft_deleted: false,
+        });
+
+        await expect(
+            service.requestScriptGeneration("user-5", 321),
+        ).rejects.toThrow(BadRequestException);
+        expect(scriptQueue.add).not.toHaveBeenCalled();
     });
 });

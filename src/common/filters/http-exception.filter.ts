@@ -8,23 +8,67 @@ import {
     Logger,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
+import type { AppEnv } from "@/config/app-env";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
     private readonly logger = new Logger(AllExceptionsFilter.name);
+
+    constructor(private readonly appEnv: AppEnv) {}
 
     catch(exception: unknown, host: ArgumentsHost) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
 
-        const status: number =
-            exception instanceof HttpException
-                ? exception.getStatus()
-                : HttpStatus.INTERNAL_SERVER_ERROR;
+        const isProd = this.appEnv.deployStage === "production";
+        const isDebug = !isProd;
 
+        const isHttp = exception instanceof HttpException;
+        const status: number = isHttp
+            ? exception.getStatus()
+            : HttpStatus.INTERNAL_SERVER_ERROR;
+        const isServerError = status >= 500;
+
+        const { extractedMessage, extractedErrorLabel } =
+            this.extractExceptionDetails(exception, status);
+
+        const clientMessage = isDebug
+            ? extractedMessage
+            : isServerError
+              ? "Internal server error"
+              : extractedMessage;
+
+        const clientError =
+            !isDebug && isServerError
+                ? "Internal Server Error"
+                : (extractedErrorLabel ?? STATUS_CODES[status] ?? "Error");
+
+        const payload = {
+            statusCode: status,
+            message: clientMessage,
+            error: clientError,
+            path: request.url,
+            timestamp: new Date().toISOString(),
+        };
+
+        this.logger.error(
+            `HTTP Status: ${status} Error: ${clientError} Message: ${JSON.stringify(extractedMessage)}`,
+            exception instanceof Error ? exception.stack : "",
+        );
+
+        response.status(status).json(payload);
+    }
+
+    private extractExceptionDetails(
+        exception: unknown,
+        status: number,
+    ): {
+        extractedMessage: string | string[];
+        extractedErrorLabel: string | undefined;
+    } {
         let message: string | string[] = "Internal server error";
-        let errorLabel: string = STATUS_CODES[status] ?? "Error";
+        let errorLabel: string | undefined = STATUS_CODES[status] ?? "Error";
 
         if (exception instanceof HttpException) {
             const res = exception.getResponse();
@@ -32,7 +76,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
                 message = res;
             } else if (res && typeof res === "object") {
                 const r = res as { message?: unknown; error?: unknown };
-                // message can be string | string[]
                 if (Array.isArray(r.message)) {
                     message = r.message.filter(
                         (v): v is string => typeof v === "string",
@@ -53,7 +96,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
                     errorLabel = STATUS_CODES[status] ?? exception.name;
                 }
             } else {
-                // Fallbacks
                 const exMsg = (exception as unknown as { message?: unknown })
                     ?.message;
                 if (typeof exMsg === "string" && exMsg.length > 0) {
@@ -69,19 +111,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
             errorLabel = STATUS_CODES[status] ?? "Error";
         }
 
-        const payload = {
-            statusCode: status,
-            message,
-            error: errorLabel,
-            path: request.url,
-            timestamp: new Date().toISOString(),
+        return {
+            extractedMessage: message,
+            extractedErrorLabel: errorLabel,
         };
-
-        this.logger.error(
-            `HTTP Status: ${status} Error: ${errorLabel} Message: ${JSON.stringify(message)}`,
-            exception instanceof Error ? exception.stack : "",
-        );
-
-        response.status(status).json(payload);
     }
 }

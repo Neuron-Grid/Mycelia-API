@@ -85,6 +85,7 @@ export class UserSettingsRepository {
         podcast_language?: "ja-JP" | "en-US";
         podcast_schedule_time?: string | null;
         summary_schedule_time: string;
+        soft_deleted?: boolean;
     } | null> {
         try {
             const { data, error } = await this.supabaseRequestService
@@ -112,6 +113,7 @@ export class UserSettingsRepository {
                     | string
                     | null,
                 summary_schedule_time: row.summary_schedule_time,
+                soft_deleted: row.soft_deleted as boolean | undefined,
             };
         } catch (e) {
             this.logger.warn(
