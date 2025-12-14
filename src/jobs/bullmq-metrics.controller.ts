@@ -1,4 +1,5 @@
-import { Controller, Get, Header } from "@nestjs/common";
+import { Controller, Get, Header, Res } from "@nestjs/common";
+import { Response } from "express";
 import { BullmqSupervisorService } from "@/jobs/bullmq-supervisor.service";
 
 @Controller("metrics")
@@ -8,9 +9,15 @@ export class BullmqMetricsController {
     ) {}
 
     @Get("bullmq")
-    @Header("Content-Type", "text/plain; version=0.0.4")
+    @Header("Content-Type", "text/plain")
     @Header("Cache-Control", "no-store")
-    async getBullmqMetrics(): Promise<string> {
+    async getBullmqMetrics(
+        @Res({ passthrough: true }) res: Response,
+    ): Promise<string> {
+        res.setHeader(
+            "Content-Type",
+            "text/plain; version=0.0.4; charset=utf-8",
+        );
         return await this.bullmqSupervisorService.getPrometheusSnapshot();
     }
 }
