@@ -114,6 +114,4 @@ ALTER FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) OWNER TO
 REVOKE ALL ON FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) FROM PUBLIC, anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.fn_list_recent_feed_items(uuid, timestamptz, int) TO service_role;
 
--- DB初期状態前提のため、既存データ更新やロールバック専用SQLは不要
-
 COMMIT;

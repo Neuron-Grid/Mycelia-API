@@ -43,7 +43,7 @@ describe("UserVerificationService", () => {
 
     it("returns cached state when cache is hit", async () => {
         const service = new UserVerificationService(adminService, cache);
-        cache.get.mockReturnValue({
+        cache.get.mockResolvedValue({
             isDeleted: false,
             isSoftDeleted: false,
             expiresAt: Date.now() + 1_000,
@@ -57,7 +57,7 @@ describe("UserVerificationService", () => {
 
     it("returns false after cache eviction when user became deleted", async () => {
         const service = new UserVerificationService(adminService, cache);
-        cache.get.mockReturnValueOnce(null);
+        cache.get.mockResolvedValueOnce(null);
 
         const initiallyActive = await service.isAccountActive(userId);
 
@@ -77,7 +77,7 @@ describe("UserVerificationService", () => {
                 error: null,
             },
         };
-        cache.get.mockReturnValueOnce(null);
+        cache.get.mockResolvedValueOnce(null);
 
         const afterDeletion = await service.isAccountActive(userId);
 

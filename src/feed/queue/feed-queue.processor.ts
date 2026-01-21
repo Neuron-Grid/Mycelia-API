@@ -21,22 +21,32 @@ export class FeedQueueProcessor extends WorkerHost {
         // DTO バリデーション – 破損データを早期検出
         await validateDto(FeedFetchJobDto, job.data);
         const { subscriptionId, userId } = job.data;
+        const jobId = job.id;
+
         this.logger.debug(
-            `Start processing feed job: sub=${subscriptionId}, user=${userId}`,
+            `Start processing feed job: sub=${subscriptionId}, user=${userId}, jobId=${jobId}`,
         );
+
         try {
             const result = await this.feedUseCaseService.fetchFeedItems(
                 subscriptionId,
                 userId,
             );
             this.logger.log(
-                `Feed processed: sub=${subscriptionId}, user=${userId}, inserted=${result.insertedCount}`,
+                `Feed processed successfully: sub=${subscriptionId}, user=${userId}, jobId=${jobId}, inserted=${result.insertedCount}`,
             );
             return result;
         } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : String(error);
             this.logger.error(
-                `Failed to process sub=${subscriptionId}, user=${userId}: ${error}`,
+                `Failed to process feed job: sub=${subscriptionId}, user=${userId}, jobId=${jobId}, error=${errorMessage}`,
+                {
+                    error: error,
+                    jobData: job.data,
+                },
             );
+
             throw error;
         }
     }

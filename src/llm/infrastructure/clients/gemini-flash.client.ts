@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { HttpService } from "@nestjs/axios";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { AxiosError, AxiosResponse } from "axios";
@@ -19,7 +20,6 @@ interface GeminiApiResponseCandidate {
         role?: string;
     };
     finishReason?: string;
-    // ... other fields
 }
 interface GeminiApiResponse {
     candidates?: Array<GeminiApiResponseCandidate>;
@@ -28,7 +28,6 @@ interface GeminiApiResponse {
         candidatesTokenCount?: number;
         totalTokenCount?: number;
     };
-    // promptFeedback?: ...
 }
 
 interface GeminiErrorDetail {
@@ -78,6 +77,59 @@ export class GeminiFlashClient implements LlmService {
             error !== null &&
             (error as AxiosError).isAxiosError === true
         );
+    }
+
+    private hashText(input: string): string {
+        return createHash("sha256").update(input).digest("hex");
+    }
+
+    private buildSummaryLogContext(
+        request: GeminiSummaryRequest,
+        prompt: string,
+    ): {
+        articleCount: number;
+        totalTitleChars: number;
+        totalContentChars: number;
+        targetLanguage: string;
+        promptLength: number;
+        promptHash: string;
+    } {
+        const articles = request.articles ?? [];
+        const totalTitleChars = articles.reduce(
+            (sum, item) => sum + (item.title?.length ?? 0),
+            0,
+        );
+        const totalContentChars = articles.reduce(
+            (sum, item) => sum + (item.content?.length ?? 0),
+            0,
+        );
+
+        return {
+            articleCount: articles.length,
+            totalTitleChars,
+            totalContentChars,
+            targetLanguage: request.targetLanguage ?? "auto",
+            promptLength: prompt.length,
+            promptHash: this.hashText(prompt),
+        };
+    }
+
+    private buildScriptLogContext(
+        request: GeminiScriptRequest,
+        prompt: string,
+    ): {
+        summaryLength: number;
+        articlesCount: number;
+        promptLength: number;
+        promptHash: string;
+    } {
+        const articles = request.articlesForContext ?? [];
+        return {
+            summaryLength: request.summaryText?.length ?? 0,
+            articlesCount: articles.length,
+            promptLength: prompt.length,
+            promptHash: this.hashText(prompt),
+        };
     }
 
     private async makeApiCall<TRequest extends object, TResponse>(
@@ -159,6 +211,7 @@ export class GeminiFlashClient implements LlmService {
                 : "英語で記述してください。";
 
         const prompt = `以下のRSS記事群の情報を元に、Markdown形式で簡潔なダイジェストを作成してください。${langInstruction}\n\n${articlesString}`;
+        const logContext = this.buildSummaryLogContext(request, prompt);
 
         const payload = {
             contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -170,9 +223,12 @@ export class GeminiFlashClient implements LlmService {
         };
 
         try {
+            const startTime = Date.now();
             const res = await this.makeApiCall<object, GeminiApiResponse>(
                 payload,
             );
+            const duration = Date.now() - startTime;
+
             let responseText =
                 res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
@@ -183,6 +239,10 @@ export class GeminiFlashClient implements LlmService {
                 responseText = `${responseText.substring(0, 7000)}... [truncated]`;
             }
 
+            this.logger.log(
+                `Summary generation successful: duration=${duration}ms, responseLength=${responseText.length}`,
+            );
+
             return { content: responseText };
         } catch (error: unknown) {
             const errorMessage =
@@ -190,10 +250,10 @@ export class GeminiFlashClient implements LlmService {
             const errorDetails = this.isAxiosError(error)
                 ? error.response?.data
                 : error;
-            this.logger.error(
-                `Failed to generate summary: ${errorMessage}`,
-                errorDetails,
-            );
+            this.logger.error(`Failed to generate summary: ${errorMessage}`, {
+                error: errorDetails,
+                request: logContext,
+            });
             throw error;
         }
     }
@@ -209,6 +269,7 @@ export class GeminiFlashClient implements LlmService {
 
         // ユーザープロンプトにシステム指示を含めるアプローチ
         const userPrompt = `${systemInstruction}\n\n以下の要約文と、もしあれば関連ニュース記事の情報を元に、ニュース番組風の読み上げナレーション原稿を日本語で作成してください。各トピックを簡潔に紹介し、重要な情報を盛り込み、自然な流れで繋げてください。要約文: 「${sanitizeMarkdown(request.summaryText)}」 ${articlesJsonString}`; // 修正: useTemplate
+        const logContext = this.buildScriptLogContext(request, userPrompt);
 
         const payload = {
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
@@ -225,9 +286,12 @@ export class GeminiFlashClient implements LlmService {
         };
 
         try {
+            const startTime = Date.now();
             const res = await this.makeApiCall<object, GeminiApiResponse>(
                 payload,
             );
+            const duration = Date.now() - startTime;
+
             let responseText =
                 res.data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 
@@ -239,6 +303,11 @@ export class GeminiFlashClient implements LlmService {
                     responseText = `${responseText.substring(0, 12000)}... [truncated due to length limit]`; // 修正: useTemplate
                 }
             }
+
+            this.logger.log(
+                `Script generation successful: duration=${duration}ms, responseLength=${responseText.length}`,
+            );
+
             return { script: responseText };
         } catch (error: unknown) {
             // 修正: noExplicitAny
@@ -247,21 +316,11 @@ export class GeminiFlashClient implements LlmService {
             const errorDetails = this.isAxiosError(error)
                 ? error.response?.data
                 : error;
-            this.logger.error(
-                `Failed to generate script: ${errorMessage}`,
-                errorDetails,
-            );
+            this.logger.error(`Failed to generate script: ${errorMessage}`, {
+                error: errorDetails,
+                request: logContext,
+            });
             throw error;
         }
     }
-    // 以下の未使用変数のエラー箇所は、この修正版では該当する変数が使用されているか、
-    // または前回の修正で既に削除されているため、直接的な修正は不要。
-    // 164, startColumn: 15, endLineNumber: 164, endColumn: 32 (articlesForContext) --> articlesJsonString で使用
-    // 165, startColumn: 15, endLineNumber: 165, endColumn: 33 (systemInstructionForUserPrompt) --> userPrompt に統合
-    // 169, startColumn: 15, endLineNumber: 169, endColumn: 25 (apiPayload) --> payload にリネームして使用
-
-    // 169行目のテンプレートリテラルに関するエラー群は、その行のコードが修正・削除されたため解消されるはず。
-    // "unterminated template literal" や "expected `}`" は、通常、文字列の閉じ忘れや構文ミスが原因。
-    // この修正版では、該当する可能性のある箇所は見当たらない。
-    // もし残っている場合は、具体的なコード行と合わせて再確認が必要。
 }

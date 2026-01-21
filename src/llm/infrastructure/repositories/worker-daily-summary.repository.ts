@@ -6,39 +6,52 @@ import {
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import { Database, TablesUpdate } from "@/types/schema";
 
+// RPC戻り値の型定義
+type DailySummaryRow =
+    Database["public"]["Functions"]["fn_find_daily_summary_by_date"]["Returns"][number];
+type FnFindDailySummaryByIdRow =
+    Database["public"]["Functions"]["fn_find_daily_summary_by_id"]["Returns"][number];
+type FnUpsertDailySummaryRow =
+    Database["public"]["Functions"]["fn_upsert_daily_summary"]["Returns"];
+type FnUpdateDailySummaryRow =
+    Database["public"]["Functions"]["fn_update_daily_summary"]["Returns"];
+type FnGetSummaryItemsRow =
+    Database["public"]["Functions"]["fn_get_summary_items"]["Returns"][number];
+
 @Injectable()
 export class WorkerDailySummaryRepository {
     private readonly logger = new Logger(WorkerDailySummaryRepository.name);
 
     constructor(private readonly admin: SupabaseAdminService) {}
 
+    /**
+     * 日付によるサマリー検索（RPC経由）
+     * A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+     */
     async findByUserAndDate(
         userId: string,
         summaryDate: string,
     ): Promise<DailySummaryEntity | null> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("daily_summaries")
-                .select("*")
-                .eq("user_id", userId)
-                .eq("summary_date", summaryDate)
-                .eq("soft_deleted", false)
-                .single();
-            if (error) {
-                const code = (error as { code?: string }).code;
-                if (code === "PGRST116") return null;
-                throw error;
-            }
-            return new DailySummaryEntity(
-                data as Database["public"]["Tables"]["daily_summaries"]["Row"],
+            const { data, error } = await sb.rpc(
+                "fn_find_daily_summary_by_date",
+                { p_user_id: userId, p_summary_date: summaryDate },
             );
+            if (error) throw error;
+            const rows = data ?? [];
+            if (rows.length === 0) return null;
+            return new DailySummaryEntity(rows[0] as DailySummaryRow);
         } catch (e) {
             this.logger.error(`findByUserAndDate: ${(e as Error).message}`);
             return null;
         }
     }
 
+    /**
+     * サマリーの作成（UPSERT）
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async create(
         userId: string,
         summaryDate: string,
@@ -58,32 +71,40 @@ export class WorkerDailySummaryRepository {
             p_summary_emb: (data.summary_emb ?? null) as unknown as number[],
         });
         if (error) throw error as Error;
-        return new DailySummaryEntity(
-            row as Database["public"]["Tables"]["daily_summaries"]["Row"],
-        );
+        return new DailySummaryEntity(row as FnUpsertDailySummaryRow);
     }
 
+    /**
+     * サマリーの更新（RPC経由）
+     * A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+     */
     async update(
         id: number,
         userId: string,
         data: TablesUpdate<"daily_summaries">,
     ): Promise<DailySummaryEntity> {
         const sb = this.admin.getClient();
-        const { data: result, error } = await sb
-            .from("daily_summaries")
-            .update({ ...data, updated_at: new Date().toISOString() })
-            .eq("id", id)
-            .eq("user_id", userId)
-            .eq("soft_deleted", false)
-            .select()
-            .single();
+        const { data: result, error } = await sb.rpc(
+            "fn_update_daily_summary",
+            {
+                p_user_id: userId,
+                p_id: id,
+                p_summary_title: data.summary_title ?? undefined,
+                p_markdown: data.markdown ?? undefined,
+                p_summary_emb: data.summary_emb ?? undefined,
+                p_script_tts_duration_sec:
+                    data.script_tts_duration_sec ?? undefined,
+            },
+        );
         if (error) throw error as Error;
         if (!result) throw new NotFoundException();
-        return new DailySummaryEntity(
-            result as Database["public"]["Tables"]["daily_summaries"]["Row"],
-        );
+        return new DailySummaryEntity(result as FnUpdateDailySummaryRow);
     }
 
+    /**
+     * サマリーアイテムの追加
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async addSummaryItems(
         summaryId: number,
         userId: string,
@@ -98,53 +119,57 @@ export class WorkerDailySummaryRepository {
         if (error) throw error as Error;
     }
 
+    // サマリーアイテムの取得（RPC経由）
     async getSummaryItems(
         summaryId: number,
         userId: string,
     ): Promise<DailySummaryItemEntity[]> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("daily_summary_items")
-                .select("*")
-                .eq("summary_id", summaryId)
-                .eq("user_id", userId)
-                .eq("soft_deleted", false);
+            const { data, error } = await sb.rpc("fn_get_summary_items", {
+                p_user_id: userId,
+                p_summary_id: summaryId,
+            });
             if (error) throw error;
-            return (data || []).map((d) => new DailySummaryItemEntity(d));
+            const rows = (data ?? []) as FnGetSummaryItemsRow[];
+            return rows.map((d) => new DailySummaryItemEntity(d));
         } catch (e) {
             this.logger.error(`getSummaryItems: ${(e as Error).message}`);
             return [];
         }
     }
 
+    /**
+     * IDによるサマリー検索（RPC経由）
+     * A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+     */
     async findById(
         id: number,
         userId: string,
     ): Promise<DailySummaryEntity | null> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("daily_summaries")
-                .select("*")
-                .eq("id", id)
-                .eq("user_id", userId)
-                .eq("soft_deleted", false)
-                .single();
-            if (error) {
-                const code = (error as { code?: string }).code;
-                if (code === "PGRST116") return null;
-                throw error;
-            }
-            return new DailySummaryEntity(
-                data as Database["public"]["Tables"]["daily_summaries"]["Row"],
+            const { data, error } = await sb.rpc(
+                "fn_find_daily_summary_by_id",
+                {
+                    p_user_id: userId,
+                    p_id: id,
+                },
             );
+            if (error) throw error;
+            const rows = data ?? [];
+            if (rows.length === 0) return null;
+            return new DailySummaryEntity(rows[0] as FnFindDailySummaryByIdRow);
         } catch (e) {
             this.logger.error(`findById: ${(e as Error).message}`);
             return null;
         }
     }
 
+    /**
+     * 最近のフィードアイテム取得
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async getRecentFeedItems(
         userId: string,
         hoursBack = 24,

@@ -1,6 +1,17 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { PodcastEpisodeEntity } from "@/podcast/domain/podcast-episode.entity";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { Database } from "@/types/schema";
+
+// RPC戻り値の型定義
+type PodcastEpisodeRow =
+    Database["public"]["Tables"]["podcast_episodes"]["Row"];
+type FnListOldPodcastEpisodesRow =
+    Database["public"]["Functions"]["fn_list_old_podcast_episodes"]["Returns"][number];
+type FnFindPodcastByIdRow =
+    Database["public"]["Functions"]["fn_find_podcast_by_id"]["Returns"][number];
+type FnFindPodcastBySummaryIdRow =
+    Database["public"]["Functions"]["fn_find_podcast_by_summary_id"]["Returns"][number];
 
 @Injectable()
 export class WorkerPodcastEpisodeRepository {
@@ -8,31 +19,36 @@ export class WorkerPodcastEpisodeRepository {
 
     constructor(private readonly admin: SupabaseAdminService) {}
 
+    /**
+     * サマリーIDによるポッドキャスト検索（RPC経由）
+     * A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+     */
     async findBySummaryId(
         userId: string,
         summaryId: number,
     ): Promise<PodcastEpisodeEntity | null> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("podcast_episodes")
-                .select("*")
-                .eq("user_id", userId)
-                .eq("summary_id", summaryId)
-                .eq("soft_deleted", false)
-                .single();
-            if (error) {
-                const code = (error as { code?: string }).code;
-                if (code === "PGRST116") return null;
-                throw error;
-            }
-            return new PodcastEpisodeEntity(data as PodcastEpisodeEntity);
+            const { data, error } = await sb.rpc(
+                "fn_find_podcast_by_summary_id",
+                { p_user_id: userId, p_summary_id: summaryId },
+            );
+            if (error) throw error;
+            const rows = data ?? [];
+            if (rows.length === 0) return null;
+            return new PodcastEpisodeEntity(
+                rows[0] as FnFindPodcastBySummaryIdRow,
+            );
         } catch (e) {
             this.logger.error(`findBySummaryId: ${(e as Error).message}`);
             return null;
         }
     }
 
+    /**
+     * ポッドキャストエピソードのUPSERT
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async upsert(
         userId: string,
         summaryId: number,
@@ -48,9 +64,13 @@ export class WorkerPodcastEpisodeRepository {
             p_title_emb: (titleEmb ?? null) as unknown as number[],
         });
         if (error) throw error as Error;
-        return new PodcastEpisodeEntity(data as PodcastEpisodeEntity);
+        return new PodcastEpisodeEntity(data as PodcastEpisodeRow);
     }
 
+    /**
+     * 音声URL更新
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async updateAudioUrl(
         episodeId: number,
         userId: string,
@@ -66,34 +86,37 @@ export class WorkerPodcastEpisodeRepository {
         });
         if (error) throw error as Error;
         if (!data) throw new NotFoundException();
-        return new PodcastEpisodeEntity(data as PodcastEpisodeEntity);
+        return new PodcastEpisodeEntity(data as PodcastEpisodeRow);
     }
 
+    /**
+     * IDによるポッドキャスト検索（RPC経由）
+     * A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+     */
     async findById(
         id: number,
         userId: string,
     ): Promise<PodcastEpisodeEntity | null> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("podcast_episodes")
-                .select("*")
-                .eq("id", id)
-                .eq("user_id", userId)
-                .eq("soft_deleted", false)
-                .single();
-            if (error) {
-                const code = (error as { code?: string }).code;
-                if (code === "PGRST116") return null;
-                throw error;
-            }
-            return new PodcastEpisodeEntity(data as PodcastEpisodeEntity);
+            const { data, error } = await sb.rpc("fn_find_podcast_by_id", {
+                p_user_id: userId,
+                p_id: id,
+            });
+            if (error) throw error;
+            const rows = data ?? [];
+            if (rows.length === 0) return null;
+            return new PodcastEpisodeEntity(rows[0] as FnFindPodcastByIdRow);
         } catch (e) {
             this.logger.error(`findById: ${(e as Error).message}`);
             return null;
         }
     }
 
+    /**
+     * 古いエピソードの列挙
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async findOldEpisodes(
         userId: string,
         daysOld: number,
@@ -109,15 +132,20 @@ export class WorkerPodcastEpisodeRepository {
             this.logger.error(`fn_list_old_podcast_episodes: ${error.message}`);
             return [];
         }
-        return (data || []).map(
-            (d) =>
+        const rows = (data ?? []) as FnListOldPodcastEpisodesRow[];
+        return rows.map(
+            (row) =>
                 new PodcastEpisodeEntity({
-                    id: (d as { id: number }).id,
-                    audio_url: (d as { audio_url: string }).audio_url,
+                    id: row.id,
+                    audio_url: row.audio_url,
                 }),
         );
     }
 
+    /**
+     * ソフトデリート
+     * A+ Architecture: 既にRPC経由で実装済み
+     */
     async softDelete(id: number, userId: string): Promise<void> {
         const sb = this.admin.getClient();
         const { error } = await sb.rpc("fn_soft_delete_podcast_episode", {

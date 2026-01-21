@@ -10,7 +10,7 @@ export class UserVerificationService {
     ) {}
 
     async isAccountActive(userId: string): Promise<boolean> {
-        const cached = this.cache.get(userId);
+        const cached = await this.cache.get(userId);
         if (cached) {
             return !cached.isDeleted && !cached.isSoftDeleted;
         }

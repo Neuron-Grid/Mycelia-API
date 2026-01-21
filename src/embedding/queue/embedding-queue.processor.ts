@@ -3,6 +3,7 @@ import { Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { validateDto } from "@/common/utils/validation";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { Database } from "@/types/schema";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
 import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
@@ -13,6 +14,9 @@ import {
 } from "../types/embedding-batch.types";
 import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
 import { EmbeddingQueueService } from "./embedding-queue.service";
+
+type FnListActiveUsersRow =
+    Database["public"]["Functions"]["fn_list_active_users"]["Returns"][number];
 
 @Processor("embeddingQueue", { concurrency: 2 })
 export class EmbeddingQueueProcessor extends WorkerHost {
@@ -131,7 +135,9 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             }
             this.embeddingQueueService.markBatchFailed(userId, tableType);
             this.logger.error(
-                `Batch processing failed for user ${userId}: ${(error as Error).message}`,
+                `Batch processing failed for user ${userId}: ${
+                    (error as Error).message
+                }`,
             );
             throw error;
         }
@@ -157,7 +163,9 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             }
 
             this.logger.debug(
-                `Generated embeddings for ${i + batch.length}/${texts.length} items`,
+                `Generated embeddings for ${
+                    i + batch.length
+                }/${texts.length} items`,
             );
         }
 
@@ -195,36 +203,22 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         this.logger.log("Starting global embedding update scheduling...");
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from("users")
-                .select("id, user_settings!inner(soft_deleted)")
-                .is("deleted_at", null)
-                .eq("user_settings.soft_deleted", false)
-                .order("id");
+            // A+ Architecture: 直接テーブル操作を禁止し、RPC経由でアクセス
+            const { data, error } = await sb.rpc("fn_list_active_users");
             if (error) throw error as Error;
-            const users: {
-                id: string;
-                user_settings?: { soft_deleted?: boolean } | null;
-            }[] =
-                (data as {
-                    id: string;
-                    user_settings?: { soft_deleted?: boolean } | null;
-                }[]) || [];
+            const users = (data ?? []) as FnListActiveUsersRow[];
             let enqueued = 0;
-            let skipped = 0;
             for (const u of users) {
-                if (u.user_settings?.soft_deleted) {
-                    skipped++;
-                    continue;
-                }
                 try {
                     await this.embeddingQueueService.addUserEmbeddingBatchJob(
-                        u.id,
+                        u.user_id,
                     );
                     enqueued++;
                 } catch (e) {
                     this.logger.warn(
-                        `Failed to enqueue embedding batch for user ${u.id}: ${(e as Error).message}`,
+                        `Failed to enqueue embedding batch for user ${u.user_id}: ${
+                            (e as Error).message
+                        }`,
                     );
                 }
             }
@@ -232,14 +226,11 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             this.logger.log(
                 `Enqueued embedding batch jobs for ${enqueued} user(s)`,
             );
-            if (skipped > 0) {
-                this.logger.warn(
-                    `Skipped embedding enqueue for ${skipped} soft-deleted user(s)`,
-                );
-            }
         } catch (e) {
             this.logger.error(
-                `Global embedding update scheduling failed: ${(e as Error).message}`,
+                `Global embedding update scheduling failed: ${
+                    (e as Error).message
+                }`,
             );
             throw e;
         }

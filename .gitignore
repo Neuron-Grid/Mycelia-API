@@ -75,3 +75,6 @@ patches/work/
 patches/nestia-core-8.0.5-transformer.patch
 .serena
 .gemini
+container/
+.claude/
+.kilocode/

@@ -358,6 +358,27 @@ export type Database = {
                     },
                 ];
             };
+            oauth_client_states: {
+                Row: {
+                    code_verifier: string | null;
+                    created_at: string;
+                    id: string;
+                    provider_type: string;
+                };
+                Insert: {
+                    code_verifier?: string | null;
+                    created_at: string;
+                    id: string;
+                    provider_type: string;
+                };
+                Update: {
+                    code_verifier?: string | null;
+                    created_at?: string;
+                    id?: string;
+                    provider_type?: string;
+                };
+                Relationships: [];
+            };
             oauth_clients: {
                 Row: {
                     client_name: string | null;
@@ -1562,6 +1583,36 @@ export type Database = {
                 };
                 Returns: number;
             };
+            fn_find_daily_summary_by_date: {
+                Args: { p_summary_date: string; p_user_id: string };
+                Returns: {
+                    created_at: string;
+                    id: number;
+                    markdown: string;
+                    script_tts_duration_sec: number;
+                    soft_deleted: boolean;
+                    summary_date: string;
+                    summary_emb: string;
+                    summary_title: string;
+                    updated_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_find_daily_summary_by_id: {
+                Args: { p_id: number; p_user_id: string };
+                Returns: {
+                    created_at: string;
+                    id: number;
+                    markdown: string;
+                    script_tts_duration_sec: number;
+                    soft_deleted: boolean;
+                    summary_date: string;
+                    summary_emb: string;
+                    summary_title: string;
+                    updated_at: string;
+                    user_id: string;
+                }[];
+            };
             fn_find_due_subscriptions: {
                 Args: { p_cutoff: string };
                 Returns: {
@@ -1569,6 +1620,34 @@ export type Database = {
                     feed_url: string;
                     id: number;
                     next_fetch_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_find_podcast_by_id: {
+                Args: { p_id: number; p_user_id: string };
+                Returns: {
+                    audio_url: string;
+                    created_at: string;
+                    id: number;
+                    soft_deleted: boolean;
+                    summary_id: number;
+                    title: string;
+                    title_emb: string;
+                    updated_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_find_podcast_by_summary_id: {
+                Args: { p_summary_id: number; p_user_id: string };
+                Returns: {
+                    audio_url: string;
+                    created_at: string;
+                    id: number;
+                    soft_deleted: boolean;
+                    summary_id: number;
+                    title: string;
+                    title_emb: string;
+                    updated_at: string;
                     user_id: string;
                 }[];
             };
@@ -1580,6 +1659,30 @@ export type Database = {
                     id: number;
                     last_fetched_at: string;
                     next_fetch_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_get_summary_items: {
+                Args: { p_summary_id: number; p_user_id: string };
+                Returns: {
+                    created_at: string;
+                    feed_item_id: number;
+                    id: number;
+                    soft_deleted: boolean;
+                    summary_id: number;
+                    updated_at: string;
+                    user_id: string;
+                }[];
+            };
+            fn_get_user_settings: {
+                Args: { p_user_id: string };
+                Returns: {
+                    podcast_enabled: boolean;
+                    podcast_language: string;
+                    podcast_schedule_time: string;
+                    soft_deleted: boolean;
+                    summary_enabled: boolean;
+                    summary_schedule_time: string;
                     user_id: string;
                 }[];
             };
@@ -1596,6 +1699,27 @@ export type Database = {
                 Returns: {
                     id: number;
                     inserted: boolean;
+                }[];
+            };
+            fn_list_active_users: {
+                Args: never;
+                Returns: {
+                    user_id: string;
+                }[];
+            };
+            fn_list_enabled_podcast_schedules: {
+                Args: { p_limit?: number; p_offset?: number };
+                Returns: {
+                    podcast_language: string;
+                    podcast_schedule_time: string;
+                    user_id: string;
+                }[];
+            };
+            fn_list_enabled_summary_schedules: {
+                Args: { p_limit?: number; p_offset?: number };
+                Returns: {
+                    summary_schedule_time: string;
+                    user_id: string;
                 }[];
             };
             fn_list_missing_feed_item_embeddings: {
@@ -1682,6 +1806,35 @@ export type Database = {
                 Args: { p_episode_id: number; p_user_id: string };
                 Returns: undefined;
             };
+            fn_update_daily_summary: {
+                Args: {
+                    p_id: number;
+                    p_markdown?: string;
+                    p_script_tts_duration_sec?: number;
+                    p_summary_emb?: string;
+                    p_summary_title?: string;
+                    p_user_id: string;
+                };
+                Returns: {
+                    created_at: string;
+                    id: number;
+                    markdown: string;
+                    script_text: string | null;
+                    script_tts_duration_sec: number | null;
+                    soft_deleted: boolean;
+                    summary_date: string;
+                    summary_emb: string | null;
+                    summary_title: string;
+                    updated_at: string;
+                    user_id: string;
+                };
+                SetofOptions: {
+                    from: "*";
+                    to: "daily_summaries";
+                    isOneToOne: true;
+                    isSetofReturn: false;
+                };
+            };
             fn_update_feed_item_embedding: {
                 Args: { p_id: number; p_user_id: string; p_vec: number[] };
                 Returns: undefined;
@@ -1713,15 +1866,15 @@ export type Database = {
             };
             fn_update_podcast_embedding:
                 | {
-                      Args: { p_id: number; p_user_id: string; p_vec: string };
-                      Returns: undefined;
-                  }
-                | {
                       Args: {
                           p_id: number;
                           p_user_id: string;
                           p_vec: number[];
                       };
+                      Returns: undefined;
+                  }
+                | {
+                      Args: { p_id: number; p_user_id: string; p_vec: string };
                       Returns: undefined;
                   };
             fn_update_summary_embedding: {
