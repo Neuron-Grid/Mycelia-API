@@ -1,9 +1,11 @@
 import { jest } from "@test-utils/jest-globals";
 import type { Job, Queue } from "bullmq";
+import type { VectorUpdateJobDto } from "@/embedding/queue/dto/vector-update-job.dto";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { EmbeddingBatchDataService } from "@/embedding/services/embedding-batch-data.service";
 import type { TableType } from "@/embedding/types/embedding-batch.types";
-import type { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
-import { EmbeddingQueueService } from "./embedding-queue.service";
+
+const PROGRESS_TTL_MS = 15 * 60 * 1000;
 
 describe("EmbeddingQueueService", () => {
     let service: EmbeddingQueueService;
@@ -78,6 +80,67 @@ describe("EmbeddingQueueService", () => {
         );
     });
 
+    it("adds a single embedding update job", async () => {
+        await service.addSingleEmbeddingJob("user-1", 10, "tags");
+
+        expect(queueMock.add).toHaveBeenCalledWith(
+            "single-update",
+            {
+                userId: "user-1",
+                tableType: "tags",
+                recordId: 10,
+            },
+            { priority: 10 },
+        );
+    });
+
+    it("adds a global embedding update job", async () => {
+        await service.addGlobalEmbeddingUpdateJob();
+
+        expect(queueMock.add).toHaveBeenCalledWith(
+            "global-update",
+            {},
+            { priority: 1 },
+        );
+    });
+
+    it("returns progress sorted by table type", () => {
+        service.initializeBatchProgress("user-1", "tags", 2);
+        service.initializeBatchProgress("user-1", "daily_summaries", 1);
+
+        const progress = service.getBatchProgress("user-1");
+
+        expect(progress.map((p) => p.tableType)).toEqual([
+            "daily_summaries",
+            "tags",
+        ]);
+    });
+
+    it("marks batch running and preserves progress snapshot", () => {
+        service.initializeBatchProgress("user-1", "tags", 3);
+
+        service.markBatchRunning("user-1", "tags", 3);
+
+        const [snapshot] = service.getBatchProgress("user-1");
+        expect(snapshot.status).toBe("running");
+        expect(snapshot.totalRecords).toBe(3);
+    });
+
+    it("keeps progress below 100 when more data remains", () => {
+        service.initializeBatchProgress("user-1", "tags", 10);
+
+        const snapshot = service.incrementBatchProgress(
+            "user-1",
+            "tags",
+            5,
+            10,
+            true,
+        );
+
+        expect(snapshot.progress).toBeLessThan(100);
+        expect(snapshot.status).toBe("running");
+    });
+
     it("skips enqueue when duplicate job already exists", async () => {
         const existingJob = {
             id: "batch:user-1:tags",
@@ -150,14 +213,13 @@ describe("EmbeddingQueueService", () => {
     });
 
     it("evicts stale progress entries after TTL elapses", () => {
-        const TTL_MS = 15 * 60 * 1000;
         jest.useFakeTimers();
 
         try {
             service.initializeBatchProgress("user-1", "tags", 3);
             expect(service.getBatchProgress("user-1")).toHaveLength(1);
 
-            jest.advanceTimersByTime(TTL_MS - 1);
+            jest.advanceTimersByTime(PROGRESS_TTL_MS - 1);
             expect(service.getBatchProgress("user-1")).toHaveLength(1);
 
             jest.advanceTimersByTime(1);
@@ -168,19 +230,18 @@ describe("EmbeddingQueueService", () => {
     });
 
     it("extends TTL when progress updates occur", () => {
-        const TTL_MS = 15 * 60 * 1000;
         jest.useFakeTimers();
 
         try {
             service.initializeBatchProgress("user-1", "tags", 8);
-            jest.advanceTimersByTime(TTL_MS - 1000);
+            jest.advanceTimersByTime(PROGRESS_TTL_MS - 1000);
 
             service.markBatchRunning("user-1", "tags");
 
             jest.advanceTimersByTime(999);
             expect(service.getBatchProgress("user-1")).toHaveLength(1);
 
-            jest.advanceTimersByTime(TTL_MS);
+            jest.advanceTimersByTime(PROGRESS_TTL_MS);
             expect(service.getBatchProgress("user-1")).toHaveLength(0);
         } finally {
             jest.useRealTimers();

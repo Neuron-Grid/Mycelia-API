@@ -1,4 +1,8 @@
-import type { BatchItem, TableType } from "../types/embedding-batch.types";
+import type {
+    BatchItem,
+    EmbeddingUpdateItem,
+    TableType,
+} from "@/embedding/types/embedding-batch.types";
 
 export interface IBatchDataService {
     getMissingEmbeddingsCount(
@@ -11,12 +15,17 @@ export interface IBatchDataService {
         batchSize: number,
         lastId?: number,
     ): Promise<BatchItem[]>;
+    getSingleItem(
+        userId: string,
+        tableType: TableType,
+        recordId: number,
+    ): Promise<BatchItem | null>;
 }
 
 export interface IBatchUpdateService {
     updateEmbeddings(
         userId: string,
         tableType: TableType,
-        items: Array<{ id: number; embedding: number[] }>,
+        items: EmbeddingUpdateItem[],
     ): Promise<void>;
 }

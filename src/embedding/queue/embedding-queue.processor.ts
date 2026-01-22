@@ -1,19 +1,19 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
-import { Job, Queue } from "bullmq";
+import type { Job, Queue } from "bullmq";
 import { validateDto } from "@/common/utils/validation";
-import { SupabaseAdminService } from "@/shared/supabase-admin.service";
-import type { Database } from "@/types/schema";
-import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
-import { EmbeddingBatchDataService } from "../services/embedding-batch-data.service";
-import { EmbeddingBatchUpdateService } from "../services/embedding-batch-update.service";
-import {
+import { VectorUpdateJobDto } from "@/embedding/queue/dto/vector-update-job.dto";
+import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
+import { EmbeddingBatchDataService } from "@/embedding/services/embedding-batch-data.service";
+import { EmbeddingBatchUpdateService } from "@/embedding/services/embedding-batch-update.service";
+import type {
     BatchProcessResult,
     EmbeddingUpdateItem,
     TableType,
-} from "../types/embedding-batch.types";
-import { VectorUpdateJobDto } from "./dto/vector-update-job.dto";
-import { EmbeddingQueueService } from "./embedding-queue.service";
+} from "@/embedding/types/embedding-batch.types";
+import { EmbeddingService } from "@/search/infrastructure/services/embedding.service";
+import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { Database } from "@/types/schema";
 
 type FnListActiveUsersRow =
     Database["public"]["Functions"]["fn_list_active_users"]["Returns"][number];
@@ -21,6 +21,10 @@ type FnListActiveUsersRow =
 @Processor("embeddingQueue", { concurrency: 2 })
 export class EmbeddingQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(EmbeddingQueueProcessor.name);
+    private static readonly DEFAULT_BATCH_SIZE = 50;
+    private static readonly OPENAI_BATCH_SIZE = 20;
+    private static readonly RATE_LIMIT_DELAY_MS = 1000;
+    private static readonly NEXT_BATCH_DELAY_MS = 2000;
 
     constructor(
         @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
@@ -41,7 +45,75 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         }
         // DTO バリデーション – 破損データを早期検出
         await validateDto(VectorUpdateJobDto, job.data);
-        const { userId, tableType, batchSize = 50, lastProcessedId } = job.data;
+        if (job.name === "single-update") {
+            return this.handleSingleUpdate(job);
+        }
+        return this.handleBatchUpdate(job);
+    }
+
+    private async handleSingleUpdate(
+        job: Job<VectorUpdateJobDto>,
+    ): Promise<BatchProcessResult> {
+        const { userId, tableType, recordId } = job.data;
+        if (!recordId) {
+            this.logger.warn(
+                `Single update skipped: recordId is missing (user=${userId}, table=${tableType})`,
+            );
+            return { processedCount: 0, hasMore: false };
+        }
+
+        try {
+            const item = await this.batchDataService.getSingleItem(
+                userId,
+                tableType,
+                recordId,
+            );
+            if (!item) {
+                this.logger.warn(
+                    `Single update skipped: record not found (id=${recordId}, user=${userId}, table=${tableType})`,
+                );
+                return { processedCount: 0, hasMore: false };
+            }
+
+            const cleaned = this.embeddingService.preprocessText(
+                item.contentText,
+            );
+            const normalized = cleaned?.trim();
+            if (!normalized) {
+                this.logger.warn(
+                    `Single update skipped: empty content (id=${recordId}, user=${userId}, table=${tableType})`,
+                );
+                return { processedCount: 0, hasMore: false };
+            }
+
+            const embedding =
+                await this.embeddingService.generateEmbedding(normalized);
+            await this.batchUpdateService.updateEmbeddings(userId, tableType, [
+                { id: recordId, embedding },
+            ]);
+            await job.updateProgress(100);
+            return { processedCount: 1, hasMore: false };
+        } catch (error: unknown) {
+            await this.discardIfNonRetriable(job, error);
+            this.logger.error(
+                `Single update failed for user ${userId}: ${this.getErrorMessage(
+                    error,
+                )}`,
+            );
+            throw error;
+        }
+    }
+
+    private async handleBatchUpdate(
+        job: Job<VectorUpdateJobDto>,
+    ): Promise<BatchProcessResult> {
+        const {
+            userId,
+            tableType,
+            batchSize = EmbeddingQueueProcessor.DEFAULT_BATCH_SIZE,
+            lastProcessedId,
+            totalEstimate,
+        } = job.data;
 
         try {
             this.logger.log(
@@ -51,7 +123,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             this.embeddingQueueService.markBatchRunning(
                 userId,
                 tableType,
-                job.data.totalEstimate,
+                totalEstimate,
             );
 
             const batchData = await this.batchDataService.getBatchData(
@@ -75,6 +147,12 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             const embeddings = await this.generateEmbeddingsWithRateLimit(
                 batchData.map((item) => item.contentText),
             );
+
+            if (embeddings.length !== batchData.length) {
+                throw new Error(
+                    `Embedding count mismatch (expected ${batchData.length}, got ${embeddings.length})`,
+                );
+            }
 
             const updateItems: EmbeddingUpdateItem[] = batchData.map(
                 (item, index) => ({
@@ -108,7 +186,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                     userId,
                     tableType,
                     batchData.length,
-                    job.data.totalEstimate,
+                    totalEstimate ?? batchData.length,
                     hasMore,
                 );
 
@@ -123,21 +201,13 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 hasMore,
                 lastProcessedId: lastId,
             };
-        } catch (error) {
-            // OpenAIクライアントのHTTPエラー（4xxは即時打ち切り、429は再試行、5xxは再試行）
-            const status = (error as { status?: number }).status;
-            if (status && status >= 400 && status < 500 && status !== 429) {
-                try {
-                    await job.discard();
-                } catch {
-                    /* noop */
-                }
-            }
+        } catch (error: unknown) {
+            await this.discardIfNonRetriable(job, error);
             this.embeddingQueueService.markBatchFailed(userId, tableType);
             this.logger.error(
-                `Batch processing failed for user ${userId}: ${
-                    (error as Error).message
-                }`,
+                `Batch processing failed for user ${userId}: ${this.getErrorMessage(
+                    error,
+                )}`,
             );
             throw error;
         }
@@ -146,20 +216,27 @@ export class EmbeddingQueueProcessor extends WorkerHost {
     private async generateEmbeddingsWithRateLimit(
         texts: string[],
     ): Promise<number[][]> {
-        const OPENAI_BATCH_SIZE = 20;
-        const RATE_LIMIT_DELAY = 1000;
-
         const results: number[][] = [];
+        if (texts.length === 0) {
+            return results;
+        }
 
-        for (let i = 0; i < texts.length; i += OPENAI_BATCH_SIZE) {
-            const batch = texts.slice(i, i + OPENAI_BATCH_SIZE);
+        for (
+            let i = 0;
+            i < texts.length;
+            i += EmbeddingQueueProcessor.OPENAI_BATCH_SIZE
+        ) {
+            const batch = texts.slice(
+                i,
+                i + EmbeddingQueueProcessor.OPENAI_BATCH_SIZE,
+            );
 
             const embeddings =
                 await this.embeddingService.generateEmbeddings(batch);
             results.push(...embeddings);
 
-            if (i + OPENAI_BATCH_SIZE < texts.length) {
-                await this.delay(RATE_LIMIT_DELAY);
+            if (i + EmbeddingQueueProcessor.OPENAI_BATCH_SIZE < texts.length) {
+                await this.delay(EmbeddingQueueProcessor.RATE_LIMIT_DELAY_MS);
             }
 
             this.logger.debug(
@@ -189,7 +266,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                 totalEstimate: currentJob.data.totalEstimate,
             } as VectorUpdateJobDto,
             {
-                delay: 2000,
+                delay: EmbeddingQueueProcessor.NEXT_BATCH_DELAY_MS,
                 priority: 5,
             },
         );
@@ -199,7 +276,58 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    private async handleGlobalUpdate(job: Job): Promise<void> {
+    private async discardIfNonRetriable(
+        job: Job<VectorUpdateJobDto>,
+        error: unknown,
+    ): Promise<void> {
+        const status = this.getErrorStatus(error);
+        if (!this.isNonRetriableStatus(status)) {
+            return;
+        }
+        try {
+            await job.discard();
+        } catch {
+            /* noop */
+        }
+    }
+
+    private getErrorStatus(error: unknown): number | undefined {
+        if (!error || typeof error !== "object") {
+            return undefined;
+        }
+        if (!("status" in error)) {
+            return undefined;
+        }
+        const status = (error as { status?: unknown }).status;
+        return typeof status === "number" ? status : undefined;
+    }
+
+    private getErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+        if (typeof error === "string") {
+            return error;
+        }
+        if (error && typeof error === "object" && "message" in error) {
+            const message = (error as { message?: unknown }).message;
+            return typeof message === "string" ? message : "Unknown error";
+        }
+        return "Unknown error";
+    }
+
+    private isNonRetriableStatus(status?: number): boolean {
+        return (
+            status !== undefined &&
+            status >= 400 &&
+            status < 500 &&
+            status !== 429
+        );
+    }
+
+    private async handleGlobalUpdate(
+        job: Job<VectorUpdateJobDto>,
+    ): Promise<void> {
         this.logger.log("Starting global embedding update scheduling...");
         try {
             const sb = this.admin.getClient();
@@ -214,11 +342,11 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                         u.user_id,
                     );
                     enqueued++;
-                } catch (e) {
+                } catch (error: unknown) {
                     this.logger.warn(
-                        `Failed to enqueue embedding batch for user ${u.user_id}: ${
-                            (e as Error).message
-                        }`,
+                        `Failed to enqueue embedding batch for user ${u.user_id}: ${this.getErrorMessage(
+                            error,
+                        )}`,
                     );
                 }
             }
@@ -226,13 +354,13 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             this.logger.log(
                 `Enqueued embedding batch jobs for ${enqueued} user(s)`,
             );
-        } catch (e) {
+        } catch (error: unknown) {
             this.logger.error(
-                `Global embedding update scheduling failed: ${
-                    (e as Error).message
-                }`,
+                `Global embedding update scheduling failed: ${this.getErrorMessage(
+                    error,
+                )}`,
             );
-            throw e;
+            throw error;
         }
     }
 }

@@ -33,12 +33,12 @@
       "@/*": ["src/*"],
       "@test-utils/*": ["test/utils/*"]
     },
-    "types": ["node"],
+    "types": ["node", "jest"],
     "plugins": [
       { "transform": "typia/lib/transform", "resolvePathAliases": true, "tsConfig": "./tsconfig.json" },
       { "transform": "@nestia/core/lib/transform", "runtime": true }
     ]
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.e2e-spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*.e2e-spec.ts"]
 }
