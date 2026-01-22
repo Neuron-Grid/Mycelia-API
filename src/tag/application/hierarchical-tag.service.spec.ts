@@ -154,6 +154,7 @@ describe("HierarchicalTagService", () => {
                 Promise.resolve(tagChain.get(id) ?? null),
             );
             tagRepository.findByNameAndParent.mockResolvedValue(null);
+            tagRepository.findByUser.mockResolvedValue([...tagChain.values()]);
 
             await expect(
                 service.createHierarchicalTag(userId, {

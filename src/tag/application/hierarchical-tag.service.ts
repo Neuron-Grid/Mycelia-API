@@ -54,6 +54,11 @@ type TagPathPayload = {
     level: number;
 };
 
+type TagIndex = {
+    byId: Map<number, TagEntity>;
+    childrenByParent: Map<number, TagEntity[]>;
+};
+
 @Injectable({ scope: Scope.REQUEST })
 export class HierarchicalTagService {
     private readonly logger = new Logger(HierarchicalTagService.name);
@@ -81,20 +86,9 @@ export class HierarchicalTagService {
                 throw new NotFoundException("Parent tag not found");
             }
 
-            // 循環参照のチェック
-            const isCircular = await this.wouldCreateCircularReference(
-                userId,
-                dto.parentTagId ?? null,
-                null,
-            );
-            if (isCircular) {
-                throw new BadRequestException(
-                    "Creating this tag would create a circular reference",
-                );
-            }
-
             // 深度制限のチェック（最大5階層）
-            const depth = await this.getTagDepth(userId, dto.parentTagId);
+            const tagIndex = await this.loadTagIndex(userId);
+            const depth = this.getTagDepthFromIndex(tagIndex, dto.parentTagId);
             if (depth >= 4) {
                 // 0-indexed なので4が最大（5階層）
                 throw new BadRequestException(
@@ -216,16 +210,19 @@ export class HierarchicalTagService {
                 throw new NotFoundException("New parent tag not found");
             }
 
+            const tagIndex = await this.loadTagIndex(userId);
+            const descendants = this.getDescendantsFromIndex(tagIndex, tagId);
+            const descendantIds = new Set(descendants.map((d) => d.id));
+
             // 自分自身の子孫に移動しようとしていないかチェック
-            const descendants = await this.getTagDescendants(userId, tagId);
-            if (descendants.some((d) => d.id === newParentId)) {
+            if (descendantIds.has(newParentId)) {
                 throw new BadRequestException(
                     "Cannot move tag to its own descendant",
                 );
             }
 
-            const wouldCycle = await this.wouldCreateCircularReference(
-                userId,
+            const wouldCycle = this.wouldCreateCircularReference(
+                tagIndex,
                 newParentId,
                 tagId,
             );
@@ -236,8 +233,8 @@ export class HierarchicalTagService {
             }
 
             // 移動後の深度チェック
-            const newDepth = await this.getTagDepth(userId, newParentId);
-            const subtreeDepth = await this.getSubtreeDepth(userId, tagId);
+            const newDepth = this.getTagDepthFromIndex(tagIndex, newParentId);
+            const subtreeDepth = this.getSubtreeDepthFromIndex(tagIndex, tagId);
             if (newDepth + subtreeDepth >= 5) {
                 throw new BadRequestException(
                     "Moving this tag would exceed maximum depth",
@@ -336,11 +333,11 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: 循環参照チェック
-    private async wouldCreateCircularReference(
-        userId: string,
+    private wouldCreateCircularReference(
+        tagIndex: TagIndex,
         candidateParentId: number | null,
         movingTagId: number | null,
-    ): Promise<boolean> {
+    ): boolean {
         if (!candidateParentId || !movingTagId) {
             return false;
         }
@@ -363,7 +360,7 @@ export class HierarchicalTagService {
                 return true;
             }
 
-            const parent = await this.tagRepository.findById(currentId, userId);
+            const parent = tagIndex.byId.get(currentId);
 
             if (!parent) {
                 break;
@@ -376,16 +373,21 @@ export class HierarchicalTagService {
     }
 
     // プライベートメソッド: タグの深度を取得
-    private async getTagDepth(userId: string, tagId: number): Promise<number> {
+    private getTagDepthFromIndex(tagIndex: TagIndex, tagId: number): number {
         let depth = 0;
-        let currentId = tagId;
+        let current = tagIndex.byId.get(tagId);
+        const visited = new Set<number>();
 
-        while (currentId && depth < 10) {
-            // 無限ループ防止
-            const tag = await this.tagRepository.findById(currentId, userId);
-            if (!tag || !tag.parent_tag_id) break;
+        while (current && current.parent_tag_id !== null) {
+            if (visited.has(current.id)) {
+                break;
+            }
+            visited.add(current.id);
 
-            currentId = tag.parent_tag_id;
+            const parent = tagIndex.byId.get(current.parent_tag_id);
+            if (!parent) break;
+
+            current = parent;
             depth++;
         }
 
@@ -397,46 +399,78 @@ export class HierarchicalTagService {
         userId: string,
         tagId: number,
     ): Promise<TagEntity[]> {
-        const allTags = await this.tagRepository.findByUser(userId);
+        const tagIndex = await this.loadTagIndex(userId);
+        return this.getDescendantsFromIndex(tagIndex, tagId);
+    }
+
+    private getDescendantsFromIndex(
+        tagIndex: TagIndex,
+        tagId: number,
+    ): TagEntity[] {
         const descendants: TagEntity[] = [];
+        const visited = new Set<number>([tagId]);
+        const stack = [...(tagIndex.childrenByParent.get(tagId) ?? [])];
 
-        const findDescendants = (parentId: number) => {
-            for (const tag of allTags) {
-                if (tag.parent_tag_id === parentId) {
-                    descendants.push(tag);
-                    findDescendants(tag.id);
-                }
-            }
-        };
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current) continue;
+            if (visited.has(current.id)) continue;
+            visited.add(current.id);
+            descendants.push(current);
+            const children = tagIndex.childrenByParent.get(current.id) ?? [];
+            stack.push(...children);
+        }
 
-        findDescendants(tagId);
         return descendants;
     }
 
     // プライベートメソッド: サブツリーの最大深度を取得
-    private async getSubtreeDepth(
-        userId: string,
+    private getSubtreeDepthFromIndex(
+        tagIndex: TagIndex,
         tagId: number,
-    ): Promise<number> {
-        const descendants = await this.getTagDescendants(userId, tagId);
+    ): number {
+        let maxDepth = 0;
+        const visited = new Set<number>();
+        const stack: Array<{ id: number; depth: number }> = [
+            { id: tagId, depth: 0 },
+        ];
 
-        if (descendants.length === 0) {
-            return 0;
+        while (stack.length > 0) {
+            const current = stack.pop();
+            if (!current) continue;
+            if (visited.has(current.id)) continue;
+            visited.add(current.id);
+            maxDepth = Math.max(maxDepth, current.depth);
+            const children = tagIndex.childrenByParent.get(current.id) ?? [];
+            for (const child of children) {
+                stack.push({ id: child.id, depth: current.depth + 1 });
+            }
         }
 
-        let maxDepth = 0;
-        const calculateDepth = (currentId: number, currentDepth: number) => {
-            maxDepth = Math.max(maxDepth, currentDepth);
-
-            for (const descendant of descendants) {
-                if (descendant.parent_tag_id === currentId) {
-                    calculateDepth(descendant.id, currentDepth + 1);
-                }
-            }
-        };
-
-        calculateDepth(tagId, 0);
         return maxDepth;
+    }
+
+    private async loadTagIndex(userId: string): Promise<TagIndex> {
+        const tags = await this.tagRepository.findByUser(userId);
+        return this.buildTagIndex(tags);
+    }
+
+    private buildTagIndex(tags: TagEntity[]): TagIndex {
+        const byId = new Map<number, TagEntity>();
+        const childrenByParent = new Map<number, TagEntity[]>();
+
+        for (const tag of tags) {
+            byId.set(tag.id, tag);
+            if (tag.parent_tag_id === null) continue;
+            const list = childrenByParent.get(tag.parent_tag_id);
+            if (list) {
+                list.push(tag);
+            } else {
+                childrenByParent.set(tag.parent_tag_id, [tag]);
+            }
+        }
+
+        return { byId, childrenByParent };
     }
 
     private normalizeHierarchyList(

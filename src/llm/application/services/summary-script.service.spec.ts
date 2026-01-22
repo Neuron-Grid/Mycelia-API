@@ -2,6 +2,7 @@ import { BadRequestException } from "@nestjs/common";
 import { jest } from "@test-utils/jest-globals";
 import { Queue } from "bullmq";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
 import { SummaryScriptService } from "./summary-script.service";
 
 describe("SummaryScriptService", () => {
@@ -30,6 +31,7 @@ describe("SummaryScriptService", () => {
             summaryQueue as unknown as Queue,
             scriptQueue as unknown as Queue,
             userSettingsRepo as unknown as UserSettingsRepository,
+            new JstDateService(),
         );
     });
 

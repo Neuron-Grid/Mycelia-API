@@ -1,6 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { JstDateService } from "@/shared/time/jst-date.service";
 
 export interface FeedFetchJobData {
     subscriptionId: number;
@@ -29,6 +30,7 @@ export class FeedSchedulerService {
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
         @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        private readonly time: JstDateService,
     ) {}
 
     // Cron禁止により、スケジュールはJobsServiceのrepeat.everyに集約。
@@ -67,7 +69,7 @@ export class FeedSchedulerService {
 
     // 手動で要約生成をトリガー（必要時のみ利用）
     async triggerSummaryGeneration(userId: string, date?: string) {
-        const summaryDate = date || new Date().toISOString().split("T")[0];
+        const summaryDate = date || this.time.formatDate(new Date());
 
         this.logger.log(
             `Manually triggering summary generation for user ${userId}, date ${summaryDate}`,

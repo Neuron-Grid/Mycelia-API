@@ -29,6 +29,11 @@ import { UserSettingsBasicDto } from "@/settings/dto/user-settings-basic.dto";
 import { UserSettingsBasicMapper } from "@/settings/dto/user-settings-basic.mapper";
 import { SUMMARY_SCHEDULE_DEFAULT } from "@/settings/settings.constants";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
+import {
+    addOffsetMinutes,
+    parseTimeWithStableJitter,
+} from "@/shared/time/jst-schedule.util";
 
 @Controller()
 @UseGuards(SupabaseAuthGuard)
@@ -43,6 +48,7 @@ export class SettingsController {
         @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
         @InjectQueue("script-generate") private readonly scriptQueue: Queue,
         @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        private readonly time: JstDateService,
     ) {}
 
     /**
@@ -64,7 +70,7 @@ export class SettingsController {
             .episodes[0];
 
         // last_status（簡易推定）: 当日の要約ジョブの状態を参照
-        const today = this.formatDateJst(new Date());
+        const today = this.time.formatDate(new Date());
         const summaryJobId = `summary:${userId}:${today}`;
         const summaryJob = await this.summaryQueue.getJob(summaryJobId);
         let lastStatus: "success" | "failed" | "skipped" | "unknown" =
@@ -127,17 +133,18 @@ export class SettingsController {
         if (!/^([0-1]?\d|2[0-3]):[0-5]\d$/.test(String(timeJst))) {
             throw new BadRequestException("timeJst must be HH:mm (JST)");
         }
-        const { hour: sH, minute: sM } = this.parseTimeWithStableJitter(
+        const { hour: sH, minute: sM } = parseTimeWithStableJitter(
             timeJst,
             user.id,
         );
-        const { hour: pH, minute: pM } = this.addOffset(sH, sM, 10);
-        const now = new Date();
+        const { hour: pH, minute: pM } = addOffsetMinutes(sH, sM, 10);
+        const nowJst = this.time.now();
         const toIsoNext = (hh: number, mm: number) => {
-            const d = new Date(now);
-            d.setHours(hh, mm, 0, 0);
-            if (d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
-            return d.toISOString();
+            let candidate = this.time.setTime(nowJst, hh, mm);
+            if (candidate.getTime() <= nowJst.getTime()) {
+                candidate = this.time.addDays(candidate, 1);
+            }
+            return candidate.toISOString();
         };
         return buildResponse("Schedule preview", {
             nextRunAtSummary: toIsoNext(sH, sM),
@@ -153,7 +160,7 @@ export class SettingsController {
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<JobsStatusResponseDto>> {
         const userId = user.id;
-        const today = this.formatDateJst(new Date());
+        const today = this.time.formatDate(new Date());
         const summaryJobId = `summary:${userId}:${today}`;
         const summaryJob = await this.summaryQueue.getJob(summaryJobId);
 
@@ -319,7 +326,7 @@ export class SettingsController {
         @SupabaseUser() user: User,
         @TypedBody() body?: RunSummaryNowDto,
     ): Promise<SuccessResponse<EnqueueFlowResponseDto>> {
-        const dateJst = body?.date ?? this.formatDateJst(new Date());
+        const dateJst = body?.date ?? this.time.formatDate(new Date());
         const flow = await this.flowOrchestrator.createDailyFlow(
             user.id,
             dateJst,
@@ -338,7 +345,7 @@ export class SettingsController {
     async runPodcastNow(
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<EnqueueJobResponseDto>> {
-        const today = this.formatDateJst(new Date());
+        const today = this.time.formatDate(new Date());
         const job = await this.podcastQueue.add(
             "generatePodcastForToday",
             { userId: user.id },
@@ -351,41 +358,5 @@ export class SettingsController {
         return buildResponse("Enqueued", {
             jobId: job?.id ?? `podcast-for-today:${user.id}:${today}`,
         });
-    }
-
-    private formatDateJst(date: Date): string {
-        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-        const jst = new Date(utc + 9 * 60 * 60000);
-        const yyyy = jst.getFullYear();
-        const mm = String(jst.getMonth() + 1).padStart(2, "0");
-        const dd = String(jst.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
-    }
-
-    private parseTimeWithStableJitter(
-        time: string,
-        userId: string,
-    ): { hour: number; minute: number } {
-        const [hh, mm] = time.split(":").map((v) => Number.parseInt(v, 10));
-        const jitter = this.hashToRange(userId, 0, 4);
-        const minute = (mm + jitter) % 60;
-        const hour = (hh + Math.floor((mm + jitter) / 60)) % 24;
-        return { hour, minute };
-    }
-
-    private addOffset(hh: number, mm: number, addMin: number) {
-        const total = hh * 60 + mm + addMin;
-        const hour = Math.floor((total % (24 * 60)) / 60);
-        const minute = total % 60;
-        return { hour, minute };
-    }
-
-    private hashToRange(key: string, min: number, max: number) {
-        let h = 0;
-        for (let i = 0; i < key.length; i++) {
-            h = (h * 31 + key.charCodeAt(i)) >>> 0;
-        }
-        const span = max - min + 1;
-        return min + (h % span);
     }
 }

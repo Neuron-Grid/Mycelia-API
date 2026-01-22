@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
+import { JstDateService } from "@/shared/time/jst-date.service";
 import {
     GeminiSummaryRequest,
     LLM_SERVICE,
@@ -28,6 +29,7 @@ export class SummaryWorker extends WorkerHost {
         private readonly scriptQueue: Queue,
         private readonly embeddingQueueService: EmbeddingQueueService,
         private readonly lock: DistributedLockService,
+        private readonly time: JstDateService,
     ) {
         super();
     }
@@ -35,7 +37,7 @@ export class SummaryWorker extends WorkerHost {
     async process(job: Job<SummaryJobData>) {
         const { userId } = job.data;
         const summaryDate =
-            job.data.summaryDate || this.formatDateJst(new Date());
+            job.data.summaryDate || this.time.formatDate(new Date());
         this.logger.log(
             `Processing summary job for user ${userId}, date ${summaryDate}`,
         );
@@ -214,15 +216,5 @@ export class SummaryWorker extends WorkerHost {
         return (
             plainText.substring(0, 50) + (plainText.length > 50 ? "..." : "")
         );
-    }
-
-    // JST(UTC+9)基準でYYYY-MM-DDを返す
-    private formatDateJst(date: Date): string {
-        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-        const jst = new Date(utc + 9 * 60 * 60000);
-        const yyyy = jst.getFullYear();
-        const mm = String(jst.getMonth() + 1).padStart(2, "0");
-        const dd = String(jst.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
     }
 }

@@ -9,6 +9,10 @@ import {
 } from "@/settings/settings.constants";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import { JstDateService } from "@/shared/time/jst-date.service";
+import {
+    addOffsetMinutes,
+    parseTimeWithStableJitter,
+} from "@/shared/time/jst-schedule.util";
 
 @Injectable()
 export class JobsService implements OnModuleInit {
@@ -87,45 +91,6 @@ export class JobsService implements OnModuleInit {
 
     // クリーニングは中央スケジューラ（scheduleTick）で行います。
 
-    // HH:mm に対し userId ハッシュベースの0-4分ジッターを追加（安定）
-    private parseTimeWithStableJitter(
-        time: string,
-        userId: string,
-    ): {
-        hour: number;
-        minute: number;
-    } {
-        const [hh, mm] = time.split(":").map((v) => Number.parseInt(v, 10));
-        const jitter = this.hashToRange(userId, 0, 4); // 0-4分遅延（固定）
-        const minute = (mm + jitter) % 60;
-        const hour = (hh + Math.floor((mm + jitter) / 60)) % 24;
-        return { hour, minute };
-    }
-
-    private hashToRange(key: string, min: number, max: number): number {
-        // 簡易ハッシュ（安定）。maxは含む範囲。
-        let h = 0;
-        for (let i = 0; i < key.length; i++) {
-            h = (h * 31 + key.charCodeAt(i)) >>> 0;
-        }
-        const span = max - min + 1;
-        return min + (h % span);
-    }
-
-    private addOffset(
-        hh: number,
-        mm: number,
-        addMin: number,
-    ): {
-        hour: number;
-        minute: number;
-    } {
-        const total = hh * 60 + mm + addMin;
-        const hour = Math.floor((total % (24 * 60)) / 60);
-        const minute = total % 60;
-        return { hour, minute };
-    }
-
     // 設定更新後に、対象ユーザーのrepeatable jobのみを再登録
     rescheduleUserRepeatableJobs(_userId: string): void {
         // Cron式のrepeatable jobは廃止。中央のscheduleTickで実行管理するため、ここでは何もしない。
@@ -144,8 +109,8 @@ export class JobsService implements OnModuleInit {
 
         const toNextIso = (hhmm: string | undefined, offsetMin = 0) => {
             if (!hhmm) return null;
-            const base = this.parseTimeWithStableJitter(hhmm, userId);
-            const target = this.addOffset(base.hour, base.minute, offsetMin);
+            const base = parseTimeWithStableJitter(hhmm, userId);
+            const target = addOffsetMinutes(base.hour, base.minute, offsetMin);
             let candidate = this.time.setTime(
                 nowJst,
                 target.hour,

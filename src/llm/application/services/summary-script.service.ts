@@ -4,6 +4,7 @@ import { Queue } from "bullmq";
 // import { SupabaseRequestService } from '../supabase-request.service'; // DB直接操作はしない
 // import { GeminiService } from './gemini.service'; // LLM直接呼び出しはしない
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
 
 // 仕様書にあるキュー名
 export const SUMMARY_GENERATE_QUEUE = "summary-generate";
@@ -19,6 +20,7 @@ export class SummaryScriptService {
         @InjectQueue(SCRIPT_GENERATE_QUEUE)
         private readonly scriptGenerateQueue: Queue,
         private readonly userSettingsRepo: UserSettingsRepository,
+        private readonly time: JstDateService,
         // private readonly supabase: SupabaseRequestService, // 不要になる
     ) {}
 
@@ -41,7 +43,7 @@ export class SummaryScriptService {
         }
         // 仕様書のキューデータ: {userId}
         // 当日分の冪等性確保のため、JST日付ベースのjobIdを付与
-        const todayJst = this.formatDateJst(new Date());
+        const todayJst = this.time.formatDate(new Date());
         const job = await this.summaryGenerateQueue.add(
             "generateUserSummary",
             {
@@ -60,16 +62,6 @@ export class SummaryScriptService {
             `Summary generation job ${job.id} added for user ${userId}`,
         );
         return { jobId: job.id?.toString() };
-    }
-
-    // JST(UTC+9)基準でYYYY-MM-DDを返す
-    private formatDateJst(date: Date): string {
-        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-        const jst = new Date(utc + 9 * 60 * 60000);
-        const yyyy = jst.getFullYear();
-        const mm = String(jst.getMonth() + 1).padStart(2, "0");
-        const dd = String(jst.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
     }
 
     // サマリーIDに基づいて台本生成ジョブをキューに入れる

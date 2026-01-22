@@ -6,6 +6,7 @@ import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/
 import { WorkerPodcastEpisodeRepository } from "@/podcast/infrastructure/worker-podcast-episode.repository";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
+import { JstDateService } from "@/shared/time/jst-date.service";
 import { EmbeddingService } from "../../search/infrastructure/services/embedding.service";
 import { CloudflareR2Service, PodcastMetadata } from "../cloudflare-r2.service";
 import {
@@ -34,6 +35,7 @@ export class PodcastQueueProcessor extends WorkerHost {
         // 設定からTTS言語を取得
         private readonly settingsRepo: WorkerUserSettingsRepository,
         private readonly lock: DistributedLockService,
+        private readonly time: JstDateService,
     ) {
         super();
     }
@@ -72,7 +74,7 @@ export class PodcastQueueProcessor extends WorkerHost {
     async processPodcastForToday(job: Job<GeneratePodcastForTodayJobDto>) {
         await validateDto(GeneratePodcastForTodayJobDto, job.data);
         const { userId } = job.data;
-        const today = this.formatDateJst(new Date());
+        const today = this.time.formatDate(new Date());
         this.logger.log(
             `Processing generatePodcastForToday for user ${userId}, date ${today}`,
         );
@@ -544,14 +546,5 @@ export class PodcastQueueProcessor extends WorkerHost {
         }
 
         return `${formattedDate}のニュース要約`;
-    }
-
-    private formatDateJst(date: Date): string {
-        const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-        const jst = new Date(utc + 9 * 60 * 60000);
-        const yyyy = jst.getFullYear();
-        const mm = String(jst.getMonth() + 1).padStart(2, "0");
-        const dd = String(jst.getDate()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd}`;
     }
 }
