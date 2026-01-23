@@ -12,7 +12,6 @@ import {
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 import type { User } from "@supabase/supabase-js";
 import type { Request, Response } from "express";
-import { setAuthCookies } from "src/common/utils/cookie";
 // @see https://supabase.com/docs/reference/javascript/auth-api
 import { AckDto } from "@/auth/dto/ack.dto";
 import type { AuthUserDto } from "@/auth/dto/auth-user.dto";
@@ -20,6 +19,7 @@ import { EnrollTotpResponseDto } from "@/auth/dto/enroll-totp.response.dto";
 import { LoginResultDto } from "@/auth/dto/login-result.dto";
 import { RefreshResultDto } from "@/auth/dto/refresh-result.dto";
 import { mapAuthUserToDto } from "@/auth/mappers/auth-user.mapper";
+import { setAuthCookies } from "@/common/utils/cookie";
 import type { SuccessResponse } from "@/common/utils/response.util";
 import { buildResponse } from "@/common/utils/response.util";
 import { AuthService } from "./auth.service";
@@ -117,34 +117,7 @@ export class AuthController {
         res.setHeader("Cache-Control", "no-store, private");
         res.setHeader("Pragma", "no-cache");
         res.setHeader("Expires", "0");
-
-        // Cookie属性
-        const accessCookieOptions = {
-            httpOnly: true as const,
-            secure: true as const,
-            sameSite: "lax" as const,
-            path: "/",
-            maxAge: 15 * 60 * 1000, // 15 min
-        };
-        const refreshCookieOptions = {
-            httpOnly: true as const,
-            secure: true as const,
-            sameSite: "lax" as const,
-            // APIへのプレフィックスに合わせる
-            path: "/api/v1/auth/refresh",
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        };
-
-        // Set-Cookie を設定
-        // 強化: Cookie名プリフィックスを利用
-        // - アクセス: __Host- 前提 (Secure/Path=/、Domain未指定)
-        // - リフレッシュ: __Secure- 前提（Path制限あり）
-        res.cookie("__Host-access_token", accessToken, accessCookieOptions);
-        res.cookie(
-            "__Secure-refresh_token",
-            refreshToken,
-            refreshCookieOptions,
-        );
+        setAuthCookies(res, accessToken, refreshToken);
 
         // トークンはレスポンスボディに含めない
         return buildResponse("Login successful", {
@@ -447,18 +420,7 @@ export class AuthController {
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<AckDto>> {
-        const { factorId, code } = dto;
-        const result = await this.authService.verifyTotp(factorId, code);
-
-        // セッションが含まれていれば Cookie を再設定
-        const { session } = result as {
-            session?: { access_token?: string; refresh_token?: string };
-        };
-        if (session?.access_token && session?.refresh_token) {
-            setAuthCookies(res, session.access_token, session.refresh_token);
-        }
-
-        return buildResponse("TOTP verified successfully", { ok: !!result });
+        return await this.handleTotpVerification(dto, res);
     }
 
     // 仕様に合わせたTOTP verify新ルート（既存と同実装）
@@ -468,6 +430,13 @@ export class AuthController {
     async verifyTotpNew(
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
+    ): Promise<SuccessResponse<AckDto>> {
+        return await this.handleTotpVerification(dto, res);
+    }
+
+    private async handleTotpVerification(
+        dto: VerifyTotpDto,
+        res: Response,
     ): Promise<SuccessResponse<AckDto>> {
         const { factorId, code } = dto;
         const result = await this.authService.verifyTotp(factorId, code);

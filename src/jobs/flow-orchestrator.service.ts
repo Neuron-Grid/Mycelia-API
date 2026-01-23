@@ -1,5 +1,10 @@
 import { Injectable, Logger, OnApplicationShutdown } from "@nestjs/common";
 import { FlowProducer } from "bullmq";
+import {
+    buildPodcastForTodayJobId,
+    buildScriptByDateJobId,
+    buildSummaryJobId,
+} from "@/common/utils/job-id.util";
 import { RedisService } from "@/shared/redis/redis.service";
 
 @Injectable()
@@ -24,7 +29,7 @@ export class FlowOrchestratorService implements OnApplicationShutdown {
             queueName: "summary-generate",
             data: { userId, summaryDate: dateJst },
             opts: {
-                jobId: `summary:${userId}:${dateJst}`,
+                jobId: buildSummaryJobId(userId, dateJst),
                 removeOnComplete: 5,
                 removeOnFail: 10,
             },
@@ -34,7 +39,7 @@ export class FlowOrchestratorService implements OnApplicationShutdown {
                     queueName: "script-generate",
                     data: { userId, summaryDate: dateJst },
                     opts: {
-                        jobId: `script-by-date:${userId}:${dateJst}`,
+                        jobId: buildScriptByDateJobId(userId, dateJst),
                         removeOnComplete: 5,
                         removeOnFail: 10,
                     },
@@ -44,7 +49,10 @@ export class FlowOrchestratorService implements OnApplicationShutdown {
                             queueName: "podcastQueue",
                             data: { userId },
                             opts: {
-                                jobId: `podcast-for-today:${userId}:${dateJst}`,
+                                jobId: buildPodcastForTodayJobId(
+                                    userId,
+                                    dateJst,
+                                ),
                                 removeOnComplete: 5,
                                 removeOnFail: 10,
                             },

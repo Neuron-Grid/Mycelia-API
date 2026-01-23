@@ -1,6 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { buildPodcastJobId } from "@/common/utils/job-id.util";
 import { PodcastGenerationJobDto } from "@/podcast/queue/dto/podcast-generation-job.dto";
 
 @Injectable()
@@ -19,7 +20,7 @@ export class PodcastQueueService {
             removeOnFail: false,
             attempts: 3,
             backoff: { type: "fixed", delay: 30_000 },
-            jobId: `podcast:${userId}:${summaryId}`,
+            jobId: buildPodcastJobId(userId, summaryId),
         });
         this.logger.log(
             `Queued generatePodcast job: userId=${userId}, summaryId=${summaryId}`,

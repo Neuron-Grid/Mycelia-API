@@ -9,6 +9,7 @@ import {
     UseGuards,
 } from "@nestjs/common";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
+import { buildPodcastJobId } from "@/common/utils/job-id.util";
 import {
     buildResponse,
     type SuccessResponse,
@@ -270,7 +271,7 @@ export class PodcastEpisodeController {
         }
 
         // ポッドキャスト生成ジョブをキューに追加（新APIへ統一）
-        const jobId = `podcast:${userId}:${generateDto.summaryId}`;
+        const jobId = buildPodcastJobId(userId, generateDto.summaryId);
         await this.podcastQueueService.addGeneratePodcastJob(
             userId,
             generateDto.summaryId,

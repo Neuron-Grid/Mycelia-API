@@ -1,6 +1,7 @@
 import { InjectQueue } from "@nestjs/bullmq";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { Queue } from "bullmq";
+import { buildSummaryJobId } from "@/common/utils/job-id.util";
 // import { SupabaseRequestService } from '../supabase-request.service'; // DB直接操作はしない
 // import { GeminiService } from './gemini.service'; // LLM直接呼び出しはしない
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
@@ -51,7 +52,7 @@ export class SummaryScriptService {
                 customPromptOverride, // カスタムプロンプトをワーカーに渡す場合
             },
             {
-                jobId: `summary:${userId}:${todayJst}`,
+                jobId: buildSummaryJobId(userId, todayJst),
                 removeOnComplete: 5,
                 removeOnFail: 10,
                 attempts: 3,

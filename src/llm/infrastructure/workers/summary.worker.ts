@@ -1,6 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
+import { buildScriptJobId } from "@/common/utils/job-id.util";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { JstDateService } from "@/shared/time/jst-date.service";
@@ -154,7 +155,7 @@ export class SummaryWorker extends WorkerHost {
                     removeOnFail: 5,
                     attempts: 3,
                     backoff: { type: "fixed", delay: 30_000 },
-                    jobId: `script:${summary.id}`,
+                    jobId: buildScriptJobId(summary.id),
                 },
             );
 

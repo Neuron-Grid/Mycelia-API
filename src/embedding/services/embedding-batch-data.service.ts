@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { getErrorMessage } from "@/common/utils/error-message";
 import {
     EmbeddingBatchException,
     InvalidTableTypeException,
@@ -167,7 +168,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
 
             return count || 0;
         } catch (error: unknown) {
-            const message = this.getErrorMessage(error);
+            const message = getErrorMessage(error);
             this.logger.error(
                 `Failed to get missing embeddings count: ${message}`,
             );
@@ -267,7 +268,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
 
             return (data ?? []).map((item) => mapItem(item as TIn));
         } catch (error: unknown) {
-            const message = this.getErrorMessage(error);
+            const message = getErrorMessage(error);
             this.logger.error(
                 `Failed to fetch ${contextLabel} batch: ${message}`,
             );
@@ -302,7 +303,7 @@ export class EmbeddingBatchDataService implements IBatchDataService {
             return data ? (data as Row) : null;
         } catch (error: unknown) {
             this.logger.error(
-                `Failed to fetch ${contextLabel} ${recordId}: ${this.getErrorMessage(
+                `Failed to fetch ${contextLabel} ${recordId}: ${getErrorMessage(
                     error,
                 )}`,
             );
@@ -312,20 +313,6 @@ export class EmbeddingBatchDataService implements IBatchDataService {
 
     private getEmbeddingColumn(tableType: TableType): string {
         return EMBEDDING_COLUMN_BY_TABLE[tableType];
-    }
-
-    private getErrorMessage(error: unknown): string {
-        if (error instanceof Error) {
-            return error.message;
-        }
-        if (typeof error === "string") {
-            return error;
-        }
-        if (error && typeof error === "object" && "message" in error) {
-            const message = (error as { message?: unknown }).message;
-            return typeof message === "string" ? message : "Unknown error";
-        }
-        return "Unknown error";
     }
 
     private async getSingleFeedItem(

@@ -136,20 +136,11 @@ export class TagRepository {
         const supabase = this.supabaseService.getClient();
 
         // parent_tag_idの所有者確認
-        if (fields.parent_tag_id !== undefined) {
-            if (fields.parent_tag_id !== null) {
-                // ここに来る時点で型はnumber
-                const parentTagId = fields.parent_tag_id;
-                const { data: parent, error: pe } = await supabase
-                    .from("tags")
-                    .select("id")
-                    .eq("id", parentTagId)
-                    .eq("user_id", userId)
-                    .single();
-                if (pe || !parent) {
-                    throw new Error("Parent tag does not belong to the user");
-                }
-            }
+        if (
+            fields.parent_tag_id !== undefined &&
+            fields.parent_tag_id !== null
+        ) {
+            await this.ensureParentTagOwned(userId, fields.parent_tag_id);
         }
 
         // 実更新
@@ -347,7 +338,7 @@ export class TagRepository {
             .single();
 
         if (error) {
-            if (error.code === "PGRST116") {
+            if (this.isNoRowsError(error)) {
                 // No rows returned
                 return null;
             }
@@ -432,15 +423,7 @@ export class TagRepository {
             updateData.parent_tag_id !== undefined &&
             updateData.parent_tag_id !== null
         ) {
-            const { data: parent, error: pe } = await supabase
-                .from("tags")
-                .select("id")
-                .eq("id", updateData.parent_tag_id)
-                .eq("user_id", userId)
-                .single();
-            if (pe || !parent) {
-                throw new Error("Parent tag does not belong to the user");
-            }
+            await this.ensureParentTagOwned(userId, updateData.parent_tag_id);
         }
 
         const { data: result, error } = await supabase
@@ -481,7 +464,7 @@ export class TagRepository {
         const { data, error } = await query.single();
 
         if (error) {
-            if (error.code === "PGRST116") {
+            if (this.isNoRowsError(error)) {
                 // No rows returned
                 return null;
             }
@@ -690,5 +673,27 @@ export class TagRepository {
         }
 
         return tagsMap;
+    }
+
+    private isNoRowsError(
+        error: { code?: string } | null | undefined,
+    ): boolean {
+        return error?.code === "PGRST116";
+    }
+
+    private async ensureParentTagOwned(
+        userId: string,
+        parentTagId: number,
+    ): Promise<void> {
+        const supabase = this.supabaseService.getClient();
+        const { data: parent, error } = await supabase
+            .from("tags")
+            .select("id")
+            .eq("id", parentTagId)
+            .eq("user_id", userId)
+            .single();
+        if (error || !parent) {
+            throw new Error("Parent tag does not belong to the user");
+        }
     }
 }

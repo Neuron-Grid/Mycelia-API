@@ -5,6 +5,67 @@ import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item
 import { WorkerSubscriptionRepository } from "@/feed/infrastructure/worker-subscription.repository";
 import { FeedFetchService } from "./feed-fetch.service";
 
+type FeedItemLinks = Array<{ rel?: string | null; href?: string | null }>;
+
+type NormalizedFeedItem = {
+    title: string;
+    link: string;
+    description: string;
+    canonicalUrl: string | null;
+    publishedAt: Date | null;
+};
+
+const MAX_TITLE_LENGTH = 1024;
+const MAX_DESCRIPTION_LENGTH = 8192;
+const MAX_URL_LENGTH = 2048;
+
+const truncate = (value: string, maxLength: number): string =>
+    value.length > maxLength ? value.substring(0, maxLength) : value;
+
+const coerceNullableString = (value: unknown): string | null =>
+    typeof value === "string" ? value : null;
+
+const pickFirstString = (...values: Array<string | null | undefined>): string =>
+    values.find((value) => value !== null && value !== undefined) ?? "";
+
+const normalizeFeedItem = (item: FeedparserItem): NormalizedFeedItem | null => {
+    const link = (coerceNullableString(item.link) ?? "").trim();
+    if (!link) return null;
+
+    const title = coerceNullableString(item.title) ?? "(no title)";
+
+    const descriptionRaw = pickFirstString(
+        coerceNullableString(item.summary),
+        coerceNullableString(item.description),
+    );
+
+    const extras = item as Partial<{
+        origlink: string;
+        links: FeedItemLinks;
+    }>;
+    const origlink =
+        typeof extras.origlink === "string" ? extras.origlink : null;
+    const links = Array.isArray(extras.links) ? extras.links : [];
+    const canonicalFromLinks = links.find(
+        (entry) => entry?.rel === "canonical" && entry.href,
+    )?.href;
+    const alternateLink = links.find(
+        (entry) => (!entry?.rel || entry.rel === "alternate") && entry.href,
+    )?.href;
+    const canonicalCandidate =
+        origlink ?? canonicalFromLinks ?? alternateLink ?? null;
+
+    return {
+        title: truncate(title, MAX_TITLE_LENGTH),
+        link: truncate(link, MAX_URL_LENGTH),
+        description: truncate(descriptionRaw, MAX_DESCRIPTION_LENGTH),
+        canonicalUrl: canonicalCandidate
+            ? truncate(canonicalCandidate, MAX_URL_LENGTH)
+            : null,
+        publishedAt: item.pubdate ? new Date(item.pubdate) : null,
+    };
+};
+
 @Injectable()
 export class FeedUseCaseService {
     private readonly logger = new Logger(FeedUseCaseService.name);
@@ -34,47 +95,22 @@ export class FeedUseCaseService {
         const { meta, items } = await this.fetchSvc.parseFeed(feed_url);
         let inserted = 0;
         for (const item of items) {
-            const link = item.link ?? "";
-            if (!link) continue;
-            const title = (item.title ?? "(no title)").substring(0, 1024);
-            const description = (
-                item.summary ??
-                item.description ??
-                ""
-            ).substring(0, 8192);
-            const origlink = (item as Partial<{ origlink: string }>).origlink;
-            const links = (
-                item as Partial<{
-                    links: Array<{ rel?: string | null; href?: string | null }>;
-                }>
-            ).links;
-            const canonicalFromLinks = links?.find(
-                (entry) => entry?.rel === "canonical" && entry.href,
-            )?.href;
-            const alternateLink = links?.find(
-                (entry) =>
-                    (!entry?.rel || entry.rel === "alternate") && entry.href,
-            )?.href;
-            const canonicalCandidate =
-                origlink ?? canonicalFromLinks ?? alternateLink ?? null;
-            const canonical = canonicalCandidate
-                ? canonicalCandidate.substring(0, 2048)
-                : null;
-            const published = item.pubdate ? new Date(item.pubdate) : null;
+            const normalized = normalizeFeedItem(item);
+            if (!normalized) continue;
             try {
                 const res = await this.workerItems.insertFeedItem(
                     subscriptionId,
                     userId,
-                    title,
-                    link.substring(0, 2048),
-                    description,
-                    published,
-                    canonical,
+                    normalized.title,
+                    normalized.link,
+                    normalized.description,
+                    normalized.publishedAt,
+                    normalized.canonicalUrl,
                 );
                 if (res.inserted) inserted++;
-                else this.logger.verbose(`dup: ${link}`);
+                else this.logger.verbose(`dup: ${normalized.link}`);
             } catch (e) {
-                this.logger.warn(`failed: ${link} – ${e}`);
+                this.logger.warn(`failed: ${normalized.link} – ${e}`);
             }
         }
         const fetchedAt = new Date();

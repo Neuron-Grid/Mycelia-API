@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { getErrorMessage } from "@/common/utils/error-message";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 import type { Database } from "@/types/schema";
 import {
@@ -84,8 +85,7 @@ export class EmbeddingBatchUpdateService implements IBatchUpdateService {
                 `Successfully updated ${items.length} ${config.label} embeddings`,
             );
         } catch (error) {
-            const message =
-                error instanceof Error ? error.message : String(error);
+            const message = getErrorMessage(error);
             this.logger.error(
                 `Failed to update ${config.label} embeddings: ${message}`,
             );

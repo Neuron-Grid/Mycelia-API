@@ -7,6 +7,12 @@ import { Queue } from "bullmq";
 import { SupabaseAuthGuard } from "@/auth/supabase-auth.guard";
 import { SupabaseUser } from "@/auth/supabase-user.decorator";
 import {
+    buildPodcastForTodayJobId,
+    buildPodcastJobId,
+    buildScriptJobId,
+    buildSummaryJobId,
+} from "@/common/utils/job-id.util";
+import {
     buildResponse,
     type SuccessResponse,
 } from "@/common/utils/response.util";
@@ -71,7 +77,7 @@ export class SettingsController {
 
         // last_status（簡易推定）: 当日の要約ジョブの状態を参照
         const today = this.time.formatDate(new Date());
-        const summaryJobId = `summary:${userId}:${today}`;
+        const summaryJobId = buildSummaryJobId(userId, today);
         const summaryJob = await this.summaryQueue.getJob(summaryJobId);
         let lastStatus: "success" | "failed" | "skipped" | "unknown" =
             "unknown";
@@ -161,7 +167,7 @@ export class SettingsController {
     ): Promise<SuccessResponse<JobsStatusResponseDto>> {
         const userId = user.id;
         const today = this.time.formatDate(new Date());
-        const summaryJobId = `summary:${userId}:${today}`;
+        const summaryJobId = buildSummaryJobId(userId, today);
         const summaryJob = await this.summaryQueue.getJob(summaryJobId);
 
         const summary = await this.dailySummaryRepo.findByUserAndDate(
@@ -200,7 +206,7 @@ export class SettingsController {
             scriptState = "completed";
         } else {
             const scriptJob = await this.scriptQueue.getJob(
-                `script:${summary.id}`,
+                buildScriptJobId(summary.id),
             );
             if (scriptJob) {
                 const st = await scriptJob.getState();
@@ -228,7 +234,7 @@ export class SettingsController {
                 podcastState = "completed";
             } else {
                 const podcastJob = await this.podcastQueue.getJob(
-                    `podcast:${userId}:${summary?.id}`,
+                    buildPodcastJobId(userId, summary.id),
                 );
                 if (podcastJob) {
                     const st = await podcastJob.getState();
@@ -244,11 +250,11 @@ export class SettingsController {
             summary: { state: summaryState, jobId: summaryJobId },
             script: {
                 state: scriptState,
-                jobId: summary ? `script:${summary.id}` : null,
+                jobId: summary ? buildScriptJobId(summary.id) : null,
             },
             podcast: {
                 state: podcastState,
-                jobId: summary ? `podcast:${userId}:${summary.id}` : null,
+                jobId: summary ? buildPodcastJobId(userId, summary.id) : null,
             },
         });
     }
@@ -346,17 +352,18 @@ export class SettingsController {
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<EnqueueJobResponseDto>> {
         const today = this.time.formatDate(new Date());
+        const jobId = buildPodcastForTodayJobId(user.id, today);
         const job = await this.podcastQueue.add(
             "generatePodcastForToday",
             { userId: user.id },
             {
-                jobId: `podcast-for-today:${user.id}:${today}`,
+                jobId,
                 removeOnComplete: true,
                 removeOnFail: 5,
             },
         );
         return buildResponse("Enqueued", {
-            jobId: job?.id ?? `podcast-for-today:${user.id}:${today}`,
+            jobId: job?.id ?? jobId,
         });
     }
 }

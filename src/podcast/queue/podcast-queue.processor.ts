@@ -1,6 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
+import { buildPodcastJobId } from "@/common/utils/job-id.util";
 import { validateDto } from "@/common/utils/validation";
 import { WorkerDailySummaryRepository } from "@/llm/infrastructure/repositories/worker-daily-summary.repository";
 import { WorkerPodcastEpisodeRepository } from "@/podcast/infrastructure/worker-podcast-episode.repository";
@@ -20,10 +21,36 @@ import {
     PodcastGenerationJobDto,
 } from "./dto/podcast-generation-job.dto";
 
+type SkipResult = { success: true; skipped: true };
+
+type PodcastGenerationResult =
+    | SkipResult
+    | {
+          success: true;
+          episodeId: number;
+          existed?: true;
+          audioUrl?: string;
+          duration?: number;
+          title?: string;
+      };
+
+type PodcastEnhancementResult =
+    | SkipResult
+    | {
+          success: true;
+          episodeId: number;
+          audioUrl: string;
+          duration: number;
+      };
+
+const SKIP_RESULT: SkipResult = { success: true, skipped: true };
+
 @Processor("podcastQueue")
 @Injectable()
 export class PodcastQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(PodcastQueueProcessor.name);
+    private static readonly GENERATION_LOCK_TTL_MS = 10 * 60_000;
+    private static readonly ENHANCEMENT_LOCK_TTL_MS = 5 * 60_000;
 
     constructor(
         private readonly dailySummaryRepository: WorkerDailySummaryRepository,
@@ -98,7 +125,7 @@ export class PodcastQueueProcessor extends WorkerHost {
                 removeOnFail: false,
                 attempts: 3,
                 backoff: { type: "fixed", delay: 30_000 },
-                jobId: `podcast:${userId}:${summary.id}`,
+                jobId: buildPodcastJobId(userId, summary.id),
             },
         );
 
@@ -116,184 +143,168 @@ export class PodcastQueueProcessor extends WorkerHost {
             `Processing podcast generation for user ${userId}, summary ${summaryId}`,
         );
 
-        let lockId: string | null = null;
-        try {
-            // 直列化ロック（ユーザー単位、10分）
-            lockId = await this.lock.acquire(`podcast:${userId}`, 10 * 60_000);
-            if (!lockId) {
+        return await this.withUserLock<PodcastGenerationResult>(
+            userId,
+            PodcastQueueProcessor.GENERATION_LOCK_TTL_MS,
+            async () => {
+                const start = Date.now();
+                try {
+                    const existingEpisode =
+                        await this.podcastEpisodeRepository.findBySummaryId(
+                            userId,
+                            summaryId,
+                        );
+                    if (existingEpisode?.isComplete()) {
+                        this.logger.log(
+                            `Podcast episode already exists for summary ${summaryId}`,
+                        );
+                        return {
+                            success: true,
+                            episodeId: existingEpisode.id,
+                            existed: true,
+                        };
+                    }
+
+                    const summary = await this.dailySummaryRepository.findById(
+                        summaryId,
+                        userId,
+                    );
+
+                    if (!summary) {
+                        throw new Error(
+                            `Summary not found for user ${userId}, summary ID: ${summaryId}`,
+                        );
+                    }
+
+                    if (!summary.hasScript()) {
+                        throw new Error(
+                            `Summary ${summaryId} does not have a script for TTS generation`,
+                        );
+                    }
+
+                    let episode = existingEpisode;
+                    if (!episode) {
+                        const episodeTitle = this.generateEpisodeTitle(
+                            summary.summary_title,
+                            summary.summary_date,
+                        );
+
+                        let titleEmbedding: number[] | undefined;
+                        try {
+                            titleEmbedding =
+                                await this.embeddingService.generateEmbedding(
+                                    this.embeddingService.preprocessText(
+                                        episodeTitle,
+                                    ),
+                                );
+                        } catch (error) {
+                            this.logger.warn(
+                                `Failed to generate title embedding: ${this.getErrorMessage(error)}`,
+                            );
+                        }
+
+                        episode = await this.podcastEpisodeRepository.upsert(
+                            userId,
+                            summaryId,
+                            episodeTitle,
+                            titleEmbedding,
+                        );
+                    }
+
+                    if (!episode) {
+                        throw new Error(
+                            `Failed to initialize podcast episode for summary ${summaryId}`,
+                        );
+                    }
+
+                    if (episode.hasAudio()) {
+                        this.logger.log(
+                            `Audio already exists for episode ${episode.id}`,
+                        );
+                        return {
+                            success: true,
+                            episodeId: episode.id,
+                            audioUrl: episode.audio_url,
+                        };
+                    }
+
+                    if (!summary.script_text) {
+                        throw new Error(
+                            "Script text is required for podcast generation",
+                        );
+                    }
+
+                    this.logger.log(
+                        `Generating TTS audio for script length: ${summary.script_text.length} characters`,
+                    );
+                    const language = await this.getPodcastLanguage(userId);
+                    const audioBuffer =
+                        await this.podcastTtsService.generateSpeech(
+                            summary.script_text,
+                            language,
+                        );
+
+                    const estimatedDurationSec =
+                        this.estimateDurationFromScript(summary.script_text);
+
+                    const podcastMetadata = this.buildPodcastMetadata({
+                        userId,
+                        summaryId,
+                        episodeId: episode.id,
+                        title: episode.title || "Untitled Episode",
+                        duration: estimatedDurationSec,
+                        language,
+                    });
+
+                    const audioUrl =
+                        await this.cloudflareR2Service.uploadPodcastAudio(
+                            userId,
+                            audioBuffer,
+                            podcastMetadata,
+                        );
+
+                    const updatedEpisode =
+                        await this.podcastEpisodeRepository.updateAudioUrl(
+                            episode.id,
+                            userId,
+                            audioUrl,
+                            estimatedDurationSec,
+                        );
+
+                    await this.dailySummaryRepository.update(
+                        summaryId,
+                        userId,
+                        {
+                            script_tts_duration_sec: estimatedDurationSec,
+                        },
+                    );
+
+                    const durationMs = Date.now() - start;
+                    this.logger.log(
+                        `Podcast generation completed successfully for episode ${episode.id} in ${durationMs}ms`,
+                    );
+                    return {
+                        success: true,
+                        episodeId: updatedEpisode.id,
+                        audioUrl: updatedEpisode.audio_url,
+                        duration: estimatedDurationSec,
+                        title: updatedEpisode.title,
+                    };
+                } catch (error) {
+                    this.logger.error(
+                        `Failed to process podcast generation: ${this.getErrorMessage(error)}`,
+                        this.getErrorStack(error),
+                    );
+                    throw error;
+                }
+            },
+            () => {
                 this.logger.warn(
                     `Another podcast job is running for user ${userId}, skipping`,
                 );
-                return { success: true, skipped: true } as const;
-            }
-            const start = Date.now();
-            // 既存のエピソードをチェック
-            const existingEpisode =
-                await this.podcastEpisodeRepository.findBySummaryId(
-                    userId,
-                    summaryId,
-                );
-            if (existingEpisode?.isComplete()) {
-                this.logger.log(
-                    `Podcast episode already exists for summary ${summaryId}`,
-                );
-                return {
-                    success: true,
-                    episodeId: existingEpisode.id,
-                    existed: true,
-                };
-            }
-
-            // 要約を取得（ID 指定で取得）
-            const summary = await this.dailySummaryRepository.findById(
-                summaryId,
-                userId,
-            );
-
-            if (!summary) {
-                throw new Error(
-                    `Summary not found for user ${userId}, summary ID: ${summaryId}`,
-                );
-            }
-
-            if (!summary.hasScript()) {
-                throw new Error(
-                    `Summary ${summaryId} does not have a script for TTS generation`,
-                );
-            }
-
-            // ポッドキャストエピソードを作成または取得
-            let episode = existingEpisode;
-            if (!episode) {
-                // エピソードタイトルを生成
-                const episodeTitle = this.generateEpisodeTitle(
-                    summary.summary_title,
-                    summary.summary_date,
-                );
-
-                // タイトルのベクトル埋め込みを生成
-                let titleEmbedding: number[] | undefined;
-                try {
-                    titleEmbedding =
-                        await this.embeddingService.generateEmbedding(
-                            this.embeddingService.preprocessText(episodeTitle),
-                        );
-                } catch (error) {
-                    this.logger.warn(
-                        `Failed to generate title embedding: ${error.message}`,
-                    );
-                }
-
-                episode = await this.podcastEpisodeRepository.upsert(
-                    userId,
-                    summaryId,
-                    episodeTitle,
-                    titleEmbedding,
-                );
-            }
-
-            // 生成に失敗している（あるいは既存取得に失敗している）場合は即座に中断
-            if (!episode) {
-                throw new Error(
-                    `Failed to initialize podcast episode for summary ${summaryId}`,
-                );
-            }
-
-            // 音声ファイルが既に存在する場合はスキップ
-            if (episode.hasAudio()) {
-                this.logger.log(
-                    `Audio already exists for episode ${episode.id}`,
-                );
-                return {
-                    success: true,
-                    episodeId: episode.id,
-                    audioUrl: episode.audio_url,
-                };
-            }
-
-            // script_textの存在チェック
-            if (!summary.script_text) {
-                throw new Error(
-                    "Script text is required for podcast generation",
-                );
-            }
-
-            // TTS音声生成
-            this.logger.log(
-                `Generating TTS audio for script length: ${summary.script_text.length} characters`,
-            );
-            // ユーザー設定から言語を取得（デフォルトはja-JP）
-            const settings = await this.settingsRepo.getByUserId(userId);
-            const language: "ja-JP" | "en-US" =
-                settings?.podcast_language === "en-US" ? "en-US" : "ja-JP";
-            const audioBuffer = await this.podcastTtsService.generateSpeech(
-                summary.script_text,
-                language,
-            );
-
-            // 音声の長さを推定（概算）
-            const estimatedDurationSec = this.estimateDurationFromScript(
-                summary.script_text,
-            );
-
-            // Cloudflare R2にアップロード
-            const podcastMetadata: PodcastMetadata = {
-                userId,
-                summaryId,
-                episodeId: episode.id,
-                title: episode.title || "Untitled Episode",
-                duration: estimatedDurationSec,
-                language,
-                generatedAt: new Date().toISOString(),
-            };
-
-            const audioUrl = await this.cloudflareR2Service.uploadPodcastAudio(
-                userId,
-                audioBuffer,
-                podcastMetadata,
-            );
-
-            // エピソード情報を更新
-            const updatedEpisode =
-                await this.podcastEpisodeRepository.updateAudioUrl(
-                    episode.id,
-                    userId,
-                    audioUrl,
-                    estimatedDurationSec,
-                );
-
-            // 要約にTTS音声の長さを記録
-            await this.dailySummaryRepository.update(summaryId, userId, {
-                script_tts_duration_sec: estimatedDurationSec,
-            });
-
-            const durationMs = Date.now() - start;
-            this.logger.log(
-                `Podcast generation completed successfully for episode ${episode.id} in ${durationMs}ms`,
-            );
-            return {
-                success: true,
-                episodeId: updatedEpisode.id,
-                audioUrl: updatedEpisode.audio_url,
-                duration: estimatedDurationSec,
-                title: updatedEpisode.title,
-            };
-        } catch (error) {
-            this.logger.error(
-                `Failed to process podcast generation: ${error.message}`,
-                error.stack,
-            );
-            throw error;
-        } finally {
-            // ロック解放
-            try {
-                if (lockId) {
-                    await this.lock.release(`podcast:${userId}`, lockId);
-                }
-            } catch {
-                // lock release failure is non-fatal; lock will expire
-            }
-        }
+                return SKIP_RESULT;
+            },
+        );
     }
 
     // 音声品質向上処理（オプション）
@@ -304,119 +315,118 @@ export class PodcastQueueProcessor extends WorkerHost {
             `Processing audio enhancement for episode ${episodeId}`,
         );
 
-        let lockId: string | null = null;
-        try {
-            lockId = await this.lock.acquire(`podcast:${userId}`, 5 * 60_000);
-            if (!lockId) {
+        return await this.withUserLock<PodcastEnhancementResult>(
+            userId,
+            PodcastQueueProcessor.ENHANCEMENT_LOCK_TTL_MS,
+            async () => {
+                try {
+                    const episode =
+                        await this.podcastEpisodeRepository.findById(
+                            episodeId,
+                            userId,
+                        );
+                    if (!episode || !episode.hasAudio()) {
+                        throw new Error("Episode or audio not found");
+                    }
+
+                    const summary = await this.dailySummaryRepository.findById(
+                        episode.summary_id,
+                        userId,
+                    );
+                    if (!summary) {
+                        throw new Error(
+                            `Summary not found for user ${userId}, summary ID: ${episode.summary_id}`,
+                        );
+                    }
+                    if (!summary.hasScript()) {
+                        throw new Error(
+                            `Summary ${summary.id} does not contain a script for regeneration`,
+                        );
+                    }
+
+                    const language = await this.getPodcastLanguage(userId);
+
+                    const scriptText = summary.script_text ?? "";
+                    if (!scriptText) {
+                        throw new Error(
+                            `Summary ${summary.id} does not contain script text`,
+                        );
+                    }
+
+                    const synthesisOptions =
+                        this.buildEnhancementOptions(language);
+                    const enhancedAudio =
+                        await this.podcastTtsService.generateSpeech(
+                            scriptText,
+                            language,
+                            synthesisOptions,
+                        );
+
+                    const estimatedDurationSec =
+                        this.estimateDurationFromScript(scriptText);
+
+                    const podcastMetadata = this.buildPodcastMetadata({
+                        userId,
+                        summaryId: summary.id,
+                        episodeId: episode.id,
+                        title:
+                            episode.title ||
+                            summary.summary_title ||
+                            "Untitled Episode",
+                        duration: estimatedDurationSec,
+                        language,
+                    });
+
+                    const previousAudioUrl = episode.audio_url;
+                    const enhancedAudioUrl =
+                        await this.cloudflareR2Service.uploadPodcastAudio(
+                            userId,
+                            enhancedAudio,
+                            podcastMetadata,
+                        );
+
+                    const updatedEpisode =
+                        await this.podcastEpisodeRepository.updateAudioUrl(
+                            episode.id,
+                            userId,
+                            enhancedAudioUrl,
+                            estimatedDurationSec,
+                        );
+
+                    await this.dailySummaryRepository.update(
+                        summary.id,
+                        userId,
+                        {
+                            script_tts_duration_sec: estimatedDurationSec,
+                        },
+                    );
+
+                    await this.removePreviousAudio(previousAudioUrl, userId);
+
+                    this.logger.log(
+                        `Audio enhancement completed for episode ${episodeId}`,
+                    );
+                    return {
+                        success: true,
+                        episodeId: updatedEpisode.id,
+                        audioUrl: updatedEpisode.audio_url,
+                        duration: estimatedDurationSec,
+                    } as const;
+                } catch (error) {
+                    this.logger.error(
+                        `Failed to enhance audio: ${this.getErrorMessage(error)}`,
+                        this.getErrorStack(error),
+                    );
+                    throw error;
+                }
+            },
+            () => {
                 this.logger.warn(
                     `Skipped audio enhancement because another job is running for user ${userId}`,
                 );
-                return { success: true, skipped: true } as const;
-            }
-
-            const episode = await this.podcastEpisodeRepository.findById(
-                episodeId,
-                userId,
-            );
-            if (!episode || !episode.hasAudio()) {
-                throw new Error("Episode or audio not found");
-            }
-
-            const summary = await this.dailySummaryRepository.findById(
-                episode.summary_id,
-                userId,
-            );
-            if (!summary) {
-                throw new Error(
-                    `Summary not found for user ${userId}, summary ID: ${episode.summary_id}`,
-                );
-            }
-            if (!summary.hasScript()) {
-                throw new Error(
-                    `Summary ${summary.id} does not contain a script for regeneration`,
-                );
-            }
-
-            const settings = await this.settingsRepo.getByUserId(userId);
-            const language: "ja-JP" | "en-US" =
-                settings?.podcast_language === "en-US" ? "en-US" : "ja-JP";
-
-            const scriptText = summary.script_text ?? "";
-            if (!scriptText) {
-                throw new Error(
-                    `Summary ${summary.id} does not contain script text`,
-                );
-            }
-
-            const synthesisOptions = this.buildEnhancementOptions(language);
-            const enhancedAudio = await this.podcastTtsService.generateSpeech(
-                scriptText,
-                language,
-                synthesisOptions,
-            );
-
-            const estimatedDurationSec =
-                this.estimateDurationFromScript(scriptText);
-
-            const podcastMetadata: PodcastMetadata = {
-                userId,
-                summaryId: summary.id,
-                episodeId: episode.id,
-                title:
-                    episode.title ||
-                    summary.summary_title ||
-                    "Untitled Episode",
-                duration: estimatedDurationSec,
-                language,
-                generatedAt: new Date().toISOString(),
-            };
-
-            const previousAudioUrl = episode.audio_url;
-            const enhancedAudioUrl =
-                await this.cloudflareR2Service.uploadPodcastAudio(
-                    userId,
-                    enhancedAudio,
-                    podcastMetadata,
-                );
-
-            const updatedEpisode =
-                await this.podcastEpisodeRepository.updateAudioUrl(
-                    episode.id,
-                    userId,
-                    enhancedAudioUrl,
-                    estimatedDurationSec,
-                );
-
-            await this.dailySummaryRepository.update(summary.id, userId, {
-                script_tts_duration_sec: estimatedDurationSec,
-            });
-
-            await this.removePreviousAudio(previousAudioUrl, userId);
-
-            this.logger.log(
-                `Audio enhancement completed for episode ${episodeId}`,
-            );
-            return {
-                success: true,
-                episodeId: updatedEpisode.id,
-                audioUrl: updatedEpisode.audio_url,
-                duration: estimatedDurationSec,
-            } as const;
-        } catch (error) {
-            this.logger.error(
-                `Failed to enhance audio: ${error.message}`,
-                error.stack,
-            );
-            throw error;
-        } finally {
-            if (lockId) {
-                try {
-                    await this.lock.release(`podcast:${userId}`, lockId);
-                } catch {
-                    // lock release failure is non-fatal
-                }
-            }
-        }
+                return SKIP_RESULT;
+            },
+        );
     }
 
     // 古いポッドキャストファイルの削除処理
@@ -472,8 +482,8 @@ export class PodcastQueueProcessor extends WorkerHost {
             return { success: true, cleanedCount: oldEpisodes.length };
         } catch (error) {
             this.logger.error(
-                `Failed to cleanup old podcasts: ${error.message}`,
-                error.stack,
+                `Failed to cleanup old podcasts: ${this.getErrorMessage(error)}`,
+                this.getErrorStack(error),
             );
             throw error;
         }
@@ -522,11 +532,66 @@ export class PodcastQueueProcessor extends WorkerHost {
             }
         } catch (error) {
             this.logger.warn(
-                `Failed to delete previous audio for user ${userId}: ${
-                    (error as Error).message
-                }`,
+                `Failed to delete previous audio for user ${userId}: ${this.getErrorMessage(error)}`,
             );
         }
+    }
+
+    private async withUserLock<T>(
+        userId: string,
+        ttlMs: number,
+        action: () => Promise<T>,
+        onSkip: () => T,
+    ): Promise<T> {
+        const lockKey = `podcast:${userId}`;
+        const lockId = await this.lock.acquire(lockKey, ttlMs);
+        if (!lockId) {
+            return onSkip();
+        }
+
+        try {
+            return await action();
+        } finally {
+            try {
+                await this.lock.release(lockKey, lockId);
+            } catch {
+                // lock release failure is non-fatal; lock will expire
+            }
+        }
+    }
+
+    private async getPodcastLanguage(
+        userId: string,
+    ): Promise<"ja-JP" | "en-US"> {
+        const settings = await this.settingsRepo.getByUserId(userId);
+        return settings?.podcast_language === "en-US" ? "en-US" : "ja-JP";
+    }
+
+    private buildPodcastMetadata(args: {
+        userId: string;
+        summaryId: number;
+        episodeId?: number;
+        title: string;
+        duration: number;
+        language: "ja-JP" | "en-US";
+    }): PodcastMetadata {
+        return {
+            userId: args.userId,
+            summaryId: args.summaryId,
+            episodeId: args.episodeId,
+            title: args.title,
+            duration: args.duration,
+            language: args.language,
+            generatedAt: new Date().toISOString(),
+        };
+    }
+
+    private getErrorMessage(error: unknown): string {
+        return error instanceof Error ? error.message : String(error);
+    }
+
+    private getErrorStack(error: unknown): string | undefined {
+        return error instanceof Error ? error.stack : undefined;
     }
 
     // プライベートメソッド: エピソードタイトル生成

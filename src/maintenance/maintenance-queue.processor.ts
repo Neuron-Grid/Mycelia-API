@@ -1,6 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Injectable, Logger } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
+import { buildSummaryJobId } from "@/common/utils/job-id.util";
 import type { WorkerPodcastSchedule } from "@/shared/settings/worker-user-settings.repository";
 import { WorkerUserSettingsRepository } from "@/shared/settings/worker-user-settings.repository";
 import { JstDateService } from "@/shared/time/jst-date.service";
@@ -139,7 +140,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                         "generateUserSummary",
                         { userId },
                         {
-                            jobId: `summary:${userId}:${dateStr}`,
+                            jobId: buildSummaryJobId(userId, dateStr),
                             removeOnComplete: true,
                             removeOnFail: 5,
                         },

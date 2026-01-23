@@ -1,6 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Logger } from "@nestjs/common";
 import type { Job, Queue } from "bullmq";
+import { getErrorMessage } from "@/common/utils/error-message";
 import { validateDto } from "@/common/utils/validation";
 import { VectorUpdateJobDto } from "@/embedding/queue/dto/vector-update-job.dto";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
@@ -96,7 +97,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         } catch (error: unknown) {
             await this.discardIfNonRetriable(job, error);
             this.logger.error(
-                `Single update failed for user ${userId}: ${this.getErrorMessage(
+                `Single update failed for user ${userId}: ${getErrorMessage(
                     error,
                 )}`,
             );
@@ -205,7 +206,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             await this.discardIfNonRetriable(job, error);
             this.embeddingQueueService.markBatchFailed(userId, tableType);
             this.logger.error(
-                `Batch processing failed for user ${userId}: ${this.getErrorMessage(
+                `Batch processing failed for user ${userId}: ${getErrorMessage(
                     error,
                 )}`,
             );
@@ -302,20 +303,6 @@ export class EmbeddingQueueProcessor extends WorkerHost {
         return typeof status === "number" ? status : undefined;
     }
 
-    private getErrorMessage(error: unknown): string {
-        if (error instanceof Error) {
-            return error.message;
-        }
-        if (typeof error === "string") {
-            return error;
-        }
-        if (error && typeof error === "object" && "message" in error) {
-            const message = (error as { message?: unknown }).message;
-            return typeof message === "string" ? message : "Unknown error";
-        }
-        return "Unknown error";
-    }
-
     private isNonRetriableStatus(status?: number): boolean {
         return (
             status !== undefined &&
@@ -344,7 +331,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
                     enqueued++;
                 } catch (error: unknown) {
                     this.logger.warn(
-                        `Failed to enqueue embedding batch for user ${u.user_id}: ${this.getErrorMessage(
+                        `Failed to enqueue embedding batch for user ${u.user_id}: ${getErrorMessage(
                             error,
                         )}`,
                     );
@@ -356,7 +343,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
             );
         } catch (error: unknown) {
             this.logger.error(
-                `Global embedding update scheduling failed: ${this.getErrorMessage(
+                `Global embedding update scheduling failed: ${getErrorMessage(
                     error,
                 )}`,
             );

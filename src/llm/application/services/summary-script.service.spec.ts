@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { jest } from "@test-utils/jest-globals";
 import { Queue } from "bullmq";
+import { buildSummaryJobId } from "@/common/utils/job-id.util";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import { JstDateService } from "@/shared/time/jst-date.service";
 import { SummaryScriptService } from "./summary-script.service";
@@ -41,7 +42,9 @@ describe("SummaryScriptService", () => {
 
     it("enqueues summary generation when feature enabled", async () => {
         jest.setSystemTime(new Date("2025-10-16T18:15:00Z"));
-        summaryQueue.add.mockResolvedValue({ id: "summary:user-1:2025-10-17" });
+        summaryQueue.add.mockResolvedValue({
+            id: buildSummaryJobId("user-1", "2025-10-17"),
+        });
 
         const result = await service.requestSummaryGeneration("user-1");
 
@@ -50,13 +53,15 @@ describe("SummaryScriptService", () => {
             "generateUserSummary",
             expect.objectContaining({ userId: "user-1" }),
             expect.objectContaining({
-                jobId: "summary:user-1:2025-10-17",
+                jobId: buildSummaryJobId("user-1", "2025-10-17"),
                 removeOnComplete: 5,
                 removeOnFail: 10,
                 attempts: 3,
             }),
         );
-        expect(result).toEqual({ jobId: "summary:user-1:2025-10-17" });
+        expect(result).toEqual({
+            jobId: buildSummaryJobId("user-1", "2025-10-17"),
+        });
     });
 
     it("skips enqueue when summary feature disabled", async () => {
