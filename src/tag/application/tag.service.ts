@@ -36,12 +36,16 @@ export class TagService {
         newName?: string,
         newParentTagId?: number | null,
     ) {
-        type UpdateFields = Pick<TagsUpdate, "tag_name" | "parent_tag_id">;
+        type UpdateFields = Pick<
+            TagsUpdate,
+            "tag_name" | "parent_tag_id" | "tag_emb"
+        >;
         type PartialUpdateFields = Partial<UpdateFields>;
         const fields: PartialUpdateFields = {};
 
         if (typeof newName !== "undefined") {
             fields.tag_name = newName;
+            fields.tag_emb = null;
         }
         if (typeof newParentTagId !== "undefined") {
             fields.parent_tag_id = newParentTagId;

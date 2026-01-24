@@ -33,30 +33,19 @@ type PodcastEmbeddingRow =
     Database["public"]["Functions"]["fn_list_missing_podcast_embeddings"]["Returns"][number];
 type TagEmbeddingRow =
     Database["public"]["Functions"]["fn_list_missing_tag_embeddings"]["Returns"][number];
+type DailySummaryByIdRow =
+    Database["public"]["Functions"]["fn_find_daily_summary_by_id"]["Returns"][number];
+type PodcastByIdRow =
+    Database["public"]["Functions"]["fn_find_podcast_by_id"]["Returns"][number];
 
-type FeedItemRow = Pick<
-    Database["public"]["Tables"]["feed_items"]["Row"],
-    "id" | "title" | "description"
->;
-type SummaryRow = Pick<
-    Database["public"]["Tables"]["daily_summaries"]["Row"],
-    "id" | "markdown" | "summary_title"
->;
-type PodcastRow = Pick<
-    Database["public"]["Tables"]["podcast_episodes"]["Row"],
-    "id" | "title"
->;
-type TagRow = Pick<
-    Database["public"]["Tables"]["tags"]["Row"],
-    "id" | "tag_name" | "description"
->;
+const MISSING_EMBEDDING_RPC_BY_TABLE = {
+    feed_items: "fn_list_missing_feed_item_embeddings",
+    daily_summaries: "fn_list_missing_summary_embeddings",
+    podcast_episodes: "fn_list_missing_podcast_embeddings",
+    tags: "fn_list_missing_tag_embeddings",
+} as const satisfies Record<TableType, BatchRpcName>;
 
-const EMBEDDING_COLUMN_BY_TABLE = {
-    feed_items: "title_emb",
-    daily_summaries: "summary_emb",
-    podcast_episodes: "title_emb",
-    tags: "tag_emb",
-} as const satisfies Record<TableType, string>;
+type MissingEmbeddingRow = { id: number };
 
 @Injectable()
 export class EmbeddingBatchDataService implements IBatchDataService {
@@ -153,20 +142,8 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         tableType: TableType,
     ): Promise<number> {
         try {
-            const sb = this.admin.getClient();
-            const embeddingColumn = this.getEmbeddingColumn(tableType);
-            const { count, error } = await sb
-                .from(tableType)
-                .select("*", { count: "exact", head: true })
-                .eq("user_id", userId)
-                .is(embeddingColumn, null)
-                .eq("soft_deleted", false);
-
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            return count || 0;
+            const rpcName = MISSING_EMBEDDING_RPC_BY_TABLE[tableType];
+            return await this.countMissingByRpc(userId, rpcName);
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             this.logger.error(
@@ -279,28 +256,64 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         }
     }
 
+    private async countMissingByRpc(
+        userId: string,
+        rpcName: BatchRpcName,
+    ): Promise<number> {
+        const sb = this.admin.getClient();
+        const pageSize = 1000;
+        let total = 0;
+        let lastId: number | undefined;
+        for (;;) {
+            const { data, error } = await sb.rpc(rpcName, {
+                p_user_id: userId,
+                p_last_id: lastId,
+                p_limit: pageSize,
+            });
+            if (error) {
+                throw new Error(error.message);
+            }
+            const rows = (data ?? []) as MissingEmbeddingRow[];
+            if (rows.length === 0) {
+                break;
+            }
+            total += rows.length;
+            const nextLastId = rows[rows.length - 1]?.id;
+            if (nextLastId === undefined || nextLastId === lastId) {
+                break;
+            }
+            lastId = nextLastId;
+            if (rows.length < pageSize) {
+                break;
+            }
+        }
+        return total;
+    }
+
     private async fetchSingleRow<Row>(
         userId: string,
         recordId: number,
-        table: TableType,
-        select: string,
+        rpcName: BatchRpcName,
         contextLabel: string,
     ): Promise<Row | null> {
         try {
             const sb = this.admin.getClient();
-            const { data, error } = await sb
-                .from(table)
-                .select(select)
-                .eq("id", recordId)
-                .eq("user_id", userId)
-                .eq("soft_deleted", false)
-                .maybeSingle();
+            const { data, error } = await sb.rpc(rpcName, {
+                p_user_id: userId,
+                p_last_id: recordId > 0 ? recordId - 1 : undefined,
+                p_limit: 1,
+            });
 
             if (error) {
                 throw new Error(error.message);
             }
 
-            return data ? (data as Row) : null;
+            const row = (data ?? [])[0] as Row | undefined;
+            const maybeId = (row as MissingEmbeddingRow | undefined)?.id;
+            if (!row || maybeId !== recordId) {
+                return null;
+            }
+            return row;
         } catch (error: unknown) {
             this.logger.error(
                 `Failed to fetch ${contextLabel} ${recordId}: ${getErrorMessage(
@@ -311,19 +324,14 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         }
     }
 
-    private getEmbeddingColumn(tableType: TableType): string {
-        return EMBEDDING_COLUMN_BY_TABLE[tableType];
-    }
-
     private async getSingleFeedItem(
         userId: string,
         recordId: number,
     ): Promise<BatchItem | null> {
-        const row = await this.fetchSingleRow<FeedItemRow>(
+        const row = await this.fetchSingleRow<FeedItemEmbeddingRow>(
             userId,
             recordId,
-            "feed_items",
-            "id,title,description",
+            "fn_list_missing_feed_item_embeddings",
             "feed item",
         );
         if (!row) return null;
@@ -338,13 +346,18 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         userId: string,
         recordId: number,
     ): Promise<BatchItem | null> {
-        const row = await this.fetchSingleRow<SummaryRow>(
-            userId,
-            recordId,
-            "daily_summaries",
-            "id,markdown,summary_title",
-            "daily summary",
-        );
+        const sb = this.admin.getClient();
+        const { data, error } = await sb.rpc("fn_find_daily_summary_by_id", {
+            p_user_id: userId,
+            p_id: recordId,
+        });
+        if (error) {
+            this.logger.error(
+                `Failed to fetch daily summary ${recordId}: ${error.message}`,
+            );
+            throw new Error(error.message);
+        }
+        const row = (data ?? [])[0] as DailySummaryByIdRow | undefined;
         if (!row) return null;
 
         return {
@@ -360,13 +373,18 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         userId: string,
         recordId: number,
     ): Promise<BatchItem | null> {
-        const row = await this.fetchSingleRow<PodcastRow>(
-            userId,
-            recordId,
-            "podcast_episodes",
-            "id,title",
-            "podcast episode",
-        );
+        const sb = this.admin.getClient();
+        const { data, error } = await sb.rpc("fn_find_podcast_by_id", {
+            p_user_id: userId,
+            p_id: recordId,
+        });
+        if (error) {
+            this.logger.error(
+                `Failed to fetch podcast episode ${recordId}: ${error.message}`,
+            );
+            throw new Error(error.message);
+        }
+        const row = (data ?? [])[0] as PodcastByIdRow | undefined;
         if (!row) return null;
 
         return {
@@ -379,11 +397,10 @@ export class EmbeddingBatchDataService implements IBatchDataService {
         userId: string,
         recordId: number,
     ): Promise<BatchItem | null> {
-        const row = await this.fetchSingleRow<TagRow>(
+        const row = await this.fetchSingleRow<TagEmbeddingRow>(
             userId,
             recordId,
-            "tags",
-            "id,tag_name,description",
+            "fn_list_missing_tag_embeddings",
             "tag",
         );
         if (!row) return null;

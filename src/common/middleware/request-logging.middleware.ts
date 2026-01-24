@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { Logger } from "@nestjs/common";
 import type { NextFunction, Request, Response } from "express";
 
@@ -10,9 +11,7 @@ const sanitizeHeaderValue = (value: string): string =>
 
 const resolveRequestId = (req: Request): string => {
     const headerValue = req.headers[REQUEST_ID_HEADER];
-    const candidate = Array.isArray(headerValue)
-        ? headerValue[0]
-        : headerValue;
+    const candidate = Array.isArray(headerValue) ? headerValue[0] : headerValue;
     if (typeof candidate === "string") {
         const trimmed = sanitizeHeaderValue(candidate.trim());
         if (trimmed.length > 0 && trimmed.length <= MAX_REQUEST_ID_LENGTH) {
@@ -22,7 +21,10 @@ const resolveRequestId = (req: Request): string => {
     return randomUUID();
 };
 
-type RequestWithContext = Request & { requestId?: string; user?: { id?: string } };
+type RequestWithContext = Request & {
+    requestId?: string;
+    user?: { id?: string };
+};
 
 export function createRequestLoggingMiddleware() {
     const logger = new Logger("HttpAccess");
@@ -35,10 +37,9 @@ export function createRequestLoggingMiddleware() {
         req.requestId = requestId;
         res.setHeader("X-Request-Id", requestId);
 
-        const startAt = process.hrtime.bigint();
+        const startAt = performance.now();
         res.on("finish", () => {
-            const durationMs =
-                Number(process.hrtime.bigint() - startAt) / 1_000_000;
+            const durationMs = performance.now() - startAt;
             const payload = {
                 type: "access",
                 method: req.method,

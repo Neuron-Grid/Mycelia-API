@@ -20,7 +20,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
-        const requestId = (request as Request & { requestId?: string }).requestId;
+        const requestId = (request as Request & { requestId?: string })
+            .requestId;
 
         const isProd = this.appEnv.deployStage === "production";
         const isDebug = !isProd;

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
+import type { Database } from "@/types/schema";
 
 /**
  * Worker向けの検索クライアント。
@@ -50,16 +51,19 @@ export class SupabaseSearchAdminClient {
         userId: string,
         embedding: number[],
     ): Promise<void> {
+        const payload: Database["public"]["Functions"]["fn_update_feed_item_embedding"]["Args"] =
+            {
+                p_user_id: userId,
+                p_id: feedItemId,
+                p_vec: embedding,
+            };
         const { error } = await this.admin
             .getClient()
-            .from("feed_items")
-            .update({ title_emb: embedding } as Record<string, unknown>)
-            .eq("id", feedItemId)
-            .eq("user_id", userId);
+            .rpc("fn_update_feed_item_embedding", payload);
 
         if (error) {
             this.logger.error(
-                `Failed to update feed item embedding (id=${feedItemId}): ${error.message}`,
+                `fn_update_feed_item_embedding failed (id=${feedItemId}): ${error.message}`,
             );
             throw error;
         }
@@ -70,16 +74,19 @@ export class SupabaseSearchAdminClient {
         userId: string,
         embedding: number[],
     ): Promise<void> {
+        const payload: Database["public"]["Functions"]["fn_update_summary_embedding"]["Args"] =
+            {
+                p_user_id: userId,
+                p_id: summaryId,
+                p_vec: embedding,
+            };
         const { error } = await this.admin
             .getClient()
-            .from("daily_summaries")
-            .update({ summary_emb: embedding } as Record<string, unknown>)
-            .eq("id", summaryId)
-            .eq("user_id", userId);
+            .rpc("fn_update_summary_embedding", payload);
 
         if (error) {
             this.logger.error(
-                `Failed to update summary embedding (id=${summaryId}): ${error.message}`,
+                `fn_update_summary_embedding failed (id=${summaryId}): ${error.message}`,
             );
             throw error;
         }
@@ -90,16 +97,19 @@ export class SupabaseSearchAdminClient {
         userId: string,
         embedding: number[],
     ): Promise<void> {
+        const payload: Database["public"]["Functions"]["fn_update_podcast_embedding"]["Args"] =
+            {
+                p_user_id: userId,
+                p_id: episodeId,
+                p_vec: embedding,
+            };
         const { error } = await this.admin
             .getClient()
-            .from("podcast_episodes")
-            .update({ title_emb: embedding } as Record<string, unknown>)
-            .eq("id", episodeId)
-            .eq("user_id", userId);
+            .rpc("fn_update_podcast_embedding", payload);
 
         if (error) {
             this.logger.error(
-                `Failed to update podcast episode embedding (id=${episodeId}): ${error.message}`,
+                `fn_update_podcast_embedding failed (id=${episodeId}): ${error.message}`,
             );
             throw error;
         }

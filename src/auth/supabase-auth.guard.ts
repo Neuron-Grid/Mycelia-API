@@ -100,10 +100,10 @@ export class SupabaseAuthGuard implements CanActivate {
 
             currentUserId = data.user.id;
 
-            const active =
-                await this.userVerificationService.isAccountActive(
-                    currentUserId,
-                );
+            const active = await this.userVerificationService.isAccountActive(
+                currentUserId,
+                token,
+            );
             if (!active) {
                 this.recordMetric("deleted", startedAt, currentUserId);
                 throw new UnauthorizedException("Account is deleted");

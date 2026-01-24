@@ -7,11 +7,11 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 // @see ./app.api.module
 import { AppApiModule } from "@/app.api.module";
+import { createRequestLoggingMiddleware } from "@/common/middleware/request-logging.middleware";
 import {
     createCsrfMiddleware,
     createHttpsEnforceMiddleware,
 } from "@/common/middleware/security.middleware";
-import { createRequestLoggingMiddleware } from "@/common/middleware/request-logging.middleware";
 import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 
