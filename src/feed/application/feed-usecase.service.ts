@@ -15,9 +15,18 @@ type NormalizedFeedItem = {
     publishedAt: Date | null;
 };
 
+type FetchFeedItemsResult = {
+    feedTitle: string;
+    insertedCount: number;
+    lastFetchedAt: Date;
+};
+
 const MAX_TITLE_LENGTH = 1024;
 const MAX_DESCRIPTION_LENGTH = 8192;
 const MAX_URL_LENGTH = 2048;
+
+const getErrorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error);
 
 const truncate = (value: string, maxLength: number): string =>
     value.length > maxLength ? value.substring(0, maxLength) : value;
@@ -27,6 +36,11 @@ const coerceNullableString = (value: unknown): string | null =>
 
 const pickFirstString = (...values: Array<string | null | undefined>): string =>
     values.find((value) => value !== null && value !== undefined) ?? "";
+
+const coerceValidDate = (value: Date | null): Date | null => {
+    if (!value) return null;
+    return Number.isNaN(value.getTime()) ? null : value;
+};
 
 const normalizeFeedItem = (item: FeedparserItem): NormalizedFeedItem | null => {
     const link = (coerceNullableString(item.link) ?? "").trim();
@@ -62,7 +76,9 @@ const normalizeFeedItem = (item: FeedparserItem): NormalizedFeedItem | null => {
         canonicalUrl: canonicalCandidate
             ? truncate(canonicalCandidate, MAX_URL_LENGTH)
             : null,
-        publishedAt: item.pubdate ? new Date(item.pubdate) : null,
+        publishedAt: coerceValidDate(
+            item.pubdate ? new Date(item.pubdate) : null,
+        ),
     };
 };
 
@@ -77,22 +93,25 @@ export class FeedUseCaseService {
         private readonly embeddingQueueService: EmbeddingQueueService,
     ) {}
 
-    async fetchFeedMeta(
+    fetchFeedMeta(
         feedUrl: string,
     ): Promise<{ meta: Meta; items: FeedparserItem[] }> {
-        return await this.fetchSvc.parseFeed(feedUrl);
+        return this.fetchSvc.parseFeed(feedUrl);
     }
 
     // RSSをfetch→DB反映→last_fetched_at更新
-    async fetchFeedItems(subscriptionId: number, userId: string) {
+    async fetchFeedItems(
+        subscriptionId: number,
+        userId: string,
+    ): Promise<FetchFeedItemsResult> {
         const sub = await this.workerSubs.getByIdForUser(
             userId,
             subscriptionId,
         );
         if (!sub)
             throw new Error(`Subscription not found (id=${subscriptionId})`);
-        const { feed_url, feed_title } = sub;
-        const { meta, items } = await this.fetchSvc.parseFeed(feed_url);
+        const { feed_url: feedUrl, feed_title: feedTitle } = sub;
+        const { meta, items } = await this.fetchSvc.parseFeed(feedUrl);
         let inserted = 0;
         for (const item of items) {
             const normalized = normalizeFeedItem(item);
@@ -110,7 +129,9 @@ export class FeedUseCaseService {
                 if (res.inserted) inserted++;
                 else this.logger.verbose(`dup: ${normalized.link}`);
             } catch (e) {
-                this.logger.warn(`failed: ${normalized.link} – ${e}`);
+                this.logger.warn(
+                    `failed: ${normalized.link} – ${getErrorMessage(e)}`,
+                );
             }
         }
         const fetchedAt = new Date();
@@ -128,13 +149,15 @@ export class FeedUseCaseService {
                 );
             } catch (error) {
                 this.logger.warn(
-                    `Failed to queue embedding generation: ${error.message}`,
+                    `Failed to queue embedding generation: ${getErrorMessage(
+                        error,
+                    )}`,
                 );
             }
         }
 
         return {
-            feedTitle: meta.title ?? feed_title,
+            feedTitle: meta.title ?? feedTitle,
             insertedCount: inserted,
             lastFetchedAt: fetchedAt,
         };

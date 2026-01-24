@@ -5,16 +5,25 @@ import { normalizeTagPath } from "@/tag/domain/tag-path.util";
 import type { TagsInsert, TagsRow, TagsUpdate } from "@/types/overrides";
 import { Database } from "@/types/schema";
 
+type TagsInsertRow = Database["public"]["Tables"]["tags"]["Insert"];
+type TagsUpdateRow = Database["public"]["Tables"]["tags"]["Update"];
+
 // feed_item_tagsテーブル
 type FeedItemTagsTable = Database["public"]["Tables"]["feed_item_tags"];
 type FeedItemTagsInsert = FeedItemTagsTable["Insert"];
 type FeedItemTagsRow = FeedItemTagsTable["Row"];
+
+type FeedItemsTable = Database["public"]["Tables"]["feed_items"];
+type FeedItemsRow = FeedItemsTable["Row"];
 
 // user_subscription_tagsテーブル
 type SubscriptionTagsTable =
     Database["public"]["Tables"]["user_subscription_tags"];
 type SubscriptionTagsInsert = SubscriptionTagsTable["Insert"];
 type SubscriptionTagsRow = SubscriptionTagsTable["Row"];
+
+type SubscriptionsTable = Database["public"]["Tables"]["user_subscriptions"];
+type SubscriptionsRow = SubscriptionsTable["Row"];
 
 type TagHierarchyNode = {
     id: number;
@@ -48,6 +57,15 @@ type TagPathRaw = Omit<TagPathRow, "path_array"> & {
 
 type TagsRowRaw = Database["public"]["Tables"]["tags"]["Row"];
 
+type FeedItemTagWithItemRow = FeedItemTagsRow & { feed_item: FeedItemsRow };
+type SubscriptionTagWithSubscriptionRow = SubscriptionTagsRow & {
+    subscription: SubscriptionsRow;
+};
+type FeedItemTagsMapRow = {
+    feed_item_id: number;
+    tag: { tag_name: string; soft_deleted?: boolean | null } | null;
+};
+
 const mapTagRow = (row: TagsRowRaw): TagsRow => {
     const pathValue =
         typeof row.path === "string"
@@ -72,6 +90,20 @@ const normalizePathRow = (row: TagPathRaw): TagPathRow => ({
     path_array: normalizeTagPath(row.path_array),
 });
 
+const mapTagRelations = <TRow extends { tag: TagsRowRaw }>(
+    rows: TRow[],
+): Array<Omit<TRow, "tag"> & { tag: TagsRow }> =>
+    rows.map((row) => ({
+        ...row,
+        tag: mapTagRow(row.tag),
+    }));
+
+const toTagsInsertRow = (data: TagsInsert): TagsInsertRow =>
+    data as unknown as TagsInsertRow;
+
+const toTagsUpdateRow = (data: Partial<TagsUpdate>): TagsUpdateRow =>
+    data as unknown as TagsUpdateRow;
+
 @Injectable()
 export class TagRepository {
     private readonly logger = new Logger(TagRepository.name);
@@ -80,7 +112,7 @@ export class TagRepository {
 
     // ユーザーが持つ全タグを取得
     async findAllTagsByUserId(userId: string): Promise<TagsRow[]> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("tags")
             .select("*")
@@ -89,11 +121,7 @@ export class TagRepository {
             .order("id", { ascending: true });
 
         if (error) {
-            this.logger.error(
-                `findAllTagsByUserId failed: ${error.message}`,
-                error,
-            );
-            throw error;
+            this.logAndThrow("findAllTagsByUserId", error);
         }
         const rows = (data ?? []).map((row) => mapTagRow(row as TagsRowRaw));
         return rows;
@@ -105,26 +133,13 @@ export class TagRepository {
         tagName: string,
         parentTagId?: number | null,
     ): Promise<TagsRow> {
-        const supabase = this.supabaseService.getClient();
         const insertData: TagsInsert = {
             user_id: userId,
             tag_name: tagName,
             parent_tag_id: parentTagId ?? null,
         };
-
-        const { data, error } = await supabase
-            .from("tags")
-            .insert(
-                insertData as unknown as Database["public"]["Tables"]["tags"]["Insert"],
-            )
-            .select()
-            .single();
-
-        if (error) {
-            this.logger.error(`createTag failed: ${error.message}`, error);
-            throw error;
-        }
-        return mapTagRow(data as TagsRowRaw);
+        const row = await this.insertTagRow(insertData, "createTag");
+        return mapTagRow(row);
     }
 
     // タグを更新
@@ -133,8 +148,6 @@ export class TagRepository {
         tagId: number,
         fields: Partial<TagsUpdate>,
     ): Promise<TagsRow> {
-        const supabase = this.supabaseService.getClient();
-
         // parent_tag_idの所有者確認
         if (
             fields.parent_tag_id !== undefined &&
@@ -143,22 +156,13 @@ export class TagRepository {
             await this.ensureParentTagOwned(userId, fields.parent_tag_id);
         }
 
-        // 実更新
-        const { data, error } = await supabase
-            .from("tags")
-            .update(fields)
-            .eq("id", tagId)
-            .eq("user_id", userId)
-            .select()
-            .single();
-
-        if (error) throw error;
-        return mapTagRow(data as TagsRowRaw);
+        const row = await this.updateTagRow(tagId, userId, fields, "updateTag");
+        return mapTagRow(row);
     }
 
     // タグ削除
     async deleteTag(userId: string, tagId: number): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { error } = await supabase
             .from("tags")
             .delete()
@@ -177,7 +181,7 @@ export class TagRepository {
         feedItemId: number,
         tagId: number,
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const insertData: FeedItemTagsInsert = {
             user_id: userId,
             feed_item_id: feedItemId,
@@ -204,7 +208,7 @@ export class TagRepository {
         feedItemId: number,
         tagId: number,
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { error } = await supabase
             .from("feed_item_tags")
             .delete()
@@ -226,7 +230,7 @@ export class TagRepository {
         userId: string,
         feedItemId: number,
     ): Promise<Array<FeedItemTagsRow & { tag: TagsRow }>> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("feed_item_tags")
             .select("*, tag:tags(*)")
@@ -242,10 +246,9 @@ export class TagRepository {
         }
 
         // dataはfeed_item_tagsのRow & { tag: TagsRow }の構造
-        const rows = (data ?? []).map((row) => ({
-            ...row,
-            tag: mapTagRow(row.tag as TagsRowRaw),
-        }));
+        const rows = mapTagRelations(
+            (data ?? []) as Array<FeedItemTagsRow & { tag: TagsRowRaw }>,
+        );
         return rows;
     }
 
@@ -255,7 +258,7 @@ export class TagRepository {
         subscriptionId: number,
         tagId: number,
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const insertData: SubscriptionTagsInsert = {
             user_id: userId,
             user_subscription_id: subscriptionId,
@@ -281,7 +284,7 @@ export class TagRepository {
         subscriptionId: number,
         tagId: number,
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { error } = await supabase
             .from("user_subscription_tags")
             .delete()
@@ -303,7 +306,7 @@ export class TagRepository {
         userId: string,
         subscriptionId: number,
     ): Promise<Array<SubscriptionTagsRow & { tag: TagsRow }>> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("user_subscription_tags")
             .select("*, tag:tags(*)")
@@ -317,10 +320,9 @@ export class TagRepository {
             );
             throw error;
         }
-        const rows = (data ?? []).map((row) => ({
-            ...row,
-            tag: mapTagRow(row.tag as TagsRowRaw),
-        }));
+        const rows = mapTagRelations(
+            (data ?? []) as Array<SubscriptionTagsRow & { tag: TagsRowRaw }>,
+        );
         return rows;
     }
 
@@ -328,7 +330,7 @@ export class TagRepository {
 
     // IDでタグを取得
     async findById(tagId: number, userId: string): Promise<TagEntity | null> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("tags")
             .select("*")
@@ -365,7 +367,6 @@ export class TagRepository {
             tag_emb?: number[];
         },
     ): Promise<TagEntity> {
-        const supabase = this.supabaseService.getClient();
         const insertData: TagsInsert = {
             user_id: userId,
             tag_name: data.tag_name,
@@ -374,20 +375,8 @@ export class TagRepository {
             color: data.color ?? null,
             tag_emb: (data.tag_emb ?? null) as unknown as TagsInsert["tag_emb"],
         };
-
-        const { data: result, error } = await supabase
-            .from("tags")
-            .insert(
-                insertData as unknown as Database["public"]["Tables"]["tags"]["Insert"],
-            )
-            .select()
-            .single();
-
-        if (error) {
-            this.logger.error(`create failed: ${error.message}`, error);
-            throw error;
-        }
-        return new TagEntity(result as TagsRowRaw);
+        const row = await this.insertTagRow(insertData, "create");
+        return new TagEntity(row);
     }
 
     // 拡張版タグ更新
@@ -402,7 +391,6 @@ export class TagRepository {
             tag_emb: number[];
         }>,
     ): Promise<TagEntity> {
-        const supabase = this.supabaseService.getClient();
         const updateData: Partial<TagsUpdate> = {};
 
         if (data.tag_name !== undefined) updateData.tag_name = data.tag_name;
@@ -425,20 +413,13 @@ export class TagRepository {
         ) {
             await this.ensureParentTagOwned(userId, updateData.parent_tag_id);
         }
-
-        const { data: result, error } = await supabase
-            .from("tags")
-            .update(updateData)
-            .eq("id", tagId)
-            .eq("user_id", userId)
-            .select()
-            .single();
-
-        if (error) {
-            this.logger.error(`update failed: ${error.message}`, error);
-            throw error;
-        }
-        return new TagEntity(result as TagsRowRaw);
+        const row = await this.updateTagRow(
+            tagId,
+            userId,
+            updateData,
+            "update",
+        );
+        return new TagEntity(row);
     }
 
     // 同一親の下でのタグ名重複チェック
@@ -447,7 +428,7 @@ export class TagRepository {
         tagName: string,
         parentTagId: number | null,
     ): Promise<TagEntity | null> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const query = supabase
             .from("tags")
             .select("*")
@@ -478,7 +459,7 @@ export class TagRepository {
     }
 
     async getTagHierarchy(): Promise<TagHierarchyNode[]> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase.rpc(
             "get_tag_hierarchy" as never,
         );
@@ -500,7 +481,7 @@ export class TagRepository {
     }
 
     async getTagSubtree(tagId: number): Promise<TagHierarchyNode | null> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase.rpc(
             "get_tag_subtree" as never,
             { p_tag_id: tagId } as never,
@@ -519,7 +500,7 @@ export class TagRepository {
     }
 
     async getTagPath(tagId: number): Promise<TagPathRow | null> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase.rpc(
             "get_tag_path" as never,
             { p_tag_id: tagId } as never,
@@ -543,7 +524,8 @@ export class TagRepository {
         subscriptionId: number,
         tagIds: number[],
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        if (tagIds.length === 0) return;
+        const supabase = this.getClient();
         const insertData = tagIds.map((tagId) => ({
             user_id: userId,
             user_subscription_id: subscriptionId,
@@ -569,7 +551,8 @@ export class TagRepository {
         feedItemId: number,
         tagIds: number[],
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        if (tagIds.length === 0) return;
+        const supabase = this.getClient();
         const insertData = tagIds.map((tagId) => ({
             user_id: userId,
             feed_item_id: feedItemId,
@@ -587,8 +570,12 @@ export class TagRepository {
     }
 
     // タグで絞り込んだフィードアイテムを取得
-    async getFeedItemsByTags(userId: string, tagIds: number[]) {
-        const supabase = this.supabaseService.getClient();
+    async getFeedItemsByTags(
+        userId: string,
+        tagIds: number[],
+    ): Promise<FeedItemTagWithItemRow[]> {
+        if (tagIds.length === 0) return [];
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("feed_item_tags")
             .select("*, feed_item:feed_items(*)")
@@ -602,12 +589,16 @@ export class TagRepository {
             );
             throw error;
         }
-        return data ?? [];
+        return (data ?? []) as FeedItemTagWithItemRow[];
     }
 
     // タグで絞り込んだサブスクリプションを取得
-    async getSubscriptionsByTags(userId: string, tagIds: number[]) {
-        const supabase = this.supabaseService.getClient();
+    async getSubscriptionsByTags(
+        userId: string,
+        tagIds: number[],
+    ): Promise<SubscriptionTagWithSubscriptionRow[]> {
+        if (tagIds.length === 0) return [];
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("user_subscription_tags")
             .select("*, subscription:user_subscriptions(*)")
@@ -621,7 +612,7 @@ export class TagRepository {
             );
             throw error;
         }
-        return data ?? [];
+        return (data ?? []) as SubscriptionTagWithSubscriptionRow[];
     }
 
     // 複数のフィードアイテムIDに対応するタグを一括で取得し、Map形式で返す
@@ -633,13 +624,13 @@ export class TagRepository {
             return new Map();
         }
 
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data, error } = await supabase
             .from("feed_item_tags")
             .select(
                 `
                 feed_item_id,
-                tag:tags!inner(tag_name)
+                tag:tags!inner(tag_name, soft_deleted)
             `,
             )
             .eq("user_id", userId)
@@ -656,13 +647,14 @@ export class TagRepository {
 
         const tagsMap = new Map<number, string[]>();
         if (data) {
-            for (const row of data) {
+            for (const row of data as FeedItemTagsMapRow[]) {
                 // 型ガード
                 if (
                     typeof row.feed_item_id === "number" &&
                     row.tag &&
                     "tag_name" in row.tag &&
-                    typeof row.tag.tag_name === "string"
+                    typeof row.tag.tag_name === "string" &&
+                    row.tag.soft_deleted !== true
                 ) {
                     if (!tagsMap.has(row.feed_item_id)) {
                         tagsMap.set(row.feed_item_id, []);
@@ -681,11 +673,65 @@ export class TagRepository {
         return error?.code === "PGRST116";
     }
 
+    private getClient() {
+        return this.supabaseService.getClient();
+    }
+
+    private logAndThrow(context: string, error: { message?: string } | null) {
+        const message = error?.message ?? "unknown error";
+        this.logger.error(`${context} failed: ${message}`, error);
+        throw error;
+    }
+
+    private async insertTagRow(
+        insertData: TagsInsert,
+        context: string,
+    ): Promise<TagsRowRaw> {
+        const supabase = this.getClient();
+        const { data, error } = await supabase
+            .from("tags")
+            .insert(toTagsInsertRow(insertData))
+            .select()
+            .single();
+
+        if (error) {
+            this.logAndThrow(context, error);
+        }
+        if (!data) {
+            throw new Error(`${context} failed: no data returned`);
+        }
+        return data as TagsRowRaw;
+    }
+
+    private async updateTagRow(
+        tagId: number,
+        userId: string,
+        updateData: Partial<TagsUpdate>,
+        context: string,
+    ): Promise<TagsRowRaw> {
+        const supabase = this.getClient();
+        const { data, error } = await supabase
+            .from("tags")
+            .update(toTagsUpdateRow(updateData))
+            .eq("id", tagId)
+            .eq("user_id", userId)
+            .select()
+            .single();
+
+        if (error) {
+            this.logAndThrow(context, error);
+        }
+        if (!data) {
+            throw new Error(`${context} failed: no data returned`);
+        }
+        return data as TagsRowRaw;
+    }
+
     private async ensureParentTagOwned(
         userId: string,
         parentTagId: number,
     ): Promise<void> {
-        const supabase = this.supabaseService.getClient();
+        const supabase = this.getClient();
         const { data: parent, error } = await supabase
             .from("tags")
             .select("id")

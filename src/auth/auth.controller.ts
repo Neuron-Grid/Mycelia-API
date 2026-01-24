@@ -44,6 +44,20 @@ import { SupabaseAuthGuard } from "./supabase-auth.guard";
 import { SupabaseUser } from "./supabase-user.decorator";
 import { UserId } from "./user-id.decorator";
 import { WebAuthnService } from "./webauthn.service";
+
+type AuthSessionPayload = {
+    access_token?: string;
+    refresh_token?: string;
+};
+
+type AuthResponsePayload = {
+    user?: User | null;
+    session?: AuthSessionPayload | null;
+};
+
+const ACCESS_TOKEN_COOKIE = "__Host-access_token";
+const REFRESH_TOKEN_COOKIE = "__Secure-refresh_token";
+const REFRESH_TOKEN_FALLBACK_COOKIE = "refresh_token";
 @Controller({
     path: "auth",
     version: "1",
@@ -96,28 +110,17 @@ export class AuthController {
     ): Promise<SuccessResponse<LoginResultDto>> {
         const { email, password } = signInDto;
         const result = await this.authService.signIn(email, password);
-        const authRes = result as {
-            user?: User | null;
-            session?: { access_token?: string; refresh_token?: string } | null;
-        };
-        const mappedUser = mapAuthUserToDto(authRes.user ?? null);
+        const mappedUser = mapAuthUserToDto(this.readAuthUser(result));
+        const tokens = this.readSessionTokens(result);
 
-        // Supabase Sessionからアクセストークン/リフレッシュトークンを取得
-        const accessToken = authRes.session?.access_token ?? "";
-        const refreshToken = authRes.session?.refresh_token ?? "";
-
-        if (!accessToken || !refreshToken) {
+        if (!tokens) {
             // ありえないが保険
             return buildResponse("Login successful (no session)", {
                 user: mappedUser,
             });
         }
 
-        // 認証系レスポンスはキャッシュ禁止
-        res.setHeader("Cache-Control", "no-store, private");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-        setAuthCookies(res, accessToken, refreshToken);
+        setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
 
         // トークンはレスポンスボディに含めない
         return buildResponse("Login successful", {
@@ -200,35 +203,29 @@ export class AuthController {
     ): Promise<SuccessResponse<AckDto>> {
         // 認証が無くてもCookie破棄は必ず実施可能に
         // 可能ならSupabase側セッション失効も試行
-        let result: unknown = { signedOut: false };
+        let result: unknown = null;
         try {
             result = await this.authService.signOut();
         } catch {
             // アクセストークン期限切れ等は無視してCookie破棄を継続
         }
 
-        // 認証系レスポンスはキャッシュ禁止
-        res.setHeader("Cache-Control", "no-store, private");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-
-        // Cookie無効化（Pathが一致しないと削除されない点に注意）
-        res.cookie("__Host-access_token", "", {
+        res.clearCookie(ACCESS_TOKEN_COOKIE, {
             httpOnly: true,
             secure: true,
             sameSite: "lax",
             path: "/",
-            maxAge: 0,
         });
-        res.cookie("__Secure-refresh_token", "", {
+        res.clearCookie(REFRESH_TOKEN_COOKIE, {
             httpOnly: true,
             secure: true,
             sameSite: "lax",
             path: "/api/v1/auth/refresh",
-            maxAge: 0,
         });
 
-        return buildResponse("Logout successful", { ok: !!result });
+        return buildResponse("Logout successful", {
+            ok: this.isSignedOut(result),
+        });
     }
 
     // リフレッシュ
@@ -243,13 +240,11 @@ export class AuthController {
         const cookies = (req as unknown as { cookies?: Record<string, string> })
             .cookies;
         const refreshToken =
-            cookies?.["__Secure-refresh_token"] ?? cookies?.refresh_token;
+            cookies?.[REFRESH_TOKEN_COOKIE] ??
+            cookies?.[REFRESH_TOKEN_FALLBACK_COOKIE];
         if (!refreshToken) {
             res.setHeader("WWW-Authenticate", 'Bearer error="invalid_token"');
-            res.setHeader("Cache-Control", "no-store, private");
-            res.setHeader("Pragma", "no-cache");
-            res.setHeader("Expires", "0");
-            res.status(401);
+            res.status(HttpStatus.UNAUTHORIZED);
             return buildResponse("No refresh token", { refreshed: false });
         }
 
@@ -267,36 +262,8 @@ export class AuthController {
             throw e;
         }
 
-        // 認証系レスポンスはキャッシュ禁止
-        res.setHeader("Cache-Control", "no-store, private");
-        res.setHeader("Pragma", "no-cache");
-        res.setHeader("Expires", "0");
-
-        // Cookie属性
-        const accessCookieOptions = {
-            httpOnly: true as const,
-            secure: true as const,
-            sameSite: "lax" as const,
-            path: "/",
-            maxAge: 15 * 60 * 1000,
-        };
-        const refreshCookieOptions = {
-            httpOnly: true as const,
-            secure: true as const,
-            sameSite: "lax" as const,
-            path: "/api/v1/auth/refresh",
-            maxAge: 30 * 24 * 60 * 60 * 1000,
-        };
-
         // 新しいアクセストークンを返す（必要に応じてリフレッシュも更新）
-        res.cookie("__Host-access_token", access_token, accessCookieOptions);
-        if (refresh_token) {
-            res.cookie(
-                "__Secure-refresh_token",
-                refresh_token,
-                refreshCookieOptions,
-            );
-        }
+        setAuthCookies(res, access_token, refresh_token ?? refreshToken);
 
         return buildResponse("Token refreshed", { refreshed: true });
     }
@@ -416,22 +383,22 @@ export class AuthController {
     @Throttle({
         default: { limit: 5, ttl: 60 },
     })
-    async verifyTotp(
+    verifyTotp(
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<AckDto>> {
-        return await this.handleTotpVerification(dto, res);
+        return this.handleTotpVerification(dto, res);
     }
 
     // 仕様に合わせたTOTP verify新ルート（既存と同実装）
     @TypedRoute.Post("mfa/totp/verify")
     @UseGuards(ThrottlerGuard)
     @Throttle({ default: { limit: 5, ttl: 60 } })
-    async verifyTotpNew(
+    verifyTotpNew(
         @TypedBody() dto: VerifyTotpDto,
         @Res({ passthrough: true }) res: Response,
     ): Promise<SuccessResponse<AckDto>> {
-        return await this.handleTotpVerification(dto, res);
+        return this.handleTotpVerification(dto, res);
     }
 
     private async handleTotpVerification(
@@ -440,12 +407,7 @@ export class AuthController {
     ): Promise<SuccessResponse<AckDto>> {
         const { factorId, code } = dto;
         const result = await this.authService.verifyTotp(factorId, code);
-        const { session } = result as {
-            session?: { access_token?: string; refresh_token?: string };
-        };
-        if (session?.access_token && session?.refresh_token) {
-            setAuthCookies(res, session.access_token, session.refresh_token);
-        }
+        this.applySessionCookies(res, result);
         return buildResponse("TOTP verified successfully", { ok: !!result });
     }
 
@@ -475,8 +437,7 @@ export class AuthController {
         const raw = await this.webauthn.finishRegistration(
             dto.attestationResponse,
         );
-        const data: Record<string, unknown> =
-            (raw as Record<string, unknown>) ?? {};
+        const data = this.normalizeAuthPayload(raw);
         return buildResponse("WebAuthn registration finished", { data });
     }
 
@@ -491,15 +452,9 @@ export class AuthController {
         SuccessResponse<import("@/common/dto/any-json.dto").AnyJsonDto>
     > {
         const raw2 = await this.webauthn.verifyAssertion(dto.assertionResponse);
-        const data: Record<string, unknown> =
-            (raw2 as Record<string, unknown>) ?? {};
+        const data = this.normalizeAuthPayload(raw2);
         // セッションが含まれていれば Cookie 設定
-        const { session } = data as {
-            session?: { access_token?: string; refresh_token?: string };
-        };
-        if (session?.access_token && session?.refresh_token) {
-            setAuthCookies(res, session.access_token, session.refresh_token);
-        }
+        this.applySessionCookies(res, data);
         return buildResponse("WebAuthn assertion verified", { data });
     }
 
@@ -530,5 +485,54 @@ export class AuthController {
     ): Promise<SuccessResponse<AckDto>> {
         const result = await this.authService.disableTotp(dto.factorId);
         return buildResponse("TOTP factor disabled", { ok: !!result });
+    }
+
+    private normalizeAuthPayload(raw: unknown): Record<string, unknown> {
+        return raw && typeof raw === "object"
+            ? (raw as Record<string, unknown>)
+            : {};
+    }
+
+    private applySessionCookies(res: Response, payload: unknown): void {
+        const tokens = this.readSessionTokens(payload);
+        if (!tokens) return;
+        setAuthCookies(res, tokens.accessToken, tokens.refreshToken);
+    }
+
+    private readAuthUser(payload: unknown): User | null {
+        if (!this.isRecord(payload)) return null;
+        const { user } = payload as AuthResponsePayload;
+        return user ?? null;
+    }
+
+    private readSessionTokens(
+        payload: unknown,
+    ): { accessToken: string; refreshToken: string } | null {
+        if (!this.isRecord(payload)) return null;
+        const { session } = payload as AuthResponsePayload;
+        if (!this.isRecord(session)) return null;
+        const accessToken =
+            typeof session.access_token === "string"
+                ? session.access_token
+                : "";
+        const refreshToken =
+            typeof session.refresh_token === "string"
+                ? session.refresh_token
+                : "";
+        if (!accessToken || !refreshToken) return null;
+        return { accessToken, refreshToken };
+    }
+
+    private isSignedOut(result: unknown): boolean {
+        if (!result) return false;
+        if (this.isRecord(result)) {
+            if (typeof result.signedOut === "boolean") return result.signedOut;
+            if ("error" in result && result.error) return false;
+        }
+        return true;
+    }
+
+    private isRecord(value: unknown): value is Record<string, unknown> {
+        return typeof value === "object" && value !== null;
     }
 }

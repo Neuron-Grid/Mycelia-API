@@ -49,8 +49,15 @@ const SKIP_RESULT: SkipResult = { success: true, skipped: true };
 @Injectable()
 export class PodcastQueueProcessor extends WorkerHost {
     private readonly logger = new Logger(PodcastQueueProcessor.name);
+    private readonly jstDateFormatter = new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
     private static readonly GENERATION_LOCK_TTL_MS = 10 * 60_000;
     private static readonly ENHANCEMENT_LOCK_TTL_MS = 5 * 60_000;
+    private static readonly CLEANUP_LOCK_TTL_MS = 5 * 60_000;
 
     constructor(
         private readonly dailySummaryRepository: WorkerDailySummaryRepository,
@@ -165,22 +172,13 @@ export class PodcastQueueProcessor extends WorkerHost {
                         };
                     }
 
-                    const summary = await this.dailySummaryRepository.findById(
-                        summaryId,
-                        userId,
-                    );
-
-                    if (!summary) {
-                        throw new Error(
-                            `Summary not found for user ${userId}, summary ID: ${summaryId}`,
-                        );
-                    }
-
-                    if (!summary.hasScript()) {
-                        throw new Error(
+                    const { summary, scriptText } =
+                        await this.loadSummaryWithScript(
+                            userId,
+                            summaryId,
                             `Summary ${summaryId} does not have a script for TTS generation`,
+                            "Script text is required for podcast generation",
                         );
-                    }
 
                     let episode = existingEpisode;
                     if (!episode) {
@@ -228,24 +226,18 @@ export class PodcastQueueProcessor extends WorkerHost {
                         };
                     }
 
-                    if (!summary.script_text) {
-                        throw new Error(
-                            "Script text is required for podcast generation",
-                        );
-                    }
-
                     this.logger.log(
-                        `Generating TTS audio for script length: ${summary.script_text.length} characters`,
+                        `Generating TTS audio for script length: ${scriptText.length} characters`,
                     );
                     const language = await this.getPodcastLanguage(userId);
                     const audioBuffer =
                         await this.podcastTtsService.generateSpeech(
-                            summary.script_text,
+                            scriptText,
                             language,
                         );
 
                     const estimatedDurationSec =
-                        this.estimateDurationFromScript(summary.script_text);
+                        this.estimateDurationFromScript(scriptText);
 
                     const podcastMetadata = this.buildPodcastMetadata({
                         userId,
@@ -329,29 +321,15 @@ export class PodcastQueueProcessor extends WorkerHost {
                         throw new Error("Episode or audio not found");
                     }
 
-                    const summary = await this.dailySummaryRepository.findById(
-                        episode.summary_id,
-                        userId,
-                    );
-                    if (!summary) {
-                        throw new Error(
-                            `Summary not found for user ${userId}, summary ID: ${episode.summary_id}`,
+                    const { summary, scriptText } =
+                        await this.loadSummaryWithScript(
+                            userId,
+                            episode.summary_id,
+                            `Summary ${episode.summary_id} does not contain a script for regeneration`,
+                            `Summary ${episode.summary_id} does not contain script text`,
                         );
-                    }
-                    if (!summary.hasScript()) {
-                        throw new Error(
-                            `Summary ${summary.id} does not contain a script for regeneration`,
-                        );
-                    }
 
                     const language = await this.getPodcastLanguage(userId);
-
-                    const scriptText = summary.script_text ?? "";
-                    if (!scriptText) {
-                        throw new Error(
-                            `Summary ${summary.id} does not contain script text`,
-                        );
-                    }
 
                     const synthesisOptions =
                         this.buildEnhancementOptions(language);
@@ -438,55 +416,80 @@ export class PodcastQueueProcessor extends WorkerHost {
             `Cleaning up podcasts older than ${daysOld} days for user ${userId}`,
         );
 
-        try {
-            const oldEpisodes =
-                await this.podcastEpisodeRepository.findOldEpisodes(
-                    userId,
-                    daysOld,
-                );
-
-            for (const episode of oldEpisodes) {
-                if (episode.audio_url) {
-                    // R2からファイルを削除
-                    const location =
-                        this.cloudflareR2Service.extractObjectLocationFromUrl(
-                            episode.audio_url,
+        return await this.withUserLock<
+            SkipResult | { success: true; cleanedCount: number }
+        >(
+            userId,
+            PodcastQueueProcessor.CLEANUP_LOCK_TTL_MS,
+            async () => {
+                try {
+                    const oldEpisodes =
+                        await this.podcastEpisodeRepository.findOldEpisodes(
+                            userId,
+                            daysOld,
                         );
-                    const key = location.key;
-                    const bucket = location.bucket ?? undefined;
-                    if (
-                        key &&
-                        this.cloudflareR2Service.isUserFile(key, userId, bucket)
-                    ) {
-                        if (bucket) {
-                            await this.cloudflareR2Service.deleteObject(
-                                key,
-                                bucket,
-                            );
-                        } else {
-                            await this.cloudflareR2Service.deleteObject(key);
+
+                    for (const episode of oldEpisodes) {
+                        if (episode.audio_url) {
+                            // R2からファイルを削除
+                            const location =
+                                this.cloudflareR2Service.extractObjectLocationFromUrl(
+                                    episode.audio_url,
+                                );
+                            const key = location.key;
+                            const bucket = location.bucket ?? undefined;
+                            if (
+                                key &&
+                                this.cloudflareR2Service.isUserFile(
+                                    key,
+                                    userId,
+                                    bucket,
+                                )
+                            ) {
+                                if (bucket) {
+                                    await this.cloudflareR2Service.deleteObject(
+                                        key,
+                                        bucket,
+                                    );
+                                } else {
+                                    await this.cloudflareR2Service.deleteObject(
+                                        key,
+                                    );
+                                }
+                            }
                         }
+
+                        // エピソードをソフト削除
+                        await this.podcastEpisodeRepository.softDelete(
+                            episode.id,
+                            userId,
+                        );
                     }
+
+                    this.logger.log(
+                        `Cleaned up ${oldEpisodes.length} old podcast episodes for user ${userId}`,
+                    );
+                    return {
+                        success: true,
+                        cleanedCount: oldEpisodes.length,
+                    };
+                } catch (error) {
+                    this.logger.error(
+                        `Failed to cleanup old podcasts: ${this.getErrorMessage(
+                            error,
+                        )}`,
+                        this.getErrorStack(error),
+                    );
+                    throw error;
                 }
-
-                // エピソードをソフト削除
-                await this.podcastEpisodeRepository.softDelete(
-                    episode.id,
-                    userId,
+            },
+            () => {
+                this.logger.warn(
+                    `Skipped cleanup because another podcast job is running for user ${userId}`,
                 );
-            }
-
-            this.logger.log(
-                `Cleaned up ${oldEpisodes.length} old podcast episodes for user ${userId}`,
-            );
-            return { success: true, cleanedCount: oldEpisodes.length };
-        } catch (error) {
-            this.logger.error(
-                `Failed to cleanup old podcasts: ${this.getErrorMessage(error)}`,
-                this.getErrorStack(error),
-            );
-            throw error;
-        }
+                return SKIP_RESULT;
+            },
+        );
     }
 
     private estimateDurationFromScript(script: string): number {
@@ -586,6 +589,31 @@ export class PodcastQueueProcessor extends WorkerHost {
         };
     }
 
+    private async loadSummaryWithScript(
+        userId: string,
+        summaryId: number,
+        missingScriptMessage: string,
+        missingScriptTextMessage: string,
+    ) {
+        const summary = await this.dailySummaryRepository.findById(
+            summaryId,
+            userId,
+        );
+        if (!summary) {
+            throw new Error(
+                `Summary not found for user ${userId}, summary ID: ${summaryId}`,
+            );
+        }
+        if (!summary.hasScript()) {
+            throw new Error(missingScriptMessage);
+        }
+        const scriptText = summary.script_text ?? "";
+        if (!scriptText) {
+            throw new Error(missingScriptTextMessage);
+        }
+        return { summary, scriptText };
+    }
+
     private getErrorMessage(error: unknown): string {
         return error instanceof Error ? error.message : String(error);
     }
@@ -594,17 +622,26 @@ export class PodcastQueueProcessor extends WorkerHost {
         return error instanceof Error ? error.stack : undefined;
     }
 
+    private formatSummaryDate(summaryDate: string): string {
+        const date = this.parseJstDate(summaryDate);
+        if (!date) return summaryDate;
+        return this.jstDateFormatter.format(date);
+    }
+
+    private parseJstDate(summaryDate: string): Date | null {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(summaryDate)) {
+            return null;
+        }
+        const date = new Date(`${summaryDate}T00:00:00+09:00`);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
     // プライベートメソッド: エピソードタイトル生成
     private generateEpisodeTitle(
         summaryTitle: string | null,
         summaryDate: string,
     ): string {
-        const date = new Date(summaryDate);
-        const formattedDate = date.toLocaleDateString("ja-JP", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
+        const formattedDate = this.formatSummaryDate(summaryDate);
 
         if (summaryTitle) {
             return `${formattedDate} - ${summaryTitle}`;
