@@ -11,6 +11,7 @@ import {
     createCsrfMiddleware,
     createHttpsEnforceMiddleware,
 } from "@/common/middleware/security.middleware";
+import { createRequestLoggingMiddleware } from "@/common/middleware/request-logging.middleware";
 import { APP_ENV_TOKEN, type AppEnv } from "@/config/app-env";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 
@@ -31,6 +32,9 @@ async function bootstrap() {
         origin: corsConfig.origins.length ? corsConfig.origins : false,
         credentials: corsConfig.credentials,
     });
+
+    // request id + access logging
+    app.use(createRequestLoggingMiddleware());
 
     // helmet + HSTS 強化（prod環境のみ preload/subdomainsを有効化）
     const isProd = appEnv.nodeEnv === "production";

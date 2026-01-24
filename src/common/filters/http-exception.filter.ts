@@ -20,6 +20,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<Response>();
         const request = ctx.getRequest<Request>();
+        const requestId = (request as Request & { requestId?: string }).requestId;
 
         const isProd = this.appEnv.deployStage === "production";
         const isDebug = !isProd;
@@ -50,10 +51,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
             error: clientError,
             path: request.url,
             timestamp: new Date().toISOString(),
+            requestId: requestId ?? null,
         };
 
         this.logger.error(
-            `HTTP Status: ${status} Error: ${clientError} Message: ${JSON.stringify(extractedMessage)}`,
+            `HTTP Status: ${status} Error: ${clientError} Message: ${JSON.stringify(extractedMessage)} RequestId: ${requestId ?? "-"}`,
             exception instanceof Error ? exception.stack : "",
         );
 
