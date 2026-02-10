@@ -1,5 +1,5 @@
 import { InjectQueue, Processor, WorkerHost } from "@nestjs/bullmq";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Job, Queue } from "bullmq";
 import { buildSummaryJobId } from "@/common/utils/job-id.util";
 import type { WorkerPodcastSchedule } from "@/shared/settings/worker-user-settings.repository";
@@ -25,14 +25,23 @@ export class MaintenanceQueueProcessor extends WorkerHost {
     constructor(
         private readonly maintenance: MaintenanceService,
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
-        @InjectQueue("embeddingQueue") private readonly embeddingQueue: Queue,
-        @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
-        @InjectQueue("script-generate") private readonly scriptQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
-        @InjectQueue("accountDeletionQueue")
-        private readonly accountDeletionQueue: Queue,
-        @InjectQueue("maintenanceQueue")
-        private readonly maintenanceQueue: Queue,
+        @Optional()
+        @InjectQueue("embeddingQueue")
+        private readonly embeddingQueue: Queue | null,
+        @Optional()
+        @InjectQueue("summary-generate")
+        private readonly summaryQueue: Queue | null,
+        @Optional()
+        @InjectQueue("script-generate")
+        private readonly scriptQueue: Queue | null,
+        @Optional()
+        @InjectQueue("podcastQueue")
+        private readonly podcastQueue: Queue | null,
+        @InjectQueue(
+            "accountDeletionQueue",
+        ) private readonly accountDeletionQueue: Queue,
+        @InjectQueue("maintenanceQueue") private readonly maintenanceQueue:
+            Queue,
         private readonly userSettingsRepo: WorkerUserSettingsRepository,
         private readonly time: JstDateService,
     ) {
@@ -49,13 +58,14 @@ export class MaintenanceQueueProcessor extends WorkerHost {
             case "cleanupQueues": {
                 // 24hより古い失敗ジョブを各キューでクリーン
                 const dayMs = 24 * 60 * 60 * 1000;
-                await Promise.allSettled([
-                    this.feedQueue.clean(dayMs, 50, "failed"),
-                    this.embeddingQueue.clean(dayMs, 50, "failed"),
-                    this.summaryQueue.clean(dayMs, 50, "failed"),
-                    this.scriptQueue.clean(dayMs, 50, "failed"),
-                    this.podcastQueue.clean(dayMs, 50, "failed"),
-                ]);
+                const cleanTargets: Queue[] = [this.feedQueue];
+                if (this.embeddingQueue) cleanTargets.push(this.embeddingQueue);
+                if (this.summaryQueue) cleanTargets.push(this.summaryQueue);
+                if (this.scriptQueue) cleanTargets.push(this.scriptQueue);
+                if (this.podcastQueue) cleanTargets.push(this.podcastQueue);
+                await Promise.allSettled(
+                    cleanTargets.map((q) => q.clean(dayMs, 50, "failed")),
+                );
                 this.logger.log("Failed jobs cleanup completed across queues");
                 return { success: true };
             }
@@ -73,8 +83,9 @@ export class MaintenanceQueueProcessor extends WorkerHost {
 
     private hashToRange(key: string, min: number, max: number) {
         let h = 0;
-        for (let i = 0; i < key.length; i++)
+        for (let i = 0; i < key.length; i++) {
             h = (h * 31 + key.charCodeAt(i)) >>> 0;
+        }
         const span = max - min + 1;
         return min + (h % span);
     }
@@ -110,19 +121,18 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         const h = Number.parseInt(parts.hour, 10);
         const m = Number.parseInt(parts.minute, 10);
         const dateStr = this.time.formatDate(now);
-        const effectiveTickId =
-            tickId ?? job.id ?? `tick-${job.timestamp ?? Date.now()}`;
-        const isPrimaryTick =
-            processSummary &&
+        const effectiveTickId = tickId ?? job.id ??
+            `tick-${job.timestamp ?? Date.now()}`;
+        const isPrimaryTick = processSummary &&
             processPodcast &&
             summaryOffset === 0 &&
             podcastOffset === 0;
         const weekday = this.time.getWeekday(now);
 
         // 1) ユーザー毎のサマリ実行判定（summary: ベース時刻そのまま）
-        if (processSummary) {
-            const summaries =
-                await this.userSettingsRepo.getAllEnabledSummarySchedules({
+        if (processSummary && this.summaryQueue) {
+            const summaries = await this.userSettingsRepo
+                .getAllEnabledSummarySchedules({
                     offset: summaryOffset,
                     limit: MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE,
                 });
@@ -154,8 +164,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                 await this.maintenanceQueue.add(
                     "scheduleTick",
                     {
-                        summaryOffset:
-                            summaryOffset +
+                        summaryOffset: summaryOffset +
                             MaintenanceQueueProcessor.SUMMARY_PAGE_SIZE,
                         podcastOffset,
                         processSummary: true,
@@ -177,9 +186,9 @@ export class MaintenanceQueueProcessor extends WorkerHost {
 
         // 2) ユーザー毎のポッドキャスト実行判定（podcast: summary の +10 分）
         let podcasts: WorkerPodcastSchedule[] = [];
-        if (processPodcast) {
-            podcasts =
-                await this.userSettingsRepo.getAllEnabledPodcastSchedules({
+        if (processPodcast && this.podcastQueue) {
+            podcasts = await this.userSettingsRepo
+                .getAllEnabledPodcastSchedules({
                     offset: podcastOffset,
                     limit: MaintenanceQueueProcessor.PODCAST_PAGE_SIZE,
                 });
@@ -210,8 +219,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
                     "scheduleTick",
                     {
                         summaryOffset: 0,
-                        podcastOffset:
-                            podcastOffset +
+                        podcastOffset: podcastOffset +
                             MaintenanceQueueProcessor.PODCAST_PAGE_SIZE,
                         processSummary: false,
                         processPodcast: true,
@@ -231,7 +239,7 @@ export class MaintenanceQueueProcessor extends WorkerHost {
         }
 
         // 3) 04:00 に旧ポッドキャストをクリーンアップ
-        if (h === 4 && m === 0 && processPodcast) {
+        if (h === 4 && m === 0 && processPodcast && this.podcastQueue) {
             const daysOld = 30;
             for (const { userId } of podcasts) {
                 await this.podcastQueue.add(

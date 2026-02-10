@@ -6,7 +6,6 @@
 import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { readRuntimeFlag } from "@test-utils/app-env";
-import { jest } from "@test-utils/jest-globals";
 
 // BullMQはE2Eでは外部接続を行わないようスタブ化
 jest.mock("@nestjs/bullmq", () => {

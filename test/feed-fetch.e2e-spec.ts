@@ -1,7 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { INestApplication } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { jest } from "@test-utils/jest-globals";
 import nock from "nock";
 
 // BullMQスタブ（既存E2Eと同様）
@@ -112,7 +111,8 @@ describe("FeedFetchService (e2e)", () => {
 
     it("fetches and parses gzip RSS end-to-end", async () => {
         const feed = app.get(FeedFetchService);
-        const xml = `<?xml version="1.0"?><rss><channel><title>E2E</title><item><title>X</title></item></channel></rss>`;
+        const xml =
+            `<?xml version="1.0"?><rss><channel><title>E2E</title><item><title>X</title></item></channel></rss>`;
         const gz = gzipSync(Buffer.from(xml));
         nock("https://example.com").get("/rss.gz").reply(200, gz, {
             "Content-Type": "application/rss+xml",

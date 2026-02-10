@@ -103,20 +103,24 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
+    "rootDir": ".",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/test/unit"
+    ],
+    "testRegex": "test/unit/.*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "src/**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^src/(.*)$": "<rootDir>/$1",
-      "^@/(.*)$": "<rootDir>/$1",
-      "^@test-utils/(.*)$": "<rootDir>/../test/utils/$1"
+      "^src/(.*)$": "<rootDir>/src/$1",
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^@test-utils/(.*)$": "<rootDir>/test/utils/$1"
     }
   },
   "packageManager": "pnpm@10.25.0"

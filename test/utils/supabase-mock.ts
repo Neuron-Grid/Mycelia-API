@@ -1,4 +1,3 @@
-import { jest } from "@test-utils/jest-globals";
 import type { SupabaseRequestService } from "@/supabase-request.service";
 
 export type SupabaseTableChain = {

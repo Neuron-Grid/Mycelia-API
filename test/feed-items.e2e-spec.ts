@@ -8,7 +8,6 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@supabase/supabase-js";
 import { readRawEnv } from "@test-utils/app-env";
-import { jest } from "@test-utils/jest-globals";
 import type { Request } from "express";
 import type { SupabaseConfig } from "@/config/app-env";
 import { FeedItemRepository } from "@/feed/infrastructure/feed-item.repository";
@@ -84,8 +83,8 @@ describe("feed_items link_hash trigger (e2e)", () => {
             testPassword = `Passw0rd!${suffix.slice(0, 8)}`;
             const username = `feed_items_e2e_${suffix.slice(0, 8)}`;
 
-            const { data: userData, error: createUserError } =
-                await adminClient.auth.admin.createUser({
+            const { data: userData, error: createUserError } = await adminClient
+                .auth.admin.createUser({
                     email: testEmail,
                     password: testPassword,
                     email_confirm: true,
@@ -111,7 +110,7 @@ describe("feed_items link_hash trigger (e2e)", () => {
             if (primarySubError || !primarySub?.id) {
                 throw (
                     primarySubError ??
-                    new Error("user_subscriptions作成に失敗しました")
+                        new Error("user_subscriptions作成に失敗しました")
                 );
             }
             primarySubscriptionId = primarySub.id;
@@ -129,20 +128,22 @@ describe("feed_items link_hash trigger (e2e)", () => {
             if (secondarySubError || !secondarySub?.id) {
                 throw (
                     secondarySubError ??
-                    new Error("secondary user_subscriptions作成に失敗しました")
+                        new Error(
+                            "secondary user_subscriptions作成に失敗しました",
+                        )
                 );
             }
             secondarySubscriptionId = secondarySub.id;
 
-            const { data: signInData, error: signInError } =
-                await anonClient.auth.signInWithPassword({
+            const { data: signInData, error: signInError } = await anonClient
+                .auth.signInWithPassword({
                     email: testEmail,
                     password: testPassword,
                 });
             if (signInError || !signInData.session?.access_token) {
                 throw (
                     signInError ??
-                    new Error("テストユーザーのサインインに失敗しました")
+                        new Error("テストユーザーのサインインに失敗しました")
                 );
             }
             accessToken = signInData.session.access_token;
@@ -194,22 +195,19 @@ describe("feed_items link_hash trigger (e2e)", () => {
         const buildPayload = (
             overrides: Partial<FeedItemsInsertWithoutHash> = {},
         ): FeedItemInsertPayload => ({
-            user_subscription_id:
-                overrides.user_subscription_id ?? primarySubscriptionId,
+            user_subscription_id: overrides.user_subscription_id ??
+                primarySubscriptionId,
             user_id: overrides.user_id ?? testUserId,
             title: overrides.title ?? `title-${randomUUID()}`,
-            link:
-                overrides.link ??
+            link: overrides.link ??
                 `https://example.com/items/${randomUUID().slice(0, 8)}`,
             description: overrides.description ?? "E2E fixture",
-            canonical_url:
-                overrides.canonical_url === undefined
-                    ? null
-                    : overrides.canonical_url,
-            published_at:
-                overrides.published_at === undefined
-                    ? PUBLISHED_AT
-                    : overrides.published_at,
+            canonical_url: overrides.canonical_url === undefined
+                ? null
+                : overrides.canonical_url,
+            published_at: overrides.published_at === undefined
+                ? PUBLISHED_AT
+                : overrides.published_at,
         });
 
         const insertFeedItemOrThrow = async (
@@ -231,8 +229,9 @@ describe("feed_items link_hash trigger (e2e)", () => {
                 .eq("user_subscription_id", subscriptionId)
                 .eq("title", title)
                 .single();
-            if (error || !data)
+            if (error || !data) {
                 throw error ?? new Error("feed_items取得に失敗");
+            }
             return data;
         };
 
@@ -271,7 +270,8 @@ describe("feed_items link_hash trigger (e2e)", () => {
             const { repository, client } = createRequestScopedServices();
             const title = `case-b-${randomUUID()}`;
             const link = `https://example.com/case-b/${randomUUID()}`;
-            const canonicalRaw = `  HTTPS://Example.com/Canonical-${randomUUID()}  `;
+            const canonicalRaw =
+                `  HTTPS://Example.com/Canonical-${randomUUID()}  `;
             const payload = buildPayload({
                 title,
                 link,
@@ -363,7 +363,8 @@ describe("feed_items link_hash trigger (e2e)", () => {
             );
 
             const anotherTitle = `case-e-another-${randomUUID()}`;
-            const anotherLink = `https://example.com/update/${randomUUID()}-other`;
+            const anotherLink =
+                `https://example.com/update/${randomUUID()}-other`;
             await insertFeedItemOrThrow(
                 repository,
                 buildPayload({ title: anotherTitle, link: anotherLink }),

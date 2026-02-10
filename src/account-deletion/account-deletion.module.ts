@@ -4,17 +4,34 @@ import { Module } from "@nestjs/common";
 import { AccountDeletionQueueProcessor } from "@/account-deletion/account-deletion.processor";
 import { AccountDeletionService } from "@/account-deletion/account-deletion.service";
 import { AuthModule } from "@/auth/auth.module";
-import { PodcastCoreModule } from "@/podcast/core/podcast-core.module";
 import { DistributedLockModule } from "@/shared/lock/distributed-lock.module";
 import { RedisModule } from "@/shared/redis/redis.module";
 import { RedisService } from "@/shared/redis/redis.service";
+
+// オプション機能の条件付きロード
+const optionalImports: Array<import("@nestjs/common").Type> = [];
+const optionalProviders: import("@nestjs/common").Provider[] = [];
+if (process.env.ENABLE_OPTIONAL_MODULES !== "false") {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    optionalImports.push(
+        require("@/podcast/core/podcast-core.module").PodcastCoreModule,
+    );
+    // CloudflareR2Service は PodcastCoreModule からクラストークンで export される
+    // AccountDeletionService は文字列トークンで @Inject するため alias を登録
+    const R2Class =
+        require("@/podcast/cloudflare-r2.service").CloudflareR2Service;
+    optionalProviders.push({
+        provide: "CloudflareR2Service",
+        useExisting: R2Class,
+    });
+}
 
 @Module({
     imports: [
         RedisModule,
         AuthModule,
-        PodcastCoreModule, // CloudflareR2Service を提供
         DistributedLockModule,
+        ...optionalImports,
         BullModule.registerQueueAsync({
             name: "accountDeletionQueue",
             imports: [RedisModule],
@@ -30,7 +47,11 @@ import { RedisService } from "@/shared/redis/redis.service";
             inject: [RedisService],
         }),
     ],
-    providers: [AccountDeletionService, AccountDeletionQueueProcessor],
+    providers: [
+        AccountDeletionService,
+        AccountDeletionQueueProcessor,
+        ...optionalProviders,
+    ],
     exports: [BullModule],
 })
 export class AccountDeletionModule {}

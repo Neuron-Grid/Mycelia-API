@@ -13,7 +13,6 @@ import {
     readRuntimeFlag,
     resetTestAppEnv,
 } from "@test-utils/app-env";
-import { jest } from "@test-utils/jest-globals";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { AppApiModule } from "@/app.api.module";
@@ -308,7 +307,7 @@ describeOrSkip("Tags / Feeds / Auth happy-path (e2e)", () => {
     const extractXsrfFrom = (setCookieHeader: string[] | undefined) => {
         if (!setCookieHeader) return null;
         const xsrfCookie = setCookieHeader.find((c) =>
-            c.startsWith("XSRF-TOKEN="),
+            c.startsWith("XSRF-TOKEN=")
         );
         if (!xsrfCookie) return null;
         const match = xsrfCookie.match(/XSRF-TOKEN=([^;]+)/);

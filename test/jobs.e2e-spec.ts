@@ -1,5 +1,4 @@
 import "@/setup/nestia";
-import { jest } from "@test-utils/jest-globals";
 
 jest.mock("@nestia/core", () => ({
     TypedRoute: {
@@ -89,7 +88,7 @@ describe("JobsAdminController retryAll validation", () => {
             pipe.transform(
                 { max: 1000 },
                 { type: "body", metatype: RetryAllDto },
-            ),
+            )
         ).rejects.toBeInstanceOf(BadRequestException);
     });
 });

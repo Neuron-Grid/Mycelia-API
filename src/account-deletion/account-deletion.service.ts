@@ -1,6 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { SupabaseAuthCacheService } from "@/auth/supabase-auth-cache.service";
-import { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
+import type { CloudflareR2Service } from "@/podcast/cloudflare-r2.service";
 import { DistributedLockService } from "@/shared/lock/distributed-lock.service";
 import { SupabaseAdminService } from "@/shared/supabase-admin.service";
 
@@ -10,7 +10,9 @@ export class AccountDeletionService {
 
     constructor(
         private readonly admin: SupabaseAdminService,
-        private readonly r2: CloudflareR2Service,
+        @Optional()
+        @Inject("CloudflareR2Service")
+        private readonly r2: CloudflareR2Service | null,
         private readonly lock: DistributedLockService,
         private readonly authCache: SupabaseAuthCacheService,
     ) {}
@@ -108,8 +110,8 @@ export class AccountDeletionService {
                 const updatedIso = (
                     s.updated_at ? new Date(s.updated_at) : new Date(0)
                 ).toISOString();
-                const isEligible =
-                    Boolean(s.soft_deleted) && updatedIso <= sevenDaysAgoIso;
+                const isEligible = Boolean(s.soft_deleted) &&
+                    updatedIso <= sevenDaysAgoIso;
                 const deletedAtIso =
                     (userRow as { deleted_at?: string | null } | null)
                         ?.deleted_at ?? undefined;
@@ -125,7 +127,9 @@ export class AccountDeletionService {
                 })();
                 if (!isEligible || !deletedAtEligible) {
                     this.logger.log(
-                        `Skip deletion (not eligible) for ${userId}: soft_deleted=${String(s.soft_deleted)} updated_at=${s.updated_at} deleted_at=${deletedAtIso}`,
+                        `Skip deletion (not eligible) for ${userId}: soft_deleted=${
+                            String(s.soft_deleted)
+                        } updated_at=${s.updated_at} deleted_at=${deletedAtIso}`,
                     );
                     return {
                         r2Deleted: false,
@@ -135,10 +139,13 @@ export class AccountDeletionService {
                 }
             }
 
-            // 1) R2削除（冪等）
-            await this.r2.deleteUserPodcasts(userId);
-            // R2検証: プレフィックスが空であること
-            const empty = await this.verifyR2Empty(userId);
+            // 1) R2削除（冪等）— オプション機能が無効な場合はスキップ
+            let empty = true;
+            if (this.r2) {
+                await this.r2.deleteUserPodcasts(userId);
+                // R2検証: プレフィックスが空であること
+                empty = await this.verifyR2Empty(userId);
+            }
 
             // 2) Auth+DB削除（CASCADE）
             let authDeleted = false;
@@ -147,7 +154,9 @@ export class AccountDeletionService {
                 authDeleted = true;
             } catch (e) {
                 this.logger.error(
-                    `auth.admin.deleteUser failed for ${userId}: ${(e as Error).message}`,
+                    `auth.admin.deleteUser failed for ${userId}: ${
+                        (e as Error).message
+                    }`,
                 );
             }
 
@@ -163,6 +172,7 @@ export class AccountDeletionService {
     }
 
     private async verifyR2Empty(userId: string): Promise<boolean> {
+        if (!this.r2) return true;
         const retries = 3;
         const baseDelayMs = 200;
         for (let i = 0; i < retries; i++) {
@@ -171,7 +181,9 @@ export class AccountDeletionService {
                 if (empty) return true;
             } catch (e) {
                 this.logger.warn(
-                    `isUserNamespaceEmpty failed (attempt ${i + 1}): ${(e as Error).message}`,
+                    `isUserNamespaceEmpty failed (attempt ${i + 1}): ${
+                        (e as Error).message
+                    }`,
                 );
             }
             await new Promise((r) => setTimeout(r, baseDelayMs * (i + 1)));
