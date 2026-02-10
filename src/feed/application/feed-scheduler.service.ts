@@ -1,5 +1,5 @@
 import { InjectQueue } from "@nestjs/bullmq";
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import { Queue } from "bullmq";
 import { JstDateService } from "@/shared/time/jst-date.service";
 
@@ -28,8 +28,12 @@ export class FeedSchedulerService {
 
     constructor(
         @InjectQueue("feedQueue") private readonly feedQueue: Queue,
-        @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        @Optional()
+        @InjectQueue("summary-generate")
+        private readonly summaryQueue: Queue | null,
+        @Optional()
+        @InjectQueue("podcastQueue")
+        private readonly podcastQueue: Queue | null,
         private readonly time: JstDateService,
     ) {}
 
@@ -69,6 +73,9 @@ export class FeedSchedulerService {
 
     // 手動で要約生成をトリガー（必要時のみ利用）
     async triggerSummaryGeneration(userId: string, date?: string) {
+        if (!this.summaryQueue) {
+            return { jobId: null, message: "Summary module is not enabled" };
+        }
         const summaryDate = date || this.time.formatDate(new Date());
 
         this.logger.log(
@@ -91,6 +98,9 @@ export class FeedSchedulerService {
 
     // 手動でポッドキャスト生成をトリガー（必要時のみ利用）
     async triggerPodcastGeneration(userId: string, summaryId: number) {
+        if (!this.podcastQueue) {
+            return { jobId: null, message: "Podcast module is not enabled" };
+        }
         this.logger.log(
             `Manually triggering podcast generation for user ${userId}, summary ${summaryId}`,
         );
@@ -115,8 +125,8 @@ export class FeedSchedulerService {
     async getQueueStats() {
         const [feedStats, summaryStats, podcastStats] = await Promise.all([
             this.feedQueue.getJobCounts(),
-            this.summaryQueue.getJobCounts(),
-            this.podcastQueue.getJobCounts(),
+            this.summaryQueue?.getJobCounts() ?? null,
+            this.podcastQueue?.getJobCounts() ?? null,
         ]);
 
         return {
@@ -132,12 +142,21 @@ export class FeedSchedulerService {
         this.logger.log("Cleaning up failed jobs...");
 
         try {
-            await Promise.all([
+            const cleanups: Promise<unknown>[] = [
                 // 24時間前の失敗ジョブを10個まで削除
                 this.feedQueue.clean(24 * 60 * 60 * 1000, 10, "failed"),
-                this.summaryQueue.clean(24 * 60 * 60 * 1000, 5, "failed"),
-                this.podcastQueue.clean(24 * 60 * 60 * 1000, 5, "failed"),
-            ]);
+            ];
+            if (this.summaryQueue) {
+                cleanups.push(
+                    this.summaryQueue.clean(24 * 60 * 60 * 1000, 5, "failed"),
+                );
+            }
+            if (this.podcastQueue) {
+                cleanups.push(
+                    this.podcastQueue.clean(24 * 60 * 60 * 1000, 5, "failed"),
+                );
+            }
+            await Promise.all(cleanups);
 
             this.logger.log("Failed job cleanup completed");
         } catch (error) {

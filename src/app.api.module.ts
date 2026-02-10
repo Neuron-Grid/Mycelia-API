@@ -7,40 +7,39 @@ import { TimeModule } from "@/shared/time/time.module";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
-import { EmbeddingModule } from "./embedding/embedding.module";
 import { FavoriteModule } from "./favorite/favorite.module";
 import { FeedModule } from "./feed/feed.module";
 import { JobsModule } from "./jobs/jobs.module";
-import { LlmModule } from "./llm/llm.module";
-import { PodcastModule } from "./podcast/podcast.module";
-import { SearchModule } from "./search/search.module";
 import { SettingsModule } from "./settings/settings.module";
-import { SummaryModule } from "./summary/summary.module";
 import { SupabaseRequestModule } from "./supabase-request.module";
 import { TagModule } from "./tag/tag.module";
+
+// オプション機能の条件付きロード
+const optionalModules: Array<import("@nestjs/common").Type> = [];
+if (process.env.ENABLE_OPTIONAL_MODULES !== "false") {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    optionalModules.push(
+        require("./embedding/embedding.module").EmbeddingModule,
+        require("./llm/llm.module").LlmModule,
+        require("./podcast/podcast.module").PodcastModule,
+        require("./search/search.module").SearchModule,
+        require("./summary/summary.module").SummaryModule,
+    );
+}
 
 @Module({
     imports: [
         EnvModule,
         SupabaseRequestModule,
         TimeModule,
-        // FeedModuleを読み込み
+        // コアモジュール
         FeedModule,
-        // AuthModule (認証周り)
         AuthModule,
         TagModule,
         FavoriteModule,
-        // ポッドキャスト機能
-        PodcastModule,
-        // LLM (Gemini) 機能
-        LlmModule,
-        // ベクトル検索機能
-        SearchModule,
-        // ベクトル埋め込みバッチ処理機能
-        EmbeddingModule,
-        // Summary Module
-        SummaryModule,
-        // Daily jobs scheduler (BullMQ repeatable)
+        // オプション機能（ENABLE_OPTIONAL_MODULES=false で無効化可能）
+        ...optionalModules,
+        // 共通モジュール
         JobsModule,
         SettingsModule,
         AuditLogModule,

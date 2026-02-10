@@ -14,7 +14,9 @@ import { FeedQueueProcessor } from "./feed-queue.processor";
 import { FeedQueueScanProcessor } from "./feed-queue.scan.processor";
 import { FeedQueueService } from "./feed-queue.service";
 
-const workerImports = IS_WORKER_APP ? [EmbeddingQueueModule] : [];
+const optionalEnabled = process.env.ENABLE_OPTIONAL_MODULES !== "false";
+const workerImports =
+    IS_WORKER_APP && optionalEnabled ? [EmbeddingQueueModule] : [];
 const workerProviders = IS_WORKER_APP
     ? [
           FeedQueueProcessor,

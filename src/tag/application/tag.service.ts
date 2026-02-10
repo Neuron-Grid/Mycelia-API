@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { Database } from "@/types/schema";
 import { TagRepository } from "../infrastructure/tag.repository";
@@ -9,7 +9,9 @@ type TagsUpdate = Database["public"]["Tables"]["tags"]["Update"];
 export class TagService {
     constructor(
         private readonly tagRepo: TagRepository,
-        private readonly embeddingQueueService: EmbeddingQueueService,
+        @Optional()
+        @Inject(EmbeddingQueueService)
+        private readonly embeddingQueueService: EmbeddingQueueService | null,
     ) {}
 
     async getAllTagsForUser(userId: string) {
@@ -22,7 +24,7 @@ export class TagService {
         parentTagId?: number | null,
     ) {
         const tag = await this.tagRepo.createTag(userId, tagName, parentTagId);
-        await this.embeddingQueueService.addSingleEmbeddingJob(
+        await this.embeddingQueueService?.addSingleEmbeddingJob(
             userId,
             tag.id,
             "tags",
@@ -51,7 +53,7 @@ export class TagService {
             fields.parent_tag_id = newParentTagId;
         }
         const updated = await this.tagRepo.updateTag(userId, tagId, fields);
-        await this.embeddingQueueService.addSingleEmbeddingJob(
+        await this.embeddingQueueService?.addSingleEmbeddingJob(
             userId,
             tagId,
             "tags",

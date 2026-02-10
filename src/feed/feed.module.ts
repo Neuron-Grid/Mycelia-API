@@ -2,12 +2,9 @@ import { Module } from "@nestjs/common";
 import { AuthModule } from "@/auth/auth.module";
 import { FavoriteRepository } from "@/favorite/infrastructure/favorite.repository";
 import { FeedQueueModule } from "@/feed/queue/feed-queue.module";
-import { LlmModule } from "@/llm/llm.module";
-import { PodcastQueueModule } from "@/podcast/queue/podcast-queue.module";
 import { UserSettingsRepository } from "@/shared/settings/user-settings.repository";
 import { SupabaseRequestModule } from "@/supabase-request.module";
 import { TagRepository } from "@/tag/infrastructure/tag.repository";
-import { EmbeddingModule } from "../embedding/embedding.module";
 import { FavoriteModule } from "../favorite/favorite.module";
 import { TagModule } from "../tag/tag.module";
 import { FeedController } from "./application/feed.controller";
@@ -23,15 +20,10 @@ import { SubscriptionRepository } from "./infrastructure/subscription.repository
     imports: [
         SupabaseRequestModule,
         AuthModule,
-        EmbeddingModule,
         FavoriteModule,
         TagModule,
         // for @InjectQueue("feedQueue")
         FeedQueueModule,
-        // for @InjectQueue("summary-generate")
-        LlmModule,
-        // for @InjectQueue("podcastQueue")
-        PodcastQueueModule,
     ],
     controllers: [FeedController],
     providers: [

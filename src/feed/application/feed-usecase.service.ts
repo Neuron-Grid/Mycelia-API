@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { Item as FeedparserItem, Meta } from "feedparser";
 import { EmbeddingQueueService } from "@/embedding/queue/embedding-queue.service";
 import { WorkerFeedItemRepository } from "@/feed/infrastructure/worker-feed-item.repository";
@@ -90,7 +90,9 @@ export class FeedUseCaseService {
         private readonly fetchSvc: FeedFetchService,
         private readonly workerSubs: WorkerSubscriptionRepository,
         private readonly workerItems: WorkerFeedItemRepository,
-        private readonly embeddingQueueService: EmbeddingQueueService,
+        @Optional()
+        @Inject(EmbeddingQueueService)
+        private readonly embeddingQueueService: EmbeddingQueueService | null,
     ) {}
 
     fetchFeedMeta(
@@ -108,8 +110,9 @@ export class FeedUseCaseService {
             userId,
             subscriptionId,
         );
-        if (!sub)
+        if (!sub) {
             throw new Error(`Subscription not found (id=${subscriptionId})`);
+        }
         const { feed_url: feedUrl, feed_title: feedTitle } = sub;
         const { meta, items } = await this.fetchSvc.parseFeed(feedUrl);
         let inserted = 0;
@@ -138,7 +141,7 @@ export class FeedUseCaseService {
         await this.workerSubs.markFetched(userId, subscriptionId, fetchedAt);
 
         // 新しいフィードアイテムが追加された場合、埋め込み生成ジョブをキューに追加
-        if (inserted > 0) {
+        if (inserted > 0 && this.embeddingQueueService) {
             try {
                 await this.embeddingQueueService.addUserEmbeddingBatchJob(
                     userId,

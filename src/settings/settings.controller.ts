@@ -1,6 +1,12 @@
 import { TypedBody, TypedRoute } from "@nestia/core";
 import { InjectQueue } from "@nestjs/bullmq";
-import { BadRequestException, Controller, UseGuards } from "@nestjs/common";
+import {
+    BadRequestException,
+    Controller,
+    Inject,
+    Optional,
+    UseGuards,
+} from "@nestjs/common";
 
 import { User } from "@supabase/supabase-js";
 import { Queue } from "bullmq";
@@ -19,8 +25,8 @@ import {
 import { DomainConfigService } from "@/domain-config/domain-config.service";
 import { FlowOrchestratorService } from "@/jobs/flow-orchestrator.service";
 import { JobsService } from "@/jobs/jobs.service";
-import { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
-import { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
+import type { DailySummaryRepository } from "@/llm/infrastructure/repositories/daily-summary.repository";
+import type { PodcastEpisodeRepository } from "@/podcast/infrastructure/podcast-episode.repository";
 import { EnqueueFlowResponseDto } from "@/settings/dto/enqueue-flow.response.dto";
 import { EnqueueJobResponseDto } from "@/settings/dto/enqueue-job.response.dto";
 import { JobsStatusResponseDto } from "@/settings/dto/jobs-status.response.dto";
@@ -47,13 +53,23 @@ export class SettingsController {
     constructor(
         private readonly jobsService: JobsService,
         private readonly userSettingsRepo: UserSettingsRepository,
-        private readonly dailySummaryRepo: DailySummaryRepository,
-        private readonly podcastRepo: PodcastEpisodeRepository,
+        @Optional()
+        @Inject("DailySummaryRepository")
+        private readonly dailySummaryRepo: DailySummaryRepository | null,
+        @Optional()
+        @Inject("PodcastEpisodeRepository")
+        private readonly podcastRepo: PodcastEpisodeRepository | null,
         private readonly domainConfigService: DomainConfigService,
         private readonly flowOrchestrator: FlowOrchestratorService,
-        @InjectQueue("summary-generate") private readonly summaryQueue: Queue,
-        @InjectQueue("script-generate") private readonly scriptQueue: Queue,
-        @InjectQueue("podcastQueue") private readonly podcastQueue: Queue,
+        @Optional()
+        @InjectQueue("summary-generate")
+        private readonly summaryQueue: Queue | null,
+        @Optional()
+        @InjectQueue("script-generate")
+        private readonly scriptQueue: Queue | null,
+        @Optional()
+        @InjectQueue("podcastQueue")
+        private readonly podcastQueue: Queue | null,
         private readonly time: JstDateService,
     ) {}
 
@@ -69,23 +85,35 @@ export class SettingsController {
         const base = await this.userSettingsRepo.getByUserId(userId);
         const next = await this.jobsService.getUserScheduleInfo(userId);
 
-        // 最新履歴
-        const summaries = await this.dailySummaryRepo.findByUser(userId, 1, 0);
-        const latestSummary = summaries[0];
-        const latestPodcast = (await this.podcastRepo.findByUser(userId, 1, 0))
-            .episodes[0];
+        // 最新履歴（オプション機能が無効な場合はスキップ）
+        let latestSummary: { updated_at?: string | null } | undefined;
+        let latestPodcast: { updated_at?: string | null } | undefined;
+        if (this.dailySummaryRepo) {
+            const summaries = await this.dailySummaryRepo.findByUser(
+                userId,
+                1,
+                0,
+            );
+            latestSummary = summaries[0];
+        }
+        if (this.podcastRepo) {
+            latestPodcast = (await this.podcastRepo.findByUser(userId, 1, 0))
+                .episodes[0];
+        }
 
         // last_status（簡易推定）: 当日の要約ジョブの状態を参照
         const today = this.time.formatDate(new Date());
         const summaryJobId = buildSummaryJobId(userId, today);
-        const summaryJob = await this.summaryQueue.getJob(summaryJobId);
         let lastStatus: "success" | "failed" | "skipped" | "unknown" =
             "unknown";
-        if (latestSummary) {
-            lastStatus = "success";
-        } else if (summaryJob) {
-            const state = await summaryJob.getState();
-            lastStatus = state === "failed" ? "failed" : "skipped";
+        if (this.summaryQueue) {
+            const summaryJob = await this.summaryQueue.getJob(summaryJobId);
+            if (latestSummary) {
+                lastStatus = "success";
+            } else if (summaryJob) {
+                const state = await summaryJob.getState();
+                lastStatus = state === "failed" ? "failed" : "skipped";
+            }
         }
 
         const src = {
@@ -168,68 +196,69 @@ export class SettingsController {
         const userId = user.id;
         const today = this.time.formatDate(new Date());
         const summaryJobId = buildSummaryJobId(userId, today);
-        const summaryJob = await this.summaryQueue.getJob(summaryJobId);
 
+        type JobState =
+            | "waiting"
+            | "active"
+            | "completed"
+            | "failed"
+            | "skipped"
+            | "idle";
+
+        // オプション機能が無効な場合はすべて idle を返す
+        if (!this.dailySummaryRepo || !this.summaryQueue) {
+            return buildResponse("Jobs status fetched", {
+                date: today,
+                summary: { state: "idle" as JobState, jobId: summaryJobId },
+                script: { state: "idle" as JobState, jobId: null },
+                podcast: { state: "idle" as JobState, jobId: null },
+            });
+        }
+
+        const summaryJob = await this.summaryQueue.getJob(summaryJobId);
         const summary = await this.dailySummaryRepo.findByUserAndDate(
             userId,
             today,
         );
 
         // summary 状態
-        let summaryState:
-            | "waiting"
-            | "active"
-            | "completed"
-            | "failed"
-            | "skipped"
-            | "idle" = "idle";
+        let summaryState: JobState = "idle";
         if (summary?.isCompleteSummary()) {
             summaryState = "completed";
         } else if (summaryJob) {
             const st = await summaryJob.getState();
-            summaryState = (st as typeof summaryState) ?? "waiting";
+            summaryState = (st as JobState) ?? "waiting";
         } else {
             summaryState = "idle";
         }
 
         // script 状態
-        let scriptState:
-            | "waiting"
-            | "active"
-            | "completed"
-            | "failed"
-            | "skipped"
-            | "idle" = "idle";
+        let scriptState: JobState = "idle";
         if (!summary) {
             scriptState = "skipped";
         } else if (summary.hasScript()) {
             scriptState = "completed";
-        } else {
+        } else if (this.scriptQueue) {
             const scriptJob = await this.scriptQueue.getJob(
                 buildScriptJobId(summary.id),
             );
             if (scriptJob) {
                 const st = await scriptJob.getState();
-                scriptState = (st as typeof scriptState) ?? "waiting";
+                scriptState = (st as JobState) ?? "waiting";
             } else {
                 scriptState = "idle";
             }
         }
 
         // podcast 状態
-        let podcastState:
-            | "waiting"
-            | "active"
-            | "completed"
-            | "failed"
-            | "skipped"
-            | "idle" = "idle";
+        let podcastState: JobState = "idle";
         if (!summary) {
             podcastState = "skipped";
-        } else {
-            const episode = summary
-                ? await this.podcastRepo.findBySummaryId(userId, summary.id)
-                : null;
+        } else if (this.podcastRepo && this.podcastQueue) {
+            const episode = await this.podcastRepo.findBySummaryId(
+                userId,
+                summary.id,
+            );
             if (episode?.hasAudio()) {
                 podcastState = "completed";
             } else {
@@ -238,7 +267,7 @@ export class SettingsController {
                 );
                 if (podcastJob) {
                     const st = await podcastJob.getState();
-                    podcastState = (st as typeof podcastState) ?? "waiting";
+                    podcastState = (st as JobState) ?? "waiting";
                 } else {
                     podcastState = "idle";
                 }
@@ -302,8 +331,9 @@ export class SettingsController {
         @SupabaseUser() user: User,
         @TypedBody() body: UpdatePodcastSettingDto,
     ): Promise<SuccessResponse<UserSettingsBasicDto>> {
-        if (typeof body?.enabled !== "boolean")
+        if (typeof body?.enabled !== "boolean") {
             throw new BadRequestException("enabled must be boolean");
+        }
         const settings = await this.userSettingsRepo.getByUserId(user.id);
         if (body.enabled && !settings?.summary_enabled) {
             throw new BadRequestException(
@@ -332,6 +362,9 @@ export class SettingsController {
         @SupabaseUser() user: User,
         @TypedBody() body?: RunSummaryNowDto,
     ): Promise<SuccessResponse<EnqueueFlowResponseDto>> {
+        if (!this.summaryQueue) {
+            throw new BadRequestException("Summary feature is not enabled");
+        }
         const dateJst = body?.date ?? this.time.formatDate(new Date());
         const flow = await this.flowOrchestrator.createDailyFlow(
             user.id,
@@ -351,6 +384,9 @@ export class SettingsController {
     async runPodcastNow(
         @SupabaseUser() user: User,
     ): Promise<SuccessResponse<EnqueueJobResponseDto>> {
+        if (!this.podcastQueue) {
+            throw new BadRequestException("Podcast feature is not enabled");
+        }
         const today = this.time.formatDate(new Date());
         const jobId = buildPodcastForTodayJobId(user.id, today);
         const job = await this.podcastQueue.add(

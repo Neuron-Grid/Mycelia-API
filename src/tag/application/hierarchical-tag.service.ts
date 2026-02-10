@@ -1,8 +1,10 @@
 import {
     BadRequestException,
+    Inject,
     Injectable,
     Logger,
     NotFoundException,
+    Optional,
     Scope,
 } from "@nestjs/common";
 import { RequestUserContextService } from "@/auth/application/request-user-context.service";
@@ -65,8 +67,12 @@ export class HierarchicalTagService {
 
     constructor(
         private readonly tagRepository: TagRepository,
-        private readonly embeddingService: EmbeddingService,
-        private readonly embeddingQueueService: EmbeddingQueueService,
+        @Optional()
+        @Inject(EmbeddingService)
+        private readonly embeddingService: EmbeddingService | null,
+        @Optional()
+        @Inject(EmbeddingQueueService)
+        private readonly embeddingQueueService: EmbeddingQueueService | null,
         private readonly userContextService: RequestUserContextService,
     ) {}
 
@@ -111,17 +117,19 @@ export class HierarchicalTagService {
 
         // タグのベクトル埋め込み生成
         let tagEmbedding: number[] | undefined;
-        try {
-            const tagText = dto.description
-                ? `${dto.tagName} ${dto.description}`
-                : dto.tagName;
-            tagEmbedding = await this.embeddingService.generateEmbedding(
-                this.embeddingService.preprocessText(tagText),
-            );
-        } catch (error) {
-            this.logger.warn(
-                `Failed to generate embedding for tag: ${error.message}`,
-            );
+        if (this.embeddingService) {
+            try {
+                const tagText = dto.description
+                    ? `${dto.tagName} ${dto.description}`
+                    : dto.tagName;
+                tagEmbedding = await this.embeddingService.generateEmbedding(
+                    this.embeddingService.preprocessText(tagText),
+                );
+            } catch (error) {
+                this.logger.warn(
+                    `Failed to generate embedding for tag: ${error.message}`,
+                );
+            }
         }
 
         // タグ作成
@@ -137,7 +145,7 @@ export class HierarchicalTagService {
             `Created hierarchical tag: ${dto.tagName} for user ${userId}`,
         );
         // バックグラウンドでも最新埋め込みを維持（DBトリガーや将来の仕様変更に対応）
-        await this.embeddingQueueService.addSingleEmbeddingJob(
+        await this.embeddingQueueService?.addSingleEmbeddingJob(
             userId,
             tag.id,
             "tags",
@@ -246,7 +254,7 @@ export class HierarchicalTagService {
             parent_tag_id: newParentId,
         });
         // バックグラウンドで埋め込み更新
-        await this.embeddingQueueService.addSingleEmbeddingJob(
+        await this.embeddingQueueService?.addSingleEmbeddingJob(
             userId,
             updated.id,
             "tags",
